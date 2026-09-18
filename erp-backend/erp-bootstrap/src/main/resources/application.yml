@@ -1,0 +1,31 @@
+# ERP 后端基础配置（D1 骨架阶段）
+spring:
+  application:
+    name: erp-backend
+  servlet:
+    encoding:            # Boot 4 写法（旧写法 server.servlet.encoding 已废弃）
+      charset: UTF-8
+      force: true
+  datasource:
+    url: jdbc:postgresql://localhost:5432/erp
+    username: erp
+    password: erp@123456
+    driver-class-name: org.postgresql.Driver
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: root
+
+server:
+  port: 8080
+
+# 预留：D2 引入 MyBatis-Plus 时启用 mapper-locations
+# mybatis-plus:
+#   mapper-locations: classpath*:/mapper/**/*.xml
+
+# 预留：D2 添加 JWT 配置（spring-boot-starter-oauth2-resource-server + Nimbus）
+# erp:
+#   jwt:
+#     secret: <待配置>
+#     ttl: <待配置>

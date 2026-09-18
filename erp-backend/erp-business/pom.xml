@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>me.north30.erp</groupId>
+        <artifactId>erp-backend</artifactId>
+        <version>0.0.1</version>
+    </parent>
+
+    <artifactId>erp-business</artifactId>
+    <packaging>jar</packaging>
+
+    <name>erp-business</name>
+    <description>业务模块：按采购/销售/库存/生产/财务业务域分包，依赖 common + system + base</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>me.north30.erp</groupId>
+            <artifactId>erp-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>me.north30.erp</groupId>
+            <artifactId>erp-system</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>me.north30.erp</groupId>
+            <artifactId>erp-base</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+</project>

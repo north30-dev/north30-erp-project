@@ -67,8 +67,8 @@ north30-erp-project/
 ├── README.md / AGENTS.md            # 项目说明 / AI 代理工作规则
 ├── .gitignore / .editorconfig       # UTF-8 + LF，Java 4 空格、前端 2 空格
 ├── docs/                            # 项目文档（8 篇，见下方文档索引）
-├── erp-backend/                     # 后端（Maven 5 模块，规划中）
-├── erp-frontend/                    # 前端（Vue3 + TS，规划中）
+├── erp-backend/                     # 后端（Maven 5 模块：common/system/base/business/bootstrap）
+├── erp-frontend/                    # 前端（Vite + Vue3 + TS + AntD Vue 4 + Pinia）
 ├── database/                        # 数据库脚本（init / migration，规划中）
 ├── deploy/                          # 部署配置
 └── scripts/                         # 辅助脚本

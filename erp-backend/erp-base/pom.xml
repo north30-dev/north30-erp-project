@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>me.north30.erp</groupId>
+        <artifactId>erp-backend</artifactId>
+        <version>0.0.1</version>
+    </parent>
+
+    <artifactId>erp-base</artifactId>
+    <packaging>jar</packaging>
+
+    <name>erp-base</name>
+    <description>基础数据模块：物料、BOM、客户、供应商等主数据（仅依赖 erp-common）</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>me.north30.erp</groupId>
+            <artifactId>erp-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+</project>

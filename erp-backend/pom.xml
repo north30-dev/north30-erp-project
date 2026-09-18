@@ -2,43 +2,63 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
+    <!-- Spring Boot 官方父 POM，托管依赖版本与插件版本 -->
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>4.0.8</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <relativePath/> <!-- 从远程仓库查找父 POM -->
     </parent>
+
     <groupId>me.north30.erp</groupId>
     <artifactId>erp-backend</artifactId>
     <version>0.0.1</version>
+    <!-- 聚合工程，仅做模块聚合与依赖版本管控，不产出构件 -->
+    <packaging>pom</packaging>
+
     <name>erp-backend</name>
-    <description>erp-backend</description>
-    <url/>
-    <licenses>
-        <license>
-        </license>
-    </licenses>
-    <developers>
-        <developer/>
-    </developers>
+    <description>north30 ERP 后端聚合父工程（模块化单体）</description>
+
+    <!-- 5 个子模块：依赖规则 common <- system/base <- business <- bootstrap -->
+    <modules>
+        <module>erp-common</module>
+        <module>erp-system</module>
+        <module>erp-base</module>
+        <module>erp-business</module>
+        <module>erp-bootstrap</module>
+    </modules>
 
     <properties>
         <java.version>21</java.version>
+        <!-- MyBatis-Plus 3.5.9+ 分页插件已拆分，需同时管控 jsqlparser 构件 -->
+        <mybatis-plus.version>3.5.17</mybatis-plus.version>
+        <springdoc-openapi.version>3.1.1</springdoc-openapi.version>
     </properties>
-    <dependencies>
 
-    </dependencies>
-
+    <!-- 仅做版本管控，D1 不实际引入；依赖在子模块按需声明 -->
     <dependencyManagement>
+        <dependencies>
+            <!-- D2 引入 MyBatis-Plus 时使用（Boot 4 专用 starter） -->
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-jsqlparser</artifactId>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
+            <!-- API 文档（Boot 4 下禁用 Knife4j，统一使用 springdoc-openapi 3.x） -->
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc-openapi.version}</version>
+            </dependency>
+        </dependencies>
     </dependencyManagement>
 
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-        </plugins>
-    </build>
+    <!-- 父 POM 不声明任何 <dependencies>，不放 spring-boot-maven-plugin（仅 erp-bootstrap 持有） -->
 
 </project>
