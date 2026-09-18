@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>me.north30.erp</groupId>
+        <artifactId>erp-backend</artifactId>
+        <version>0.0.1</version>
+    </parent>
+
+    <artifactId>erp-bootstrap</artifactId>
+    <packaging>jar</packaging>
+
+    <name>erp-bootstrap</name>
+    <description>启动模块：唯一启动入口，只放启动类、配置类与 application.yml，不写业务代码</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>me.north30.erp</groupId>
+            <artifactId>erp-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>me.north30.erp</groupId>
+            <artifactId>erp-system</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>me.north30.erp</groupId>
+            <artifactId>erp-base</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>me.north30.erp</groupId>
+            <artifactId>erp-business</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- 全工程唯一的 spring-boot-maven-plugin：打出可执行 fat jar -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>repackage</id>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

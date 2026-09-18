@@ -67,8 +67,8 @@ north30-erp-project/
 ├── README.md / AGENTS.md            # 项目说明 / AI 代理工作规则
 ├── .gitignore / .editorconfig       # UTF-8 + LF，Java 4 空格、前端 2 空格
 ├── docs/                            # 项目文档（8 篇，见下方文档索引）
-├── erp-backend/                     # 后端（Maven 5 模块，规划中）
-├── erp-frontend/                    # 前端（Vue3 + TS，规划中）
+├── erp-backend/                     # 后端（Maven 5 模块：common/system/base/business/bootstrap）
+├── erp-frontend/                    # 前端（Vite + Vue3 + TS + AntD Vue 4 + Pinia）
 ├── database/                        # 数据库脚本（init / migration，规划中）
 ├── deploy/                          # 部署配置
 └── scripts/                         # 辅助脚本
@@ -130,4 +130,4 @@ mvn clean compile
 mvn spring-boot:run -pl erp-bootstrap
 ```
 
-编码约定速览：统一 UTF-8 + LF 换行符；统一响应体 `Result<T>`；金额计算必须 `BigDecimal`；增删改必须 `@Transactional(rollbackFor = Exception.class)`；关键写操作记录审计日志；API 前缀 `/api/v1`。完整规范见 [AGENTS.md](AGENTS.md) 与 [编码规范文档](docs/ERP系统开发编码规范文档.md)。
+编码约定速览：统一 UTF-8 + LF 换行符；统一响应体 `Result<T>`；金额计算必须 `BigDecimal`；增删改必须 `@Transactional(rollbackFor = Exception.class)`；关键写操作记录审计日志；API 前缀 `/api`。完整规范见 [AGENTS.md](AGENTS.md) 与 [编码规范文档](docs/ERP系统开发编码规范文档.md)。

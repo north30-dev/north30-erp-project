@@ -25,7 +25,7 @@
 | 本文性质 | **线框级交互设计说明**（非高保真视觉稿）：给出信息架构、导航规则、设计规范（Design System）、核心页面原型说明、关键交互流程、前端工程与代码约定；不给出像素级视觉稿、不做视觉资产交付 |
 | 需求输入 | 《需求规格说明书（终稿）》80 条需求为唯一需求输入基线；本文第七章给出"页面 → 接口 → 需求编号 → 开发子阶段"的覆盖对照表，做到无"页面无接口"、无"接口无入口" |
 | 规范输入 | 《ERP系统开发技术选型》（前端技术栈）、《ERP系统开发目录结构设计》（erp-frontend 结构）、《ERP系统开发API设计与规范文档》（统一响应体、分页、鉴权、批量与导出规范）、《ERP系统开发编码规范文档》、AGENTS.md（前端红线） |
-| 一致性口径 | 技术栈、API 前缀 `/api/v1`、统一响应体 `Result<T>`、分页字段 `list/total/pageNum/pageSize/pages`、单据状态取值、单据编号前缀、金额与数量展示精度**与上游文档逐字一致**；凡与旧基线文档表述冲突处，以本文第七章评审问题清单的明确结论为准 |
+| 一致性口径 | 技术栈、API 前缀 `/api`、统一响应体 `Result<T>`、分页字段 `list/total/pageNum/pageSize/pages`、单据状态取值、单据编号前缀、金额与数量展示精度**与上游文档逐字一致**；凡与旧基线文档表述冲突处，以本文第七章评审问题清单的明确结论为准 |
 | 本期交付验收口径 | 页面清单覆盖全部 80 条需求；状态徽标配色映射覆盖全部单据状态取值；评审问题清单无"未处理"条目 |
 | 评审对象 | 本文为 M2 设计评审的交互类文档，评审问题须全部关闭后 M2 方可判定通过（见第八章 8.3） |
 
@@ -668,7 +668,7 @@ flowchart LR
 
 | 响应特征 | 前端统一处理（axios 响应拦截器） |
 |---------|--------------------------------|
-| HTTP 401 或 `code=401` | 清除本地 Token → 尝试一次静默刷新（`/api/v1/auth/refresh`）；刷新失败则提示"登录已过期，请重新登录"并跳转 `/login?redirect=当前路由` |
+| HTTP 401 或 `code=401` | 清除本地 Token → 尝试一次静默刷新（`/api/auth/refresh`）；刷新失败则提示"登录已过期，请重新登录"并跳转 `/login?redirect=当前路由` |
 | HTTP 403 或 `code=403` | `a-message.error('您没有该操作的权限，请联系系统管理员')`；若为路由级则跳 `/403` |
 | HTTP 404 或 `code=404` | 提示"数据不存在或已被删除"，并提供"返回列表"按钮 |
 | HTTP 409 或 `code=409` | 提示"数据已被他人修改，请刷新后重试"+ 触发当前页面数据重新加载（见 5.6） |
@@ -727,7 +727,7 @@ flowchart LR
 | 关键字段/列 | 用户名（必填，2~32 字符）、密码（必填，掩码显示 + 显隐切换）、验证码（必填，4 位）、记住我（勾选后记住用户名，**不记住密码**） |
 | 主要操作按钮 | 登录（Enter 提交）、刷新验证码（点击图片或"看不清？换一张"） |
 | 状态与交互说明 | ①登录按钮提交时 `loading` 并禁用重复点击；②成功后按"默认落地页规则"（2.5）跳转，若存在 `redirect` 参数则回跳原路由；③失败时在卡片顶部展示后端 `message`（如"账号或密码错误"）；④连续 5 次密码错误后提示"账号已锁定，请 30 分钟后重试"（SYS-01 验收要点④）；⑤密码有效期到期登录成功后强制跳转 `/system/user/password` 修改密码页，未修改前仅可访问该页与登出（SYS-09）；⑥admin 初始登录强制改密；⑦密码框默认不自动填充，`autocomplete` 关闭 |
-| 调用接口 | `POST /api/v1/auth/login`（登录）、`GET /api/v1/auth/captcha`（验证码）、`GET /api/v1/auth/me`（登录后获取用户与权限信息） |
+| 调用接口 | `POST /api/auth/login`（登录）、`GET /api/auth/captcha`（验证码）、`GET /api/auth/me`（登录后获取用户与权限信息） |
 | 涉及需求编号 | SYS-01、SYS-09（密码策略与强制改密） |
 
 ### 4.2 首页 / 经营仪表盘
@@ -741,7 +741,7 @@ flowchart LR
 | 关键字段/列 | 指标卡 8 项：今日销售收入、本月销售收入、毛利率、库存周转天数、工单按时完工率、应收逾期金额、在途订单金额（已审核未发货销售订单金额）、呆滞库存占比；辅助指标：订单准时交付率、待审单据数、库存预警数、逾期应收笔数；趋势图维度：日期/期间、销售收入、成本、毛利、毛利率；排行列：排名、客户/产品、金额、占比 |
 | 主要操作按钮 | 刷新（手动）、组织切换、时间维度切换、指标口径说明（图标列）、预警项跳转（点击卡片）、导出（当前仪表盘快照 PDF）；**不提供指标自定义编辑**（口径固定，避免口径漂移） |
 | 状态与交互说明 | ①页面显著位置标注"数据延迟 ≤5 分钟；成本类指标按日刷新"；②指标卡数值支持千分位与单位（万元/元）自动切换；③每项指标的"口径说明"以 `a-drawer` 展示：计算公式、数据来源、统计范围、刷新频率；④组织切换后所有指标与图表联动刷新；⑤数据权限生效：业务员仅见本人负责客户口径数据（越权数据不返回）；⑥加载态用骨架屏，单个指标加载失败不影响其他指标（卡片内展示"加载失败 + 重试"）；⑦无数据时展示"暂无数据"而非 0 |
-| 调用接口 | `GET /api/v1/reports/dashboard`（8 项指标 + 预警计数）、`GET /api/v1/reports/dashboard/trend`（趋势数据）、`GET /api/v1/reports/dashboard/ranking`（销售/毛利排行）、`GET /api/v1/reports/dashboard/metrics/{code}/definition`（指标口径说明） |
+| 调用接口 | `GET /api/reports/dashboard`（8 项指标 + 预警计数）、`GET /api/reports/dashboard/trend`（趋势数据）、`GET /api/reports/dashboard/ranking`（销售/毛利排行）、`GET /api/reports/dashboard/metrics/{code}/definition`（指标口径说明） |
 | 涉及需求编号 | RPT-01、SYS-04（数据权限）、RPT-07（快照导出） |
 
 ### 4.3 用户管理
@@ -755,7 +755,7 @@ flowchart LR
 | 关键字段/列 | 列表列：用户名、姓名、所属组织、部门、角色（多标签展示）、可访问仓库、手机号（脱敏）、状态徽标、最后登录时间、创建时间、操作；表单字段：用户名（唯一，保存后不可改）、姓名、密码（新增必填，强度校验）、所属组织、部门、角色（多选）、可访问仓库（多选，用于库存数据权限）、手机号、邮箱、状态、备注 |
 | 主要操作按钮 | 查询、重置、新增、编辑、角色分配、重置密码、启用/停用、删除（逻辑删除）、导出 |
 | 状态与交互说明 | ①用户名重复保存时展示后端 `message`（含已存在提示），错误定位到用户名字段；②停用需二次确认，提示"停用后该用户在线会话立即失效"；③重置密码后提示"已重置为初始密码，用户首次登录需修改"；④删除仅允许无业务引用用户，且需二次确认；⑤角色分配弹窗中展示"角色 → 权限点摘要"，保存后提示"权限变更将在用户下次请求（≤5 分钟）或重新登录后生效"；⑥列表中已停用用户整体置灰但可查看；⑦密码字段全程掩码，任何接口不回显明文（S-06） |
-| 调用接口 | `GET /api/v1/system/users`（分页查询）、`POST /api/v1/system/users`（新增）、`PUT /api/v1/system/users/{id}`（修改）、`PUT /api/v1/system/users/{id}/status`（启停用）、`PUT /api/v1/system/users/{id}/password/reset`（重置密码）、`PUT /api/v1/system/users/{id}/roles`（角色分配）、`DELETE /api/v1/system/users/{id}`（逻辑删除）、`GET /api/v1/system/orgs/tree`（组织树）、`GET /api/v1/base/warehouses`（仓库列表） |
+| 调用接口 | `GET /api/system/users`（分页查询）、`POST /api/system/users`（新增）、`PUT /api/system/users/{id}`（修改）、`PUT /api/system/users/{id}/status`（启停用）、`PUT /api/system/users/{id}/password/reset`（重置密码）、`PUT /api/system/users/{id}/roles`（角色分配）、`DELETE /api/system/users/{id}`（逻辑删除）、`GET /api/system/orgs/tree`（组织树）、`GET /api/base/warehouses`（仓库列表） |
 | 涉及需求编号 | SYS-02、SYS-09、SYS-04（组织与仓库绑定）、SYS-03（角色分配） |
 
 ### 4.4 角色与菜单权限
@@ -769,7 +769,7 @@ flowchart LR
 | 关键字段/列 | 角色字段：角色编码（唯一，如 `sales_manager`）、角色名称、状态、描述、排序；权限树节点：目录 / 菜单 / 按钮三级（按钮节点带权限点编码，如 `sales:order:approve`）；数据范围选项：全部 / 本组织及下级 / 本组织 / 本部门及下级 / 本部门 / 仅本人 / 自定义（勾选组织或人员）；字段权限项：金额字段可见性、银行账号全码可见性、成本价可见性 |
 | 主要操作按钮 | 新增角色、编辑、启用/停用、删除、配置权限（进入授权页）、保存授权、重置、权限树全选/反选/展开全部 |
 | 状态与交互说明 | ①权限树勾选父节点自动勾选全部子节点（半选态展示）；②保存授权前不校验完整性（允许只读角色无按钮权限），但给出提示"该角色无任何作业按钮权限"；③保存后提示"权限变更已保存，将在用户下次请求（≤5 分钟）或重新登录后生效"；④权限变更写审计日志（SYS-03 验收要点④），页面提供"查看变更记录"入口（抽屉）；⑤管理员角色（`admin`）不可删除、不可取消其系统管理权限（系统内置保护，按钮置灰并提示原因）；⑥用户数 > 0 的角色删除时拦截并提示用户数 |
-| 调用接口 | `GET /api/v1/system/roles`、`POST /api/v1/system/roles`、`PUT /api/v1/system/roles/{id}`、`DELETE /api/v1/system/roles/{id}`、`GET /api/v1/system/menus/tree`（菜单权限树）、`GET /api/v1/system/roles/{id}/permissions`（角色权限详情）、`PUT /api/v1/system/roles/{id}/permissions`（保存权限与数据范围）、`GET /api/v1/system/audit-logs?bizType=ROLE`（权限变更记录） |
+| 调用接口 | `GET /api/system/roles`、`POST /api/system/roles`、`PUT /api/system/roles/{id}`、`DELETE /api/system/roles/{id}`、`GET /api/system/menus/tree`（菜单权限树）、`GET /api/system/roles/{id}/permissions`（角色权限详情）、`PUT /api/system/roles/{id}/permissions`（保存权限与数据范围）、`GET /api/system/audit-logs?bizType=ROLE`（权限变更记录） |
 | 涉及需求编号 | SYS-03、SYS-04、SYS-05（权限变更留痕） |
 
 ### 4.5 审计日志查询
@@ -783,7 +783,7 @@ flowchart LR
 | 关键字段/列 | 审计日志列：操作时间、操作人、业务模块、操作类型（创建/修改/审核/删除/过账/反审核/权限变更/参数变更）、单据号（可点击跳转单据详情）、IP、结果、操作（查看详情）；详情字段：操作人、时间、IP、操作类型、单据号、变更前 JSON、变更后 JSON、耗时、traceId；登录日志列：时间、用户名、事件类型、IP、结果、失败原因 |
 | 主要操作按钮 | 查询、重置、查看详情、复制 JSON、导出（需权限）、跳转单据详情；**不提供删除按钮**（日志只增不改不删，SYS-05 验收要点③） |
 | 状态与交互说明 | ①单据号精确检索响应 ≤3 秒（SYS-05 验收要点②），输入即触发（防抖 500ms）；②变更前后 JSON 以代码高亮 + 折叠树展示，字段级差异高亮（新增绿、删除红、修改黄）；③无变更前后值（如登录日志）时隐藏对比区；④大数据量时按时间范围强制校验（默认近 7 天，最长查询跨度 90 天）；⑤导出受数据权限约束；⑥列表不支持编辑与删除，仅查看 |
-| 调用接口 | `GET /api/v1/system/audit-logs`（分页查询）、`GET /api/v1/system/audit-logs/{id}`（详情含变更前后 JSON）、`GET /api/v1/system/login-logs`（登录日志查询）、`GET /api/v1/system/audit-logs/export`（导出） |
+| 调用接口 | `GET /api/system/audit-logs`（分页查询）、`GET /api/system/audit-logs/{id}`（详情含变更前后 JSON）、`GET /api/system/login-logs`（登录日志查询）、`GET /api/system/audit-logs/export`（导出） |
 | 涉及需求编号 | SYS-05、SYS-01（登录日志）、SYS-03/SYS-06（权限与参数变更留痕）、RPT-07（导出） |
 
 ### 4.6 数据字典、系统参数与编号规则
@@ -797,7 +797,7 @@ flowchart LR
 | 关键字段/列 | 字典类型：类型编码、名称、状态、备注；字典项：字典值、显示名称、排序、状态、是否默认、备注；参数字段：参数键、参数名、参数值、单位、默认值、取值范围、生效说明；编号规则列：单据类型（销售订单/采购订单/…）、前缀（SO/PO/GR/PR/DN/OD/SR/MO/MI/MW/FI/MP/IV/ST/TR/FZ/AR/AP/RC/PY/FA）、格式说明（`前缀 + YYYYMM + 3 位流水`）、示例（`SO202608001`）、当前期流水号、下次重置月 |
 | 主要操作按钮 | 字典：新增类型、新增字典项、编辑、启用/停用、删除；参数：编辑（弹窗内改值）、恢复默认值、查看变更记录；编号规则：查看（**只读，不允许改前缀与格式**） |
 | 状态与交互说明 | ①被业务引用的字典项删除时拦截并提示引用位置（SYS-06 验收要点③）；②参数修改弹窗内展示"取值范围 + 影响范围"，保存后提示"参数已保存，1 分钟内生效，无需重启服务"；③参数变更写审计日志，页面提供"查看变更记录"；④编号规则页面标注"编号一经生成不可修改、不复用"，并提供"各单据编号前缀对照表"；⑤违反参数校验（如安全库存上限低于下限）时展示后端 `message` |
-| 调用接口 | `GET /api/v1/system/dicts`、`POST /api/v1/system/dicts`、`PUT /api/v1/system/dicts/{id}`、`DELETE /api/v1/system/dicts/{id}`、`GET /api/v1/system/dict-items`、`PUT /api/v1/system/dict-items/{id}`、`GET /api/v1/system/params`、`PUT /api/v1/system/params/{key}`、`GET /api/v1/system/code-rules` |
+| 调用接口 | `GET /api/system/dicts`、`POST /api/system/dicts`、`PUT /api/system/dicts/{id}`、`DELETE /api/system/dicts/{id}`、`GET /api/system/dict-items`、`PUT /api/system/dict-items/{id}`、`GET /api/system/params`、`PUT /api/system/params/{key}`、`GET /api/system/code-rules` |
 | 涉及需求编号 | SYS-06、SYS-07、SYS-05（参数变更留痕） |
 
 ### 4.7 物料分类与物料主数据
@@ -811,7 +811,7 @@ flowchart LR
 | 关键字段/列 | 列表列：物料编码、物料名称、规格型号、分类、物料属性（自制/外购/外协）、物料分类（原材料/半成品/成品/辅料/包装）、计量单位、ABC 分类、安全库存、标准成本、状态徽标、操作；基本属性：物料编码（自动生成，规则"2 位一级分类 + 2 位二级分类 + 6 位流水"，如 `01-03-000128`，只读）、物料名称、规格型号、计量单位、物料分类、物料属性、图号、图号版本、品牌、封装、是否批次管理、是否保质期管理、保质期天数、备注；计划属性：采购提前期、生产提前期、安全库存量、最小采购批量、最大库存量、ABC 分类、默认供应商、默认仓库、默认库位；财务属性：标准成本、计价方法（移动加权平均/先进先出）、存货科目、成本科目、收入科目 |
 | 主要操作按钮 | 新增物料、编辑、查看详情、复制新增、停用/启用、导出、批量导入（模板下载 + 上传）、下载错误行、附件上传与预览；**编码不可修改、不可手工录入旧格式编码** |
 | 状态与交互说明 | ①选择分类后自动生成编码前缀（前 4 位），流水号由后端生成，前端只读展示并在保存成功后回填；②手工录入 `MAT-IC-001` 类旧编码被拒（MD-01 验收要点②），错误提示定位到编码字段；③"物料名称 + 规格型号 + 计量单位 + 品牌"重复时保存拦截并提示已存在物料的编码；④缺必填字段时字段下方红字标注字段名；⑤状态流转按钮按当前状态渲染（新建 → 审核 → 启用 → 停用），停用需二次确认并提示"停用后不可在新建单据中选择"；⑥删除仅对"新建"状态且无引用物料开放，有引用时拦截并提示引用来源（BOM/订单/库存/流水）；⑦财务属性中非叶子科目不允许保存；⑧批量导入：上传前校验扩展名与行数（≤10,000 行），导入结果展示成功/失败条数与错误行清单（行号 + 原因），整批事务失败时不落库；⑨附件面板上传质检报告/图纸（≤20MB/文件、≤20 个/单据），删除为逻辑删除；⑩详情页展示"状态变更历史"（原状态、新状态、操作人、时间） |
-| 调用接口 | `GET /api/v1/base/material-categories/tree`、`POST /api/v1/base/material-categories`、`PUT /api/v1/base/material-categories/{id}`、`GET /api/v1/base/materials`、`GET /api/v1/base/materials/{id}`、`POST /api/v1/base/materials`、`PUT /api/v1/base/materials/{id}`、`PUT /api/v1/base/materials/{id}/status`、`DELETE /api/v1/base/materials/{id}`、`GET /api/v1/base/materials/next-code`（编码预览）、`GET /api/v1/system/import/template?type=MATERIAL`、`POST /api/v1/base/materials/import`、`GET /api/v1/base/materials/export`、`GET /api/v1/system/subjects/tree`（科目选择）、`POST /api/v1/system/attachments`（附件） |
+| 调用接口 | `GET /api/base/material-categories/tree`、`POST /api/base/material-categories`、`PUT /api/base/material-categories/{id}`、`GET /api/base/materials`、`GET /api/base/materials/{id}`、`POST /api/base/materials`、`PUT /api/base/materials/{id}`、`PUT /api/base/materials/{id}/status`、`DELETE /api/base/materials/{id}`、`GET /api/base/materials/next-code`（编码预览）、`GET /api/system/import/template?type=MATERIAL`、`POST /api/base/materials/import`、`GET /api/base/materials/export`、`GET /api/system/subjects/tree`（科目选择）、`POST /api/system/attachments`（附件） |
 | 涉及需求编号 | MD-01、MD-02、MD-03、MD-04、MD-05、MD-06、SYS-11（批量导入）、SYS-10（附件）、SYS-07（编码规则）、SYS-05（留痕） |
 
 ### 4.8 BOM 管理
@@ -825,7 +825,7 @@ flowchart LR
 | 关键字段/列 | 头信息：BOM 编号、父件物料编码/名称、版本号（`V<主版本>.<次版本>`）、状态徽标（草稿/已审核/生效/历史）、生效日期、失效日期、审核人、审核时间、备注；明细列：行号、子件编码、子件名称、规格、单位、标准用量（>0）、损耗率（0~100%）、定额用量（父件 1 单位时的用量）、替代料（数量 + 优先级）、备注；树节点：层级、编码、名称、用量、损耗率、累计用量；反查列：父件编码、父件名称、版本、用量、损耗率、层级路径、是否生效 |
 | 主要操作按钮 | 新增 BOM、编辑（生成新版本）、提交审核、审核通过/驳回、查看树、展开/收起全部、仅看一层、反查、导出、版本对比、添加替代料、删除替代料；历史版本仅可查看，删除按钮置灰并提示原因 |
 | 状态与交互说明 | ①**闭环检测错误提示交互**：保存/审核时执行 5 项校验（自身子件、层级 ≤10、闭环、用量与损耗率范围、子件必须启用），闭环失败时在页面顶部展示 `a-alert`："BOM 存在闭环：A（AC-300）→ B（主控板）→ C（电源模块）→ A（AC-300），请检查子件层级"，同时将闭环路径涉及的行**高亮标红**并在行尾展示错误图标与悬浮原因；层级超限时提示"当前层级 11 层，超过上限 10 层"并定位到超限节点；②用量或损耗率变更时提示"修改将生成新版本 V1.1，已下达工单仍使用原版本 V1.0"；③同一父件同时仅一个"生效"版本，新版本生效时旧版本自动置为"历史"（状态徽标绿色 → 灰色）；④同一 BOM 内重复子件保存被拒；⑤树形展开按需加载（懒加载子节点），3 层 ≤200 行展开响应 ≤2 秒；⑥反查结果可切换"仅生效版本 / 含历史版本"，无上级引用时展示"无上级引用（该物料为顶层成品）"；⑦替代料比例换算按 1:1 或按比例（如 1.5）展示在领料页；⑧审核与变更均生成审计日志，详情页提供"审核记录"与"变更记录"入口 |
-| 调用接口 | `GET /api/v1/base/boms`、`GET /api/v1/base/boms/{id}`、`GET /api/v1/base/boms/{id}/tree`（多级树）、`POST /api/v1/base/boms`、`PUT /api/v1/base/boms/{id}`、`POST /api/v1/base/boms/{id}/submit`、`POST /api/v1/base/boms/{id}/approve`、`POST /api/v1/base/boms/{id}/reject`、`GET /api/v1/base/boms/{id}/versions`、`GET /api/v1/base/boms/where-used?materialId=`（反查）、`GET /api/v1/base/boms/export`、`PUT /api/v1/base/boms/{id}/substitutes`（替代料）、`POST /api/v1/base/boms/validate`（保存前校验，返回闭环路径） |
+| 调用接口 | `GET /api/base/boms`、`GET /api/base/boms/{id}`、`GET /api/base/boms/{id}/tree`（多级树）、`POST /api/base/boms`、`PUT /api/base/boms/{id}`、`POST /api/base/boms/{id}/submit`、`POST /api/base/boms/{id}/approve`、`POST /api/base/boms/{id}/reject`、`GET /api/base/boms/{id}/versions`、`GET /api/base/boms/where-used?materialId=`（反查）、`GET /api/base/boms/export`、`PUT /api/base/boms/{id}/substitutes`（替代料）、`POST /api/base/boms/validate`（保存前校验，返回闭环路径） |
 | 涉及需求编号 | BOM-01、BOM-02、BOM-03、BOM-04、BOM-05、BOM-06、BOM-07、MD-05（子件启用校验）、SYS-11（批量导入） |
 
 ### 4.9 客户与供应商档案
@@ -839,7 +839,7 @@ flowchart LR
 | 关键字段/列 | 列表列：编码、名称、统一社会信用代码、联系人、联系方式、维度标签（多标签）、结算方式、信用额度（客户）/评级（供应商）、状态徽标、操作；客户字段：客户编码（规则 `CUS` + 4 位流水，自动生成）、客户名称、统一社会信用代码（18 位）、联系人、联系方式、收货地址（多地址 + 默认标识）、结算方式（月结 30/60 天、款到发货等）、信用额度（≥0）、信用期限（天）、状态、备注；供应商字段：供应商编码（`SUP` + 4 位流水）、供应商名称、统一社会信用代码、联系人、联系方式、供货品类（物料一级分类多选）、结算方式与付款条件、开户行、银行账号（**默认掩码展示**，仅财务角色可见全码）、评级（A/B/C）、准入状态 |
 | 主要操作按钮 | 新增、编辑、查看详情、启用/停用、设置维度标签、导出、设置默认地址、查看信用占用明细（客户）、查看绩效趋势（供应商） |
 | 状态与交互说明 | ①编码自动生成且不可修改；②"名称 + 统一社会信用代码"重复时保存拦截并提示已存在编码；③统一社会信用代码非 18 位时校验拦截；④银行账号默认展示掩码（`6222****1234`），无字段权限的账号不提供"查看全码"入口（S-06、CS-02）；⑤**信用额度占用展示**：详情卡内展示"信用额度 / 已占用 / 可用额度"，并给出口径说明（可用额度 = 信用额度 − 已审核未发货订单金额 − 未核销应收余额）；占用明细以抽屉列出订单与应收单据；⑥停用需二次确认并提示"停用后不可新增订单，可继续发货与收款"；⑦维度标签新增仅通过字典配置即可使用（无需改代码），标签选择器读字典缓存；⑧供应商详情展示最近 3 个月绩效评分与评级趋势 |
-| 调用接口 | `GET /api/v1/base/customers`、`GET /api/v1/base/customers/{id}`、`POST /api/v1/base/customers`、`PUT /api/v1/base/customers/{id}`、`PUT /api/v1/base/customers/{id}/status`、`GET /api/v1/base/customers/{id}/credit`（信用额度与占用明细）、`GET /api/v1/base/suppliers`、`GET /api/v1/base/suppliers/{id}`、`POST /api/v1/base/suppliers`、`PUT /api/v1/base/suppliers/{id}`、`PUT /api/v1/base/suppliers/{id}/status`、`PUT /api/v1/base/{type}/{id}/tags`（维度标签）、`GET /api/v1/purchase/supplier-scores?supplierId=`（绩效趋势）、`GET /api/v1/base/customers/export` |
+| 调用接口 | `GET /api/base/customers`、`GET /api/base/customers/{id}`、`POST /api/base/customers`、`PUT /api/base/customers/{id}`、`PUT /api/base/customers/{id}/status`、`GET /api/base/customers/{id}/credit`（信用额度与占用明细）、`GET /api/base/suppliers`、`GET /api/base/suppliers/{id}`、`POST /api/base/suppliers`、`PUT /api/base/suppliers/{id}`、`PUT /api/base/suppliers/{id}/status`、`PUT /api/base/{type}/{id}/tags`（维度标签）、`GET /api/purchase/supplier-scores?supplierId=`（绩效趋势）、`GET /api/base/customers/export` |
 | 涉及需求编号 | CS-01、CS-02、CS-03、SYS-06（维度与结算方式字典）、SYS-04（字段级掩码）、SYS-10（附件） |
 
 ### 4.10 销售订单
@@ -853,7 +853,7 @@ flowchart LR
 | 关键字段/列 | 列表列：订单号、客户名称、订单日期、要求交货日期、订单金额（含税）、已发货数量、未发货余额、订单状态徽标、审批状态徽标、业务员、操作；明细列：行号、物料编码、物料名称、规格、单位、数量、单价（不含税）、含税标识、税率、税额、金额、已发数量（只读）、已开票数量（只读）、备注；分批计划列：批次号、交货日期、交货数量、已发货数量、状态、操作（增删）；汇总：不含税金额、税额、价税合计、数量合计；头信息只读字段：订单号（首次提交后生成，`SO + YYYYMM + 3 位流水`）、信用额度占用、可用额度 |
 | 主要操作按钮 | 查询、重置、新增、编辑、暂存、提交、审核/驳回、发起变更、关闭、反审核（需权限）、打印、导出、复制订单、查看执行跟踪、上传附件；单据只读态下仅保留打印/导出/变更/关联查询 |
 | 状态与交互说明 | ①**信用额度实时校验提示**：录入客户与金额后，头信息区实时展示"信用额度 / 已占用 / 本次占用 / 可用额度"，若超出则在金额汇总区旁展示黄色 `a-alert`："信用额度不足，可用额度 X 元，本次需占用 Y 元，缺口 Z 元，提交后将进入特批流程"；②**审核校验失败提示**：审核失败时展示后端 `message`，如"信用额度不足，需特批"、"单价 1,780.00 元低于授权区间下限 1,805.00 元，需特批"、"物料 01-03-000128 已停用，不可下单"，并在顶部 `a-alert` 汇总全部失败项；③特批流程：点击"特批申请"打开弹窗（展示缺口金额或价差比例），特批原因必填（≥10 字），特批通过后方可审核；④分批交货计划合计 ≠ 订单数量时保存拦截并提示差异（"分批计划合计 90，订单数量 100，差异 10"）；⑤数量 0 或负数额外拦截；⑥价格自动带出：选客户 + 物料后按价格策略优先级带出单价，人工调整超出授权区间时黄色警示（不阻断录入，审核时判定）；⑦已审核订单关键字段禁用；变更走变更单并展示前后值对比（改前 50 / 改后 30），数量低于已发货数量时变更被拒；⑧已发货/已开票数量为只读派生值，来自后端汇总；⑨单据号一经生成不可修改，页面提供复制按钮 |
-| 调用接口 | `GET /api/v1/sales/orders`、`GET /api/v1/sales/orders/{id}`、`POST /api/v1/sales/orders`（请求头 `Idempotent-Key`）、`PUT /api/v1/sales/orders/{id}`、`POST /api/v1/sales/orders/{id}/submit`、`POST /api/v1/sales/orders/{id}/approve`、`POST /api/v1/sales/orders/{id}/reject`、`POST /api/v1/sales/orders/{id}/special-approve`（特批）、`POST /api/v1/sales/orders/{id}/close`、`POST /api/v1/sales/orders/{id}/unapprove`、`GET /api/v1/sales/orders/{id}/changes`（变更历史）、`POST /api/v1/sales/orders/{id}/changes`（发起变更）、`POST /api/v1/sales/orders/validate-credit`（信用额度预校验）、`GET /api/v1/sales/orders/export`、`GET /api/v1/sales/price-policies/quote`（价格带出） |
+| 调用接口 | `GET /api/sales/orders`、`GET /api/sales/orders/{id}`、`POST /api/sales/orders`（请求头 `Idempotent-Key`）、`PUT /api/sales/orders/{id}`、`POST /api/sales/orders/{id}/submit`、`POST /api/sales/orders/{id}/approve`、`POST /api/sales/orders/{id}/reject`、`POST /api/sales/orders/{id}/special-approve`（特批）、`POST /api/sales/orders/{id}/close`、`POST /api/sales/orders/{id}/unapprove`、`GET /api/sales/orders/{id}/changes`（变更历史）、`POST /api/sales/orders/{id}/changes`（发起变更）、`POST /api/sales/orders/validate-credit`（信用额度预校验）、`GET /api/sales/orders/export`、`GET /api/sales/price-policies/quote`（价格带出） |
 | 涉及需求编号 | SAL-01、SAL-02、SAL-04、SAL-07（价格带出）、CS-01（信用额度）、MD-05（物料启用）、SYS-04、SYS-05、RPT-07 |
 
 ### 4.11 订单执行跟踪与销售跟单看板
@@ -867,7 +867,7 @@ flowchart LR
 | 关键字段/列 | 跟踪卡字段：订单号、客户、订单数量、已发货数量、已出库数量、已开票数量、已收款金额、未发货余额、发货进度（%）、数据更新时间；工单列：工单号、产品编码/名称、计划数量、完工数量、状态徽标、领料齐套率、工序完成率、合格率、预计完工日期、关联客户；采购列：采购订单号、物料、数量、已收货数量、未到货余额、预计到货日期、状态徽标；看板筛选与列同上，另含"是否超期""是否已排产"标记 |
 | 主要操作按钮 | 刷新（页面刷新即为实时值）、一键复制订单执行摘要、跳转工单详情（新页签）、跳转采购订单详情（新页签）、跳转发货/出库单据、跳转应收/凭证、导出台账；快捷过滤（紧急/超期/未排产） |
 | 状态与交互说明 | ①订单发货 50 台后，跟踪卡显示"已发货数量 = 50、未发货余额 = 50"，进度条 50%；②数据延迟 ≤1 分钟（页面刷新即取实时值），页面标注更新时间；③"一键复制订单执行摘要"把订单号、客户、数量、已发货、未发余额、关联工单进度、预计完工日期整合为纯文本复制到剪贴板，便于答复客户（催单自助响应 <1 分钟）；④"超期"过滤以"要求交货日期早于当日且未发货余额 > 0"为口径，结果与手工统计一致；⑤数据权限生效：业务员仅见本人负责客户的看板数据，越界数据 0 条；⑥关联对象以页签打开，保留当前上下文；⑦工单/采购数据为空时展示"暂无关联工单（该订单为库存直接发货）" |
-| 调用接口 | `GET /api/v1/sales/orders/{id}/track`（订单执行跟踪）、`GET /api/v1/sales/tracking`（跟单看板列表）、`GET /api/v1/sales/tracking/summary?orderId=`（执行摘要文本）、`GET /api/v1/manufacturing/work-orders?orderCode=`（关联工单）、`GET /api/v1/purchase/orders?orderCode=`（关联采购订单）、`GET /api/v1/sales/delivery-notes?orderId=`（发货明细）、`GET /api/v1/finance/receivables?orderCode=`（开票与收款） |
+| 调用接口 | `GET /api/sales/orders/{id}/track`（订单执行跟踪）、`GET /api/sales/tracking`（跟单看板列表）、`GET /api/sales/tracking/summary?orderId=`（执行摘要文本）、`GET /api/manufacturing/work-orders?orderCode=`（关联工单）、`GET /api/purchase/orders?orderCode=`（关联采购订单）、`GET /api/sales/delivery-notes?orderId=`（发货明细）、`GET /api/finance/receivables?orderCode=`（开票与收款） |
 | 涉及需求编号 | SAL-03、SAL-08、MFG-09（工单进度关联展示）、SYS-04、RPT-02（台账导出） |
 
 ### 4.12 销售发货、出库与退货
@@ -881,7 +881,7 @@ flowchart LR
 | 关键字段/列 | 发货通知单：单号（`DN + YYYYMM + 3 位流水`）、销售订单号、客户、批次号、交货日期、计划数量、实际发货数量（默认 = 计划数量，可下调）、状态徽标、仓库、收货地址；出库明细列：行号、物料编码、名称、批次号、库位、应发数量、实发数量、可用量（提交前校验）、出库成本单价（只读，后端返回）、金额；退货列：退货单号（`SR + YYYYMM + 3 位流水`）、原订单号、原出库批次、物料、退货数量、可退余额、退货原因、质检合格/不合格数量、处理方式（退款/换货）、状态徽标；反馈区字段：库存流水号（`IV + YYYYMM + 3 位流水`）、扣减前数量、扣减后数量、单位成本、生成凭证号 |
 | 主要操作按钮 | 生成发货通知单（按批次）、拣货确认、生成出库单并提交、提交（出库）、打印出库单、导出、退货申请、质检确认、确认退货入库、退款/换货处理、查看流水、查看凭证 |
 | 状态与交互说明 | ①按分批交货计划逐批生成发货通知单（一批次一单）；②拣货确认页展示各仓库/库位/批次的可用量，**可用量不足时对应行标红并拦截提交**，提示"可用量不足：当前可用 40，需要 50"；③发货数量超过未发货余额时拦截（SAL-05 验收要点③）；④出库提交成功后展示库存扣减反馈（扣减前后数量、流水号、凭证号），并提示订单执行状态已回写（部分发货/已发货）；⑤同一发货通知单重复提交不产生第二条流水（幂等由后端保证，前端按钮提交后置灰，并携带 `Idempotent-Key`）；⑥退货数量 ≤ 原订单已发货数量 − 已退货数量，超出时拦截；⑦退货质检录入合格/不合格数量；退款路径生成红字应收冲减，换货路径生成新的发货通知单，两条路径均留痕；⑧退货入库按原出库单价回冲成本并写库存流水，页面展示回冲单价与金额 |
-| 调用接口 | `GET /api/v1/sales/delivery-notes`、`POST /api/v1/sales/delivery-notes`（按批次生成）、`GET /api/v1/sales/delivery-notes/{id}`、`POST /api/v1/sales/delivery-notes/{id}/pick-confirm`（拣货确认）、`POST /api/v1/sales/outbounds`（生成并提交出库）、`GET /api/v1/sales/outbounds`、`GET /api/v1/sales/outbounds/{id}`、`GET /api/v1/inventory/stock/available?materialId=&warehouseId=&batchNo=`（可用量）、`GET /api/v1/inventory/transactions?sourceBizId=`（流水反馈）、`GET /api/v1/sales/returns`、`POST /api/v1/sales/returns`、`POST /api/v1/sales/returns/{id}/quality-confirm`、`POST /api/v1/sales/returns/{id}/refund`、`POST /api/v1/sales/returns/{id}/exchange` |
+| 调用接口 | `GET /api/sales/delivery-notes`、`POST /api/sales/delivery-notes`（按批次生成）、`GET /api/sales/delivery-notes/{id}`、`POST /api/sales/delivery-notes/{id}/pick-confirm`（拣货确认）、`POST /api/sales/outbounds`（生成并提交出库）、`GET /api/sales/outbounds`、`GET /api/sales/outbounds/{id}`、`GET /api/inventory/stock/available?materialId=&warehouseId=&batchNo=`（可用量）、`GET /api/inventory/transactions?sourceBizId=`（流水反馈）、`GET /api/sales/returns`、`POST /api/sales/returns`、`POST /api/sales/returns/{id}/quality-confirm`、`POST /api/sales/returns/{id}/refund`、`POST /api/sales/returns/{id}/exchange` |
 | 涉及需求编号 | SAL-05、SAL-06、INV-03（出库与可用量拦截）、INV-01（库位）、INV-04（批次）、FIN-01（出库成本凭证）、A-04（幂等） |
 
 ### 4.13 采购申请与采购订单
@@ -895,7 +895,7 @@ flowchart LR
 | 关键字段/列 | 采购申请列：申请单号（`PA + YYYYMM + 3 位流水`）、来源（MRP/手工）、物料、数量、需求日期、需求仓库、建议供应商、申请原因、审批状态徽标、转换状态（未转/已转）、操作；采购订单列表列：订单号、供应商、订单日期、要求到货日期、订单金额（不含税）、已收货数量、未收货余额、执行状态徽标、结算状态徽标、采购员、操作；明细列：行号、物料编码、名称、规格、单位、数量、单价（不含税）、税率、金额、已收货数量（只读）、未收货余额（只读）、需求日期、备注；价格提示字段：上次采购价 + 日期、历史最低价 + 日期、本次报价、偏离比例、预警标记 |
 | 主要操作按钮 | MRP 建议一键转申请、手工新增申请、提交审批、审批通过/驳回、转采购订单、批量转单、新增采购订单、编辑、暂存、提交、审核/驳回、关闭、取消（草稿）、反审核（需权限）、发起变更、打印、导出、批量审核、查看收货进度、上传附件 |
 | 状态与交互说明 | ①手工申请未填申请原因时保存拦截（PUR-01 验收要点②）；②MRP 建议转申请后建议行状态置为"已转申请"，重复点击按钮置灰并提示"该建议已转，不可重复转单"；③采购订单金额自动计算（不含税金额 + 税额），合计与明细联动；④**价格提示条**：选定物料 + 供应商后展示"上次采购价 11.90 元（2026-08-12）、历史最低价 11.90 元"，本次报价高于最近价超预警阈值（默认 10%）时展示黄色警示并要求填写价格说明（必填）；⑤已审核订单关键字段（供应商、物料、数量、单价）禁用，变更走变更单并保留前后值；⑥已部分收货订单"取消"按钮置灰，仅"关闭"可用（提示"已收货行不可取消，仅可关闭"）；⑦收货数量不得超过未收货余额（在收货页校验）；结算状态由三单匹配与付款核销驱动，页面上仅只读展示，不提供手工修改入口；⑨批量审核：勾选多行 → 批量审核 → 结果弹窗展示成功/失败明细（失败原因逐条列出） |
-| 调用接口 | `GET /api/v1/purchase/requisitions`、`POST /api/v1/purchase/requisitions`、`POST /api/v1/purchase/requisitions/from-mrp`（MRP 建议转申请）、`POST /api/v1/purchase/requisitions/{id}/approve`、`POST /api/v1/purchase/requisitions/{id}/to-order`（转采购订单）、`GET /api/v1/purchase/orders`、`GET /api/v1/purchase/orders/{id}`、`POST /api/v1/purchase/orders`、`PUT /api/v1/purchase/orders/{id}`、`POST /api/v1/purchase/orders/{id}/submit`、`POST /api/v1/purchase/orders/{id}/approve`、`POST /api/v1/purchase/orders/{id}/reject`、`POST /api/v1/purchase/orders/{id}/close`、`POST /api/v1/purchase/orders/{id}/unapprove`、`POST /api/v1/purchase/orders/batch-approve`、`GET /api/v1/purchase/price-history/last-price?supplierId=&materialId=`（价格提示）、`GET /api/v1/purchase/orders/export` |
+| 调用接口 | `GET /api/purchase/requisitions`、`POST /api/purchase/requisitions`、`POST /api/purchase/requisitions/from-mrp`（MRP 建议转申请）、`POST /api/purchase/requisitions/{id}/approve`、`POST /api/purchase/requisitions/{id}/to-order`（转采购订单）、`GET /api/purchase/orders`、`GET /api/purchase/orders/{id}`、`POST /api/purchase/orders`、`PUT /api/purchase/orders/{id}`、`POST /api/purchase/orders/{id}/submit`、`POST /api/purchase/orders/{id}/approve`、`POST /api/purchase/orders/{id}/reject`、`POST /api/purchase/orders/{id}/close`、`POST /api/purchase/orders/{id}/unapprove`、`POST /api/purchase/orders/batch-approve`、`GET /api/purchase/price-history/last-price?supplierId=&materialId=`（价格提示）、`GET /api/purchase/orders/export` |
 | 涉及需求编号 | PUR-01、PUR-02、PUR-07、MFG-03（MRP 建议转单）、SYS-06（审批阈值与价格预警阈值）、SYS-04、SYS-05、RPT-03 |
 
 ---
@@ -910,7 +910,7 @@ flowchart LR
 | 关键字段/列 | 收货单列表列：收货单号、采购订单号、供应商、收货日期、仓库、收货数量、合格数量、不合格数量、状态徽标、操作；明细列：行号、物料编码/名称/规格、单位、订单数量、未收货余额（只读）、本次收货数量、批次号（批次管理物料必填）、生产日期（保质期物料必填）、有效期（自动计算）、合格数量、不合格数量、隔离库位；退货列：退货单号、收货单号、物料、退货数量、可退数量、退货原因、退货进度、状态徽标；反馈字段：冻结数量（收货前 → 收货后 → 质检后）、库存流水号、暂估应付金额、生成凭证号 |
 | 主要操作按钮 | 新增收货单（按采购订单）、保存、提交质检、录入质检结论（合格/不合格）、确认入库、撤销（仅待检状态）、发起退货、打印收货单、导出、查看流水与凭证、查看质检记录 |
 | 状态与交互说明 | ①收货登记后状态为"待检"，数量进入 `frozen_qty` 冻结（不增加可用库存），页面在可用量列展示"可用量不变，冻结量 +N"；②质检录入校验：合格数量 + 不合格数量 ≤ 收货数量，超出时拦截；③**整单状态取明细汇总**：全部合格 → "合格入库"（绿）、部分合格 → "部分合格"（橙）、全部不合格 → "退货"（红）；④收货数量超过订单未收货余额时拦截（PUR-03 验收要点③），提示"未收货余额 200，本次收货 201，超出 1"；⑤确认入库后展示反馈：冻结数量先增后减、库存流水号、暂估应付金额（= 合格数量 × 订单单价）与凭证号（暂估凭证 100% 生成，不提供跳过入口）；⑥**质检结论落在收货单本身**（合格/不合格数量、检验人、检验时间、备注），系统中不存在独立质检单据与编号序列；⑦不合格数量所在行提供"发起退货"快捷入口，退货数量 ≤ 该收货单不合格数量（对已入库物料退货需采购经理审批）；⑧重复提交同一收货单不产生重复流水（前端按钮置灰 + `Idempotent-Key`）；⑨收货单详情提供附件面板（质检报告、发票影像上传） |
-| 调用接口 | `GET /api/v1/purchase/receipts`、`GET /api/v1/purchase/receipts/{id}`、`POST /api/v1/purchase/receipts`（收货登记，`Idempotent-Key`）、`POST /api/v1/purchase/receipts/{id}/quality-confirm`（质检结论）、`POST /api/v1/purchase/receipts/{id}/inbound-confirm`（确认入库）、`POST /api/v1/purchase/receipts/{id}/cancel`（撤销）、`GET /api/v1/purchase/orders/{id}`（未收货余额）、`GET /api/v1/inventory/transactions?sourceBizId=`（入库流水）、`GET /api/v1/finance/vouchers?sourceBizId=`（暂估凭证）、`GET /api/v1/purchase/returns`、`POST /api/v1/purchase/returns`、`POST /api/v1/purchase/returns/{id}/approve` |
+| 调用接口 | `GET /api/purchase/receipts`、`GET /api/purchase/receipts/{id}`、`POST /api/purchase/receipts`（收货登记，`Idempotent-Key`）、`POST /api/purchase/receipts/{id}/quality-confirm`（质检结论）、`POST /api/purchase/receipts/{id}/inbound-confirm`（确认入库）、`POST /api/purchase/receipts/{id}/cancel`（撤销）、`GET /api/purchase/orders/{id}`（未收货余额）、`GET /api/inventory/transactions?sourceBizId=`（入库流水）、`GET /api/finance/vouchers?sourceBizId=`（暂估凭证）、`GET /api/purchase/returns`、`POST /api/purchase/returns`、`POST /api/purchase/returns/{id}/approve` |
 | 涉及需求编号 | PUR-03、PUR-04、PUR-06（暂估入库）、INV-02（入库与冻结）、INV-04（批次）、INV-05（保质期）、FIN-01、MD-05（供应商停用仍可收货） |
 
 ### 4.15 三单匹配与暂估
@@ -924,7 +924,7 @@ flowchart LR
 | 关键字段/列 | 列表列：供应商、采购订单号、收货单号、发票号、物料、订单数量/单价、入库数量/单价、发票数量/单价、数量差异率、单价差异率、匹配结果徽标、匹配时间、操作；差异明细列：对比项（数量/单价/金额）、订单值、入库值、发票值、差异值、差异率、容差（数量 ±2% / 单价 ±0.5%）、是否超容差；暂估清单列：供应商、收货单号、物料、合格数量、暂估单价、暂估金额、凭证号、匹配状态（未匹配/已匹配/已红冲） |
 | 主要操作按钮 | 查询、重置、自动匹配（按期间或按供应商触发）、查看差异对比、人工确认匹配、生成差异记录、通知采购员、导出匹配结果、导出差异清单、查看暂估凭证、查看红冲凭证 |
 | 状态与交互说明 | ①匹配通过（数量与单价均在容差内）→ 匹配结果徽标"匹配"（绿），自动生成正式应付并红冲暂估，页面展示"已生成正式应付凭证 + 暂估已红冲，暂估余额 0"；②超容差 → 徽标"差异"（红）并展示差异类型（数量差异/单价差异/无订单/无收货），**不生成正式应付**，差异记录自动推送采购员与应付会计；③差异对比抽屉中差异行标红，超容差项加红色图标，容差值悬浮展示来源（SYS-06 参数，默认数量 ±2%、单价 ±0.5%）；④支持"一单多票"与"一票多单"，列表按匹配组展开显示关联关系；⑤暂估清单展示"全部合格入库且未匹配发票的收货单 100% 生成暂估"，并提供上月暂估未匹配清单（月结检查项）；⑥批量操作：批量确认匹配、批量生成差异记录，结果弹窗展示成功/失败明细；⑦导出差异清单行数 = 界面行数 |
-| 调用接口 | `GET /api/v1/purchase/match-results`、`POST /api/v1/purchase/match-results/run`（触发自动匹配）、`GET /api/v1/purchase/match-results/{id}/diff`（差异对比）、`POST /api/v1/purchase/match-results/{id}/confirm`（人工确认）、`POST /api/v1/purchase/match-results/batch-confirm`、`POST /api/v1/purchase/match-results/{id}/differences`（生成差异记录）、`GET /api/v1/purchase/match-results/export`、`GET /api/v1/purchase/estimates`（暂估清单）、`GET /api/v1/purchase/estimates/unmatched?period=`（暂估未匹配清单） |
+| 调用接口 | `GET /api/purchase/match-results`、`POST /api/purchase/match-results/run`（触发自动匹配）、`GET /api/purchase/match-results/{id}/diff`（差异对比）、`POST /api/purchase/match-results/{id}/confirm`（人工确认）、`POST /api/purchase/match-results/batch-confirm`、`POST /api/purchase/match-results/{id}/differences`（生成差异记录）、`GET /api/purchase/match-results/export`、`GET /api/purchase/estimates`（暂估清单）、`GET /api/purchase/estimates/unmatched?period=`（暂估未匹配清单） |
 | 涉及需求编号 | PUR-05、PUR-06、FIN-03（应付立账）、SYS-06（容差参数）、RPT-03（导出） |
 
 ### 4.16 采购价格查询与供应商绩效
@@ -938,7 +938,7 @@ flowchart LR
 | 关键字段/列 | 价格明细列：采购订单号、供应商、物料编码/名称、下单日期、收货日期、数量、不含税单价、含税单价、价格说明、价格偏离标记；价格对比字段：上次采购价 + 日期、历史最低价 + 日期、历史最高价 + 日期、平均价、本次报价、偏离比例、预警阈值（默认 10%）；绩效列：供应商、评分月份、交货准时率得分、质量合格率得分、价格水平得分、服务响应得分、总分、评级（A ≥90 / B 75~89 / C <75）、数据来源单据数 |
 | 主要操作按钮 | 查询、重置、切换期间、导出价格历史、导出评分明细、跳转对应采购订单、查看评分计算式（口径说明） |
 | 状态与交互说明 | ①价格走势按时间正序，最近一次价格默认高亮；②评分页展示"总分 = 四维得分合计"并可展开计算式（分母口径来自原始单据），抽样核对误差 0；③评级以徽标展示（A 绿、B 蓝、C 红），边界值（89/90）按规则正确分档；④连续多月趋势可切换最近 3/6/12 个月；⑤供应商绩效评分结果在采购订单页用于建议排序（仅展示建议，不强制约束）；⑥导出文件名与行数规范同 3.12 |
-| 调用接口 | `GET /api/v1/purchase/price-history`、`GET /api/v1/purchase/price-history/trend?supplierId=&materialId=`、`GET /api/v1/purchase/price-history/comparison`、`GET /api/v1/purchase/price-history/export`、`GET /api/v1/purchase/supplier-scores`、`GET /api/v1/purchase/supplier-scores/detail?supplierId=&period=`、`GET /api/v1/purchase/supplier-scores/export` |
+| 调用接口 | `GET /api/purchase/price-history`、`GET /api/purchase/price-history/trend?supplierId=&materialId=`、`GET /api/purchase/price-history/comparison`、`GET /api/purchase/price-history/export`、`GET /api/purchase/supplier-scores`、`GET /api/purchase/supplier-scores/detail?supplierId=&period=`、`GET /api/purchase/supplier-scores/export` |
 | 涉及需求编号 | PUR-07、PUR-08、RPT-03、SYS-06（价格预警阈值） |
 
 ### 4.17 即时库存与库存流水
@@ -952,7 +952,7 @@ flowchart LR
 | 关键字段/列 | 库存列：物料编码、物料名称、规格、单位、仓库、库位、批次号、生产日期、有效期、库存数量、冻结数量、**可用量（= 库存数量 − 冻结数量）**、安全库存、可用量状态标记（正常/低于安全库存/超期）、最后变动时间、操作；流水列：流水号（`IV + YYYYMM + 3 位流水`）、业务时间、物料编码/名称、仓库、库位、批次号、流水类型徽标（10/20/30/40/50/60/70/80/90）、入库数量、出库数量、**变动前数量（before_qty）**、**变动后数量（after_qty）**、成本单价、来源单据类型、来源单据号（可点击跳转）、操作人 |
 | 主要操作按钮 | 查询、重置、导出、查看物料库存分布、跳转来源单据、跳转批次追溯、跳转安全库存预警；**不提供修改/删除流水的操作**（页面上以 `a-alert` 明确提示"库存流水只增不改不删，如需更正请通过反向冲销单据处理"） |
 | 状态与交互说明 | ①查询必填约束：流水查询要求"物料或时间范围"至少填一个（前端校验 + 后端强校验），未填时提示"请至少输入物料或时间范围"（100 万条量级性能保障，P-05）；②数量列展示规则：入库列与出库列为 0 时显示 `-`；`after_qty = before_qty + in_qty − out_qty` 由后端返回，前端不做计算；③可用量 = `qty − frozen_qty`，冻结数量 > 0 时在数量列后以灰色小字标注"（含冻结 N）"；④低于安全库存的行整行浅黄底色 + 安全库存列红色标注；有效期临近（≤30 天）或超期的批次在有效期列展示橙/红徽标；⑤合计行对当前查询结果的数量与金额汇总，并注明合计口径；⑥库存查询按数据权限过滤（仓管员仅见可访问仓库）；⑦仓库汇总卡点击进入"仓库 → 库位 → 批次"三级钻取，各级汇总差值 0；⑧流水列表行不支持行内编辑与行选择（避免误操作），仅支持导出与跳转；⑨批次/保质期物料的库存行提供"批次追溯"入口（见 4.20） |
-| 调用接口 | `GET /api/v1/inventory/stock`（即时库存分页）、`GET /api/v1/inventory/stock/summary`（按仓库汇总）、`GET /api/v1/inventory/stock/{materialId}/distribution`（四维分布）、`GET /api/v1/inventory/stock/available`（可用量校验）、`GET /api/v1/inventory/transactions`（流水分页）、`GET /api/v1/inventory/transactions/export`、`GET /api/v1/inventory/stock/export` |
+| 调用接口 | `GET /api/inventory/stock`（即时库存分页）、`GET /api/inventory/stock/summary`（按仓库汇总）、`GET /api/inventory/stock/{materialId}/distribution`（四维分布）、`GET /api/inventory/stock/available`（可用量校验）、`GET /api/inventory/transactions`（流水分页）、`GET /api/inventory/transactions/export`、`GET /api/inventory/stock/export` |
 | 涉及需求编号 | INV-09、INV-01、INV-02、INV-03、INV-04、INV-05、INV-07（低于安全库存标记）、SYS-04、RPT-04 |
 
 ### 4.18 库存盘点
@@ -966,7 +966,7 @@ flowchart LR
 | 关键字段/列 | 列表列：盘点单号、仓库、盘点类型、盘点日期、明细行数、差异行数、差异金额、状态徽标、盘点人、操作；明细列：行号、物料编码/名称/规格、单位、库位、批次号、账面数量（只读）、实盘数量、差异数量（= 实盘 − 账面，正为盘盈/负为盘亏）、差异金额、差异原因（差异不为 0 时必填）；汇总：盘点行数、差异行数、盘盈金额、盘亏金额、盘点准确率（1 − 差异行数 / 总行数） |
 | 主要操作按钮 | 创建盘点单、删除（草稿）、开始盘点、**Excel 导入实盘数量**（模板下载 + 上传 + 错误行回显）、保存实盘、提交审批、差异审批（通过/驳回 + 意见）、生成盘盈盘亏单、导出盘点表、打印盘点表、查看流水 |
 | 状态与交互说明 | ①盘点单生成时冻结账面快照 `book_qty`，盘点期间**不影响收发货作业**（页面提示"盘点期间可正常领料与出库，账面以快照为准"）；②实盘数量支持逐行录入与 Excel 导入（导入模板按当前明细导出，导入后行级校验：数量精度 3 位、物料/库位必须匹配，错误行回显行号与原因）；③差异自动计算，差异数量 ≠ 0 时差异原因必填，未填不允许提交审批；④**未审批前不生成任何调整流水**（页面明确提示"审批通过后才生成盘盈/盘亏流水"，并校验验收要点②）；⑤审批通过后生成 `trans_type=70`（盘盈）/`trans_type=80`（盘亏）流水并调整库存账，结果反馈区展示流水号、数量、金额与调整后库存；⑥差异审批为危险操作（二次确认 + 审批意见必填），审批人写审计日志；⑦盘点准确率实时计算并在页头展示（目标 ≥99.5%）；⑧盘点单明细行数 > 500 时启用分页 + 逐页录入（保持快照一致性）；删除仅允许草稿状态 |
-| 调用接口 | `GET /api/v1/inventory/stock-takes`、`POST /api/v1/inventory/stock-takes`（创建并冻结快照）、`GET /api/v1/inventory/stock-takes/{id}`、`PUT /api/v1/inventory/stock-takes/{id}/items`（保存实盘数量）、`GET /api/v1/inventory/stock-takes/{id}/template`（导入模板）、`POST /api/v1/inventory/stock-takes/{id}/import`（导入实盘数量）、`POST /api/v1/inventory/stock-takes/{id}/submit`、`POST /api/v1/inventory/stock-takes/{id}/approve`（差异审批）、`GET /api/v1/inventory/stock-takes/{id}/result`（生成的 70/80 流水）、`GET /api/v1/inventory/stock-takes/export` |
+| 调用接口 | `GET /api/inventory/stock-takes`、`POST /api/inventory/stock-takes`（创建并冻结快照）、`GET /api/inventory/stock-takes/{id}`、`PUT /api/inventory/stock-takes/{id}/items`（保存实盘数量）、`GET /api/inventory/stock-takes/{id}/template`（导入模板）、`POST /api/inventory/stock-takes/{id}/import`（导入实盘数量）、`POST /api/inventory/stock-takes/{id}/submit`、`POST /api/inventory/stock-takes/{id}/approve`（差异审批）、`GET /api/inventory/stock-takes/{id}/result`（生成的 70/80 流水）、`GET /api/inventory/stock-takes/export` |
 | 涉及需求编号 | INV-06、INV-09（流水生成）、INV-11（账面口径一致）、SYS-11（导入）、SYS-06（ABC 盘点频率参数）、SYS-05（审批留痕） |
 
 ### 4.19 库位调拨与期初库存建账
@@ -980,7 +980,7 @@ flowchart LR
 | 关键字段/列 | 调拨列：调拨单号、调拨类型、源仓库/库位、目标仓库/库位、物料编码/名称、批次号、可调拨数量、调拨数量、状态徽标、审核人、操作；反馈字段：调拨出库流水号（60）、调拨入库流水号（50）、源仓调拨前/后数量、目标仓调拨前/后数量；期初列：仓库、库位、物料编码/名称、单位、批次号、生产日期、有效期、期初数量、期初单价（财务确认）、期初金额、**期初流水号（`IV + YYYYMM + 3 位流水`，类型 90）**、校验状态 |
 | 主要操作按钮 | 新增调拨单、编辑（仅草稿）、保存、提交、审核（通过/驳回 + 意见）、撤销（生成反向调拨单）、打印、导出、查看成对流水；期初建账：下载模板、导入期初库存、保存、试算校验、提交建账、导出期初明细、查看期初流水 |
 | 状态与交互说明 | ①调拨审核后不可修改（关键字段禁用），提示"调拨审核后不可修改，撤销须生成反向调拨单"；②审核生效后展示**成对流水**（60 出 + 50 入，数量相等），并明确提示"调拨不产生损益，不生成损益类凭证"；③数量校验：调拨数量 ≤ 源库位可调拨数量，超出时拦截并提示可调拨量；④仓库间调拨展示源仓 −N、目标仓 +N 的前后对照；⑤期初建账：启用批次/保质期物料必须录入批次号与生产日期，缺失时导入拦截并回显错误行；⑥建账后自动校验"期初流水汇总数量 = inv_stock 快照汇总数量"（差值 0），校验不通过时不允许提交并展示差异明细；⑦期初金额必须与存货科目期初一致（与 FIN-09 联动），不一致时提示财务口径差异；⑧期初建账仅允许在切换期录入，首个会计期间月结后页面转为只读并提示"首个会计期间已月结，期初库存不可修改" |
-| 调用接口 | `GET /api/v1/inventory/transfers`、`POST /api/v1/inventory/transfers`、`PUT /api/v1/inventory/transfers/{id}`、`POST /api/v1/inventory/transfers/{id}/approve`、`POST /api/v1/inventory/transfers/{id}/reverse`（反向调拨）、`GET /api/v1/inventory/transfers/{id}/transactions`（成对流水）、`GET /api/v1/inventory/opening-balances`、`GET /api/v1/inventory/opening-balances/template`、`POST /api/v1/inventory/opening-balances/import`、`POST /api/v1/inventory/opening-balances/validate`（试算校验：流水 = 快照）、`POST /api/v1/inventory/opening-balances/submit`（建账并生成 90 流水） |
+| 调用接口 | `GET /api/inventory/transfers`、`POST /api/inventory/transfers`、`PUT /api/inventory/transfers/{id}`、`POST /api/inventory/transfers/{id}/approve`、`POST /api/inventory/transfers/{id}/reverse`（反向调拨）、`GET /api/inventory/transfers/{id}/transactions`（成对流水）、`GET /api/inventory/opening-balances`、`GET /api/inventory/opening-balances/template`、`POST /api/inventory/opening-balances/import`、`POST /api/inventory/opening-balances/validate`（试算校验：流水 = 快照）、`POST /api/inventory/opening-balances/submit`（建账并生成 90 流水） |
 | 涉及需求编号 | INV-10、INV-11、INV-01、INV-04、INV-05、FIN-09（口径联动）、SYS-11 |
 
 ### 4.20 批次追溯与库存预警（安全库存 / 呆滞 / 保质期）
@@ -994,7 +994,7 @@ flowchart LR
 | 关键字段/列 | 追溯列：追溯方向、层级、物料编码/名称、批次号、数量、供应商/客户、来源单据号（收货单/领料单/完工入库单/销售出库单）、业务日期；安全库存预警列：物料编码/名称、仓库、可用量、安全库存、缺口数量、最小采购批量、建议补货量（按最小采购批量向上取整）、建议到货日期（按提前期倒推）、预警级别（紧急/一般）、处理状态徽标（未处理/已转申请/已忽略）、操作；呆滞列：物料、仓库、批次、数量、金额、最后变动日期、呆滞天数、处置标记（继续持有/降价处理/报废）、处置人与时间；保质期列：物料、仓库、库位、批次号、生产日期、有效期、剩余天数、处置建议 |
 | 主要操作按钮 | 追溯：查询、切换方向、导出路径、跳转来源单据；预警：查询、导出、**一键转采购申请**、忽略（原因必填）、批量转申请、批量忽略、跳转采购申请；呆滞：导出、标记处置（继续持有/降价处理/报废，记录处置人与时间）、批处置；保质期：导出、发起超期物料处置申请（需质检确认后放行） |
 | 状态与交互说明 | ①追溯：抽取 1 个成品批次可完整列出其使用零部件批次与供应商，路径完整且用量与 BOM 一致；追溯查询响应 ≤3 秒；②安全库存预警：预警清单每日刷新，页面标注数据日期；建议补货量 = 安全库存 − 可用量，按最小采购批量向上取整；"一键转采购申请"成功后处理状态徽标变为"已转申请"（蓝）并展示采购申请号；**忽略必须填写原因**（≥5 字），忽略后徽标变灰；③呆滞：呆滞天数 > 阈值（默认 180 天，参数可改为 150 即时生效）的物料才出现在清单，页面展示当前阈值与生效时间；处置标记保存后展示处置人与时间；④保质期：剩余天数 ≤30 天展示橙色标记，已超期为红色；超期物料出库默认拦截（提示超期天数），"需质检确认后放行"参数开启时提供"申请放行"入口；⑤三类清单与对应报表（RPT-04）数值口径一致，前端展示口径说明入口 |
-| 调用接口 | `GET /api/v1/inventory/batch-traces?materialId=&batchNo=`（追溯）、`GET /api/v1/inventory/batch-traces/{id}/path`（追溯路径节点）、`GET /api/v1/inventory/alerts`（安全库存预警）、`POST /api/v1/inventory/alerts/{id}/to-requisition`（转采购申请）、`POST /api/v1/inventory/alerts/{id}/ignore`、`POST /api/v1/inventory/alerts/batch-to-requisition`、`GET /api/v1/inventory/slow-moving`、`POST /api/v1/inventory/slow-moving/{id}/disposal`（处置标记）、`GET /api/v1/inventory/shelf-life-alerts`、`POST /api/v1/inventory/shelf-life-alerts/{id}/release-request`（超期放行申请） |
+| 调用接口 | `GET /api/inventory/batch-traces?materialId=&batchNo=`（追溯）、`GET /api/inventory/batch-traces/{id}/path`（追溯路径节点）、`GET /api/inventory/alerts`（安全库存预警）、`POST /api/inventory/alerts/{id}/to-requisition`（转采购申请）、`POST /api/inventory/alerts/{id}/ignore`、`POST /api/inventory/alerts/batch-to-requisition`、`GET /api/inventory/slow-moving`、`POST /api/inventory/slow-moving/{id}/disposal`（处置标记）、`GET /api/inventory/shelf-life-alerts`、`POST /api/inventory/shelf-life-alerts/{id}/release-request`（超期放行申请） |
 | 涉及需求编号 | INV-04、INV-05、INV-07、INV-08、PUR-01（预警转申请）、SYS-06（呆滞天数与保质期预警天数参数）、RPT-04 |
 
 ### 4.21 MRP 运算
@@ -1008,7 +1008,7 @@ flowchart LR
 | 关键字段/列 | 参数表单字段：考虑现有库存、考虑在途采购、考虑在制工单、考虑安全库存、考虑采购与生产提前期、是否考虑冻结期、运算范围类型、指定销售订单号、指定物料范围；采购建议列：物料编码/名称、规格、单位、建议采购量、建议到货日期、建议供应商、提前期、来源销售订单/工单、需求日期、**转换状态徽标（未转/已转采购单）**、操作；生产建议列：物料编码/名称、建议生产量、建议开工日期、建议完工日期、锁定 BOM 版本、来源销售订单、**转换状态徽标（未转/已转工单）**、操作；计划参数缺失列：物料编码/名称、缺失项（提前期未维护/安全库存未维护）、影响说明；历史批次列：批次号、运算时间、耗时、运算范围、参数快照、计划状态徽标（新生成/已转单/已关闭）、建议条数 |
 | 主要操作按钮 | 保存参数、恢复默认参数、开始运算（触发）、取消运算（长任务进行中）、查看参数快照、暂停（本次运算后台执行）、筛选举建议、**一键转采购申请**、**一键转生产工单**、批量转单、导出建议、导出计划参数缺失清单、查看历史批次、关闭批次 |
 | 状态与交互说明 | ①运算前校验：全量运算需二次确认（提示"全量运算预计 X 分钟，期间可继续使用系统"）；未维护提前期/安全库存的物料在结果页输出"计划参数缺失"清单（MD-03 验收要点④）；②**长任务交互**：点击开始运算后弹出进度弹窗（不可通过遮罩关闭），展示阶段（加载 BOM → 展开毛需求 → 净需求计算 → 生成建议 → 落库）、已处理/总量、百分比、已耗时；支持"后台运行"（弹窗收起为右下角悬浮进度条，完成后 `a-notification` 通知）；③运算完成后提示"MRP 运算完成（批次 MP202608001，耗时 18 分 32 秒，生成采购建议 126 条、生产建议 42 条）"，提供"查看结果"入口；④**防重复转换标识**：已转建议行转换状态徽标为"已转采购单/已转工单"（蓝/青），对应"转单"按钮置灰并提示"该建议已转换，不可重复转单"；⑤批量转单：勾选未转行 → 批量转采购申请/生产工单 → 结果弹窗展示成功条数、跳过条数（原因：已转/参数缺失/物料停用）与失败原因；⑥结果筛选支持按物料、建议类型、日期区间、来源订单筛选；⑦批次状态"已转单"在全部建议转换完成后自动置位（只读展示），批次可"关闭"以禁止后续转单；⑧历史批次可查看参数快照并与当前参数对比（差异高亮） |
-| 调用接口 | `GET /api/v1/manufacturing/mrp/params`、`PUT /api/v1/manufacturing/mrp/params`、`POST /api/v1/manufacturing/mrp/run`（触发，返回批次号与任务 ID）、`GET /api/v1/manufacturing/mrp/tasks/{taskId}/progress`（进度轮询）、`POST /api/v1/manufacturing/mrp/tasks/{taskId}/cancel`、`GET /api/v1/manufacturing/mrp/plans`（历史批次）、`GET /api/v1/manufacturing/mrp/plans/{id}`、`GET /api/v1/manufacturing/mrp/plans/{id}/purchase-items`（采购建议）、`GET /api/v1/manufacturing/mrp/plans/{id}/manufacture-items`（生产建议）、`GET /api/v1/manufacturing/mrp/plans/{id}/missing-params`（计划参数缺失）、`POST /api/v1/manufacturing/mrp/plans/items/to-requisition`（转采购申请）、`POST /api/v1/manufacturing/mrp/plans/items/to-work-order`（转生产工单）、`POST /api/v1/manufacturing/mrp/plans/batch-convert`（批量转单）、`GET /api/v1/manufacturing/mrp/plans/{id}/export` |
+| 调用接口 | `GET /api/manufacturing/mrp/params`、`PUT /api/manufacturing/mrp/params`、`POST /api/manufacturing/mrp/run`（触发，返回批次号与任务 ID）、`GET /api/manufacturing/mrp/tasks/{taskId}/progress`（进度轮询）、`POST /api/manufacturing/mrp/tasks/{taskId}/cancel`、`GET /api/manufacturing/mrp/plans`（历史批次）、`GET /api/manufacturing/mrp/plans/{id}`、`GET /api/manufacturing/mrp/plans/{id}/purchase-items`（采购建议）、`GET /api/manufacturing/mrp/plans/{id}/manufacture-items`（生产建议）、`GET /api/manufacturing/mrp/plans/{id}/missing-params`（计划参数缺失）、`POST /api/manufacturing/mrp/plans/items/to-requisition`（转采购申请）、`POST /api/manufacturing/mrp/plans/items/to-work-order`（转生产工单）、`POST /api/manufacturing/mrp/plans/batch-convert`（批量转单）、`GET /api/manufacturing/mrp/plans/{id}/export` |
 | 涉及需求编号 | MFG-01、MFG-02、MFG-03、PUR-01（转采购申请）、MD-03（参数缺失清单）、SYS-06（冻结期与参数）、A-04（转换幂等）、P-03（性能） |
 
 ### 4.22 生产工单
@@ -1022,7 +1022,7 @@ flowchart LR
 | 关键字段/列 | 列表列：工单号、产品编码/名称、计划数量、累计完工数量、报废数量、计划开工日期、计划完工日期、状态徽标（计划/已下达/领料中/加工中/已完工/已关闭）、关联销售订单、生产组织、异常标记、操作；头信息只读字段：实际开工时间、实际完工时间、锁定 BOM 版本（可点击查看）；用料列：行号、子件编码/名称、规格、单位、定额用量（= 父件计划数量 × 标准用量 × (1 + 损耗率)，只读）、已领数量、差异、齐套状态；报工进度列：工序号、工序名称、计划数量、完工数量、合格数量、不合格数量、报废数量、合格率、状态；成本卡字段：材料成本、人工成本、制造费用、合计、单位成本，均可下钻 |
 | 主要操作按钮 | 新增工单、编辑、保存、下达（锁定 BOM 版本）、取消、生成领料单、报工、生成完工入库单、关闭工单、删除（仅"计划"状态）、打印、导出、批量下达、批量关闭、查看 BOM、查看关联单据、查看成本明细、跳转销售订单 |
 | 状态与交互说明 | ①**6 态流转与按钮渲染**：计划（可编辑/可删除/可下达）→ 已下达（可领料/可取消）→ 领料中（可继续领料/可报工）→ 加工中（可继续报工/可完工入库）→ 已完工（可关闭）→ 已关闭（仅查看）；不可逆状态的动作按钮置灰并提示原因（如"领料中/加工中不可逆，已完工工单不可继续领料"、"已关闭工单禁止领料与报工"）；②下达时锁定当时生效 BOM 版本并提示"已锁定 BOM 版本 V1.0，后续 BOM 变更不影响本工单"；③列表可按 6 态任意组合筛选（多选），并按状态统计数量展示在筛选区右侧；④详情页进度数据报工即更新（延迟 ≤1 分钟），页面标注更新时间；⑤异常标记：计划完工日期早于当日且状态 < 4 标"超期未完工"（红）；累计领料 > 定额 × (1 + 超领上限) 标"超领"（橙）；报废率超阈值标"报废超阈值"（橙）；异常清单可独立筛选；⑥**成本归集卡**可逐层下钻（材料 → 领料单/物料/批次；人工 → 报工单/工序/工时；制造费用 → 分摊率与基数），下钻明细条数与来源单据一致；⑦已完工工单成本卡标注"成本按月末核算更新（按日刷新）"；⑧工单删除仅允许"计划"状态且无领料/报工记录 |
-| 调用接口 | `GET /api/v1/manufacturing/work-orders`、`GET /api/v1/manufacturing/work-orders/{id}`、`POST /api/v1/manufacturing/work-orders`、`PUT /api/v1/manufacturing/work-orders/{id}`、`POST /api/v1/manufacturing/work-orders/{id}/release`（下达并锁定 BOM）、`POST /api/v1/manufacturing/work-orders/{id}/cancel`、`POST /api/v1/manufacturing/work-orders/{id}/close`、`DELETE /api/v1/manufacturing/work-orders/{id}`、`GET /api/v1/manufacturing/work-orders/{id}/progress`（进度与合格率）、`GET /api/v1/manufacturing/work-orders/{id}/materials`（用料与领料情况）、`GET /api/v1/manufacturing/work-orders/{id}/reports`（报工进度）、`GET /api/v1/manufacturing/work-orders/{id}/cost`（成本归集与下钻）、`GET /api/v1/manufacturing/work-orders/export`、`POST /api/v1/manufacturing/work-orders/batch-release` |
+| 调用接口 | `GET /api/manufacturing/work-orders`、`GET /api/manufacturing/work-orders/{id}`、`POST /api/manufacturing/work-orders`、`PUT /api/manufacturing/work-orders/{id}`、`POST /api/manufacturing/work-orders/{id}/release`（下达并锁定 BOM）、`POST /api/manufacturing/work-orders/{id}/cancel`、`POST /api/manufacturing/work-orders/{id}/close`、`DELETE /api/manufacturing/work-orders/{id}`、`GET /api/manufacturing/work-orders/{id}/progress`（进度与合格率）、`GET /api/manufacturing/work-orders/{id}/materials`（用料与领料情况）、`GET /api/manufacturing/work-orders/{id}/reports`（报工进度）、`GET /api/manufacturing/work-orders/{id}/cost`（成本归集与下钻）、`GET /api/manufacturing/work-orders/export`、`POST /api/manufacturing/work-orders/batch-release` |
 | 涉及需求编号 | MFG-04、MFG-09、BOM-03（版本锁定）、MFG-05/MFG-06/MFG-07（关联入口）、MFG-08（成本下钻）、MFG-03（建议转工单）、SYS-04、SYS-05 |
 
 ### 4.23 生产领料、报工与完工入库
@@ -1036,7 +1036,7 @@ flowchart LR
 | 关键字段/列 | 领料明细列：行号、子件编码/名称、规格、单位、定额应领数量、已领数量、本次实领数量、累计领料、差异数量、替代料（主料/替代料 + 优先级）、批次号、库位、备注；领料差异提示字段：定额合计、本次合计、累计领料、超领上限（默认 10%）、是否超定额；报工字段：工单号、工序、完工数量、合格数量、不合格数量、报废数量、工时（6 位小数）、操作人、操作时间、班次、备注；报工汇总列：工序、计划数量、累计完工、累计合格、合格率、状态；入库列：入库单号、工单号、产品、入库数量、已完成数量、未完工数量（只读）、入库仓库、库位、批次号、状态徽标 |
 | 主要操作按钮 | 领料：生成领料单（按 BOM 定额）、保存、提交、审核（超定额走审批）、打印、导出、选择替代料、分次领料（再次生成）；报工：新增报工、保存、提交、撤销报工（工序未流转且未生成成本数据时）、导出工时；完工入库：生成完工入库单、保存、提交入库、打印、导出、查看凭证 |
 | 状态与交互说明 | ①**领料定额与超领提示**：明细默认带出定额应领数量（`父件计划数量 × 标准用量 × (1 + 损耗率)`，6 位小数）；实领 ≤ 定额时直接通过；实领 > 定额时提示"超出定额，需车间主任审批"并进入审批流，审批原因必填；累计领料 > 定额 × 1.1 时**拦截**并提示"累计领料 226.7 已超过上限 226.6（定额 206 × 1.1），需特批"；②分次领料：支持多次生成领料单，页面展示"已领数量 / 定额 / 剩余可领"；③替代料：缺料时按优先级推荐替代料，选择后领料流水记录替代料编码与实际用量（提示"将以替代料编码记账"）；④领料提交后写 `trans_type=40` 流水并扣减原材料库存，页面展示扣减反馈（流水号、扣减前后数量）；⑤**报工校验**：合格数量 + 不合格数量 ≤ 完工数量，超出时拦截并提示；首次报工后工单状态由"领料中"变为"加工中"（状态徽标变化在报工成功提示中明示）；⑥报工按工序与班次分次录入，页面展示该工序历史报工与累计合格率；撤销报工需二次确认并提示留痕；⑦**完工入库**：入库数量不得超过工单未完工数量；提交后写 `trans_type=20` 流水、增加 `completed_qty`、扣减在制数量，并生成凭证（借 库存商品 贷 生产成本）；`completed_qty` 达到 `planned_qty` 时工单状态自动置为"已完工"并记录实际完工时间，页面以 `a-alert` 提示"工单已全部完工，状态已更新为已完工" |
-| 调用接口 | `GET /api/v1/manufacturing/issues`、`POST /api/v1/manufacturing/issues`（按定额生成）、`GET /api/v1/manufacturing/issues/{id}`、`PUT /api/v1/manufacturing/issues/{id}`、`POST /api/v1/manufacturing/issues/{id}/submit`、`POST /api/v1/manufacturing/issues/{id}/approve`（超定额审批）、`GET /api/v1/manufacturing/issues/{id}/stream`、`GET /api/v1/manufacturing/reports`、`POST /api/v1/manufacturing/work-orders/{id}/report`、`POST /api/v1/manufacturing/reports/{id}/revoke`、`GET /api/v1/manufacturing/work-orders/{id}/reports`、`GET /api/v1/manufacturing/finish-inbounds`、`POST /api/v1/manufacturing/work-orders/{id}/finish-inbound`、`GET /api/v1/inventory/transactions?sourceBizId=`（流水反馈） |
+| 调用接口 | `GET /api/manufacturing/issues`、`POST /api/manufacturing/issues`（按定额生成）、`GET /api/manufacturing/issues/{id}`、`PUT /api/manufacturing/issues/{id}`、`POST /api/manufacturing/issues/{id}/submit`、`POST /api/manufacturing/issues/{id}/approve`（超定额审批）、`GET /api/manufacturing/issues/{id}/stream`、`GET /api/manufacturing/reports`、`POST /api/manufacturing/work-orders/{id}/report`、`POST /api/manufacturing/reports/{id}/revoke`、`GET /api/manufacturing/work-orders/{id}/reports`、`GET /api/manufacturing/finish-inbounds`、`POST /api/manufacturing/work-orders/{id}/finish-inbound`、`GET /api/inventory/transactions?sourceBizId=`（流水反馈） |
 | 涉及需求编号 | MFG-05、MFG-06、MFG-07、BOM-02（定额计算）、BOM-04（替代料）、INV-03（领料出库与拦截）、INV-02（完工入库）、FIN-01（完工凭证）、SYS-05 |
 
 ### 4.24 委外加工与工单成本
@@ -1050,7 +1050,7 @@ flowchart LR
 | 关键字段/列 | 委外列：委外单号、外协厂商、工序、数量、加工单价、发出数量、回收数量、短少数量、预计回收日期、状态徽标、操作；差异字段：短少数、差异原因、审批人、审批时间；成本汇总列：工单号、产品、完工日期、完工数量、材料成本、人工成本、制造费用、总成本、单位成本、在制余额；下钻列：成本项、来源单据号、物料/工序、数量/工时、单价、金额、批次号 |
 | 主要操作按钮 | 委外：新建委外工单、发料出库、外协收货（含质检结论）、差异登记与审批、加工费结算、查看在途、导出；成本：查询、核算（触发月末成本运算）、导出成本表、导出标准-实际对比表、下钻明细、查看凭证 |
 | 状态与交互说明 | ①委外发料写发料出库流水，回收写入库流水 + 质检结论；发出与回收自动比对，短少时生成差异记录并要求审批（PUR 无关，属生产域）；②**委外在途单独统计，不计入本厂可用库存**（页面明确标注"委外在途不计入可用量，本期 MRP 不考虑委外在途量"）；③外协收货入库成本含加工费，页面展示单价构成（材料成本 + 加工费）；④成本核算为长任务：点击"核算"弹出进度弹窗（已处理工单/总工单数、百分比、耗时），完成后提示结果并提供"查看成本表"；⑤三段成本均可下钻，下钻明细条数与来源单据一致（误差 0）；⑥标准-实际成本对比表差异行高亮，差异率超阈值（默认 5%）时红色标注，并提供差异原因备注入口；⑦未完工工单展示在制余额与结转说明（按月结转在制成本）；⑧成本金额展示 2 位小数，页面提供"金额精度口径说明"（内部 6 位小数、除法定标 HALF_UP、展示 2 位） |
-| 调用接口 | `GET /api/v1/manufacturing/outsourcing-orders`、`POST /api/v1/manufacturing/outsourcing-orders`、`POST /api/v1/manufacturing/outsourcing-orders/{id}/issue`（发料）、`POST /api/v1/manufacturing/outsourcing-orders/{id}/receive`（外协收货）、`POST /api/v1/manufacturing/outsourcing-orders/{id}/difference`（差异登记）、`POST /api/v1/manufacturing/outsourcing-orders/{id}/difference/approve`、`POST /api/v1/manufacturing/outsourcing-orders/{id}/settle`（加工费结算）、`GET /api/v1/manufacturing/costs`（工单成本汇总）、`POST /api/v1/manufacturing/costs/calculate`（核算触发，返回任务 ID）、`GET /api/v1/manufacturing/costs/tasks/{taskId}/progress`、`GET /api/v1/manufacturing/costs/{workOrderId}/detail`（成本下钻）、`GET /api/v1/manufacturing/costs/standard-vs-actual`、`GET /api/v1/manufacturing/costs/export` |
+| 调用接口 | `GET /api/manufacturing/outsourcing-orders`、`POST /api/manufacturing/outsourcing-orders`、`POST /api/manufacturing/outsourcing-orders/{id}/issue`（发料）、`POST /api/manufacturing/outsourcing-orders/{id}/receive`（外协收货）、`POST /api/manufacturing/outsourcing-orders/{id}/difference`（差异登记）、`POST /api/manufacturing/outsourcing-orders/{id}/difference/approve`、`POST /api/manufacturing/outsourcing-orders/{id}/settle`（加工费结算）、`GET /api/manufacturing/costs`（工单成本汇总）、`POST /api/manufacturing/costs/calculate`（核算触发，返回任务 ID）、`GET /api/manufacturing/costs/tasks/{taskId}/progress`、`GET /api/manufacturing/costs/{workOrderId}/detail`（成本下钻）、`GET /api/manufacturing/costs/standard-vs-actual`、`GET /api/manufacturing/costs/export` |
 | 涉及需求编号 | MFG-10、MFG-08、FIN-05（产品成本核算）、RPT-05、P-03（核算性能） |
 
 ### 4.25 会计凭证与会计科目
@@ -1064,7 +1064,7 @@ flowchart LR
 | 关键字段/列 | 列表列：凭证号、凭证类型、业务日期、期间、摘要、借方合计、贷方合计、凭证状态徽标、来源业务类型、来源单据号、制单人、过账人、过账时间、操作；分录制：行号、摘要、科目编码、科目名称、借方金额、贷方金额、辅助核算（客户/供应商/部门/物料/仓库）；合计行：借方合计、贷方合计、差额（必须为 0）；科目列：科目编码、科目名称、科目方向（借/贷）、级次、是否叶子科目、是否允许记账、状态 |
 | 主要操作按钮 | 查询、重置、查看详情、**批量过账**、单张过账、红冲（生成红字凭证，原因必填）、打印凭证、导出、跳转来源单据、查看红冲关系、查看附件；**不提供修改与删除已过账凭证的入口**（按钮不渲染，页面提示"已过账凭证不可修改，更正请使用红冲"） |
 | 状态与交互说明 | ①已过账凭证进入只读态：字段全部禁用、顶部 `a-alert`"已过账凭证不可修改"，仅保留打印/导出/红冲/关联查询；②草稿凭证可过账（单独或批量），过账前展示借贷平衡校验结果（差额 0 才可过账）；批量过账结果弹窗展示成功/失败明细（失败原因：借贷不平衡、期间已关闭、凭证状态不匹配）；③**期间已关闭时过账按钮置灰**并提示"期间 202608 已关闭，不可新增或过账凭证"；④凭证来源可追溯：来源单据号可点击跳转到收货单/领料单/完工入库单/销售出库单；⑤红冲：生成红字凭证并保留原凭证，页面展示红冲关系（原凭证号 ↔ 红字凭证号）；⑥借贷不平衡或金额精度异常时展示后端 `message`；⑦凭证摘要与金额为后端生成结果，前端不做金额计算；⑧科目表中断续创建凭证时叶子科目才可选（选择器过滤非叶子科目并提示"非叶子科目不可记账"） |
-| 调用接口 | `GET /api/v1/finance/vouchers`、`GET /api/v1/finance/vouchers/{id}`、`POST /api/v1/finance/vouchers/{id}/post`（过账）、`POST /api/v1/finance/vouchers/batch-post`、`POST /api/v1/finance/vouchers/{id}/reverse`（红冲，原因必填）、`GET /api/v1/finance/vouchers/{id}/source`（来源单据）、`GET /api/v1/finance/vouchers/{id}/reverse-relations`、`GET /api/v1/finance/vouchers/export`、`GET /api/v1/finance/subjects/tree`、`GET /api/v1/finance/subjects` |
+| 调用接口 | `GET /api/finance/vouchers`、`GET /api/finance/vouchers/{id}`、`POST /api/finance/vouchers/{id}/post`（过账）、`POST /api/finance/vouchers/batch-post`、`POST /api/finance/vouchers/{id}/reverse`（红冲，原因必填）、`GET /api/finance/vouchers/{id}/source`（来源单据）、`GET /api/finance/vouchers/{id}/reverse-relations`、`GET /api/finance/vouchers/export`、`GET /api/finance/subjects/tree`、`GET /api/finance/subjects` |
 | 涉及需求编号 | FIN-01、FIN-08（期间控制）、PUR-06（暂估与红冲）、INV-09（流水金额来源）、SYS-05（过账留痕）、RPT-06 |
 
 ### 4.26 存货核算与成本核算
@@ -1078,7 +1078,7 @@ flowchart LR
 | 关键字段/列 | 存货核算列：物料编码/名称、规格、单位、计价方法、期初数量、期初金额、本期入库数量、本期入库金额、本期出库数量、本期出库金额、期末数量、期末金额、单位成本（6 位小数口径、2 位展示）；校验行：期初 + 入库 − 出库 = 期末（数量、金额）；下钻列：流水号、业务时间、流水类型徽标、入库数量、出库数量、变动前后数量、成本单价（`unit_cost`）、来源单据号；成本核算列：产品、工单号、完工数量、材料成本、人工成本、制造费用、总成本、实际单位成本、标准成本、差异、差异率 |
 | 主要操作按钮 | 存货核算：查询、重置、执行核算（长任务）、重算（幂等可重跑）、导出收发存汇总表、下钻流水、查看口径说明；成本核算：查询、执行核算（长任务）、重算、导出成本表、导出标准-实际对比表、下钻材料/人工/制造费用明细 |
 | 状态与交互说明 | ①期间为必填筛选条件，未选择时提示"请选择核算期间"；②核算为长任务（5,000 种物料月度核算 ≤30 分钟）：进度弹窗展示已处理/总物料数、百分比、已耗时、当前阶段（加载流水 → 计算单价 → 回写 unit_cost → 生成汇总），完成后通知；③重算为幂等操作（同期间重复执行覆盖而非累加），页面提示"重算将覆盖本期核算结果"；④汇总校验条明确展示"期初 + 入库 − 出库 = 期末"的数量与金额差额（必须为 0），差额不为 0 时红色告警并禁用提交；⑤下钻明细条数与库存流水一致，成本单价与流水 `unit_cost` 一致（误差 0）；⑥成本核算结果与存货核算口径一致（页面提供交叉核对入口）；⑦期间已关闭时核算按钮置灰并提示原因；⑧金额展示 2 位并提供精度口径说明 |
-| 调用接口 | `GET /api/v1/finance/inventory-accounting`、`POST /api/v1/finance/inventory-accounting/calculate`（核算触发）、`POST /api/v1/finance/inventory-accounting/recalculate`、`GET /api/v1/finance/inventory-accounting/tasks/{taskId}/progress`、`GET /api/v1/finance/inventory-accounting/{materialId}/transactions`（下钻）、`GET /api/v1/finance/inventory-accounting/export`、`GET /api/v1/finance/cost-accounting`、`POST /api/v1/finance/cost-accounting/calculate`、`GET /api/v1/finance/cost-accounting/standard-vs-actual`、`GET /api/v1/finance/cost-accounting/export` |
+| 调用接口 | `GET /api/finance/inventory-accounting`、`POST /api/finance/inventory-accounting/calculate`（核算触发）、`POST /api/finance/inventory-accounting/recalculate`、`GET /api/finance/inventory-accounting/tasks/{taskId}/progress`、`GET /api/finance/inventory-accounting/{materialId}/transactions`（下钻）、`GET /api/finance/inventory-accounting/export`、`GET /api/finance/cost-accounting`、`POST /api/finance/cost-accounting/calculate`、`GET /api/finance/cost-accounting/standard-vs-actual`、`GET /api/finance/cost-accounting/export` |
 | 涉及需求编号 | FIN-04、FIN-05、MFG-08（工单成本归集）、MD-04（计价方法）、FIN-08（期间控制）、P-03 |
 
 ### 4.27 应收应付与收付款管理
@@ -1092,7 +1092,7 @@ flowchart LR
 | 关键字段/列 | 应收列：客户、来源单据号、立账日期、金额、已收金额、未收金额、到期日、逾期天数、核销状态徽标、账龄分档、操作；账龄卡：30 天内、30~60 天、60~90 天、超 90 天（各档金额 + 占比）；应付列：供应商、来源单据号、业务类型（暂估/正式）、立账日期、金额、已付金额、未付金额、到期日、账龄分档、核销状态徽标；付款计划列：供应商、单据号、收货日期、付款条件、到期日、应付金额、付款状态；核销行：单据号、单据金额、已核销、本次核销金额、核销后余额；收付款登记字段：往来单位、日期、金额、方式、银行账号（掩码）、回单附件、备注 |
 | 主要操作按钮 | 查询、重置、导出对账单、导出账龄表、催收提醒查看、登记收款、核销（批量核销）、取消核销（需权限）、登记付款、发起付款申请、付款申请审批、上传银行回单、打印、查看来源单据、查看凭证 |
 | 状态与交互说明 | ①账龄分档金额合计 = 应收/应付余额（差额 0），页面提供账龄口径说明（账龄基准口径由财务确认后固化，界面显著标注）；②**逾期标记**：到期日早于当日且未核销的明细展示红色"已逾期 N 天"徽标；应收页展示到期前 7 天提醒清单；③**暂估与正式分列**：应付页以两个分页签或类型列区分，暂估红冲后余额显示 0 并提示"暂估已红冲归零"；④核销校验：本次核销金额 ≤ 未核销金额，超出时拦截；支持一单多收/一收多单，核销明细可查；⑤取消核销为危险操作（二次确认 + 原因必填 + 需要权限），并提示"将恢复单据未核销状态"；⑥付款申请流程：发起（应付会计/采购员）→ 财务经理审批 → 付款登记 → 核销，各环节状态与审批人可查；⑦银行回单导入：支持人工导入（本期不做银企直连，页面标注"资金数据在 ERP 内闭环，回单人工导入"）；⑧导出对账单行数与界面一致 |
-| 调用接口 | `GET /api/v1/finance/receivables`、`GET /api/v1/finance/receivables/aging`（账龄分析）、`GET /api/v1/finance/receivables/dunning`（催收提醒）、`GET /api/v1/finance/receivables/reconciliation-export`（对账单导出）、`GET /api/v1/finance/payables`、`GET /api/v1/finance/payables/aging`、`GET /api/v1/finance/payables/payment-plan`、`GET /api/v1/finance/receipts`、`POST /api/v1/finance/receipts`（收款登记）、`POST /api/v1/finance/receipts/{id}/write-off`（核销）、`POST /api/v1/finance/receipts/write-off/cancel`（取消核销）、`POST /api/v1/finance/payments/apply`（付款申请）、`POST /api/v1/finance/payments/{id}/approve`、`POST /api/v1/finance/payments`（付款登记）、`POST /api/v1/finance/payments/{id}/write-off` |
+| 调用接口 | `GET /api/finance/receivables`、`GET /api/finance/receivables/aging`（账龄分析）、`GET /api/finance/receivables/dunning`（催收提醒）、`GET /api/finance/receivables/reconciliation-export`（对账单导出）、`GET /api/finance/payables`、`GET /api/finance/payables/aging`、`GET /api/finance/payables/payment-plan`、`GET /api/finance/receipts`、`POST /api/finance/receipts`（收款登记）、`POST /api/finance/receipts/{id}/write-off`（核销）、`POST /api/finance/receipts/write-off/cancel`（取消核销）、`POST /api/finance/payments/apply`（付款申请）、`POST /api/finance/payments/{id}/approve`、`POST /api/finance/payments`（付款登记）、`POST /api/finance/payments/{id}/write-off` |
 | 涉及需求编号 | FIN-02、FIN-03、PUR-05/PUR-06（暂估与正式应付）、SAL-03（已收款展示）、RPT-06、SYS-04（字段掩码）、SYS-05（审批留痕） |
 
 ### 4.28 固定资产
@@ -1106,7 +1106,7 @@ flowchart LR
 | 关键字段/列 | 列表列：资产编号、资产名称、资产类别、使用部门、存放地点、原值、累计折旧、净值、启用日期、使用年限、折旧方法、资产状态徽标（在用/闲置/已报废）、操作；折旧信息字段：原值、残值率、使用年限、折旧方法（年限平均法/双倍余额递减法）、月折旧额、已计提期间数、累计折旧；计提预览列：资产编号、名称、原值、月折旧额、本期折旧额、累计折旧、净值、凭证号；盘点列：资产编号、名称、账面数量、实盘数量、差异数量、差异金额、差异原因 |
 | 主要操作按钮 | 新增卡片、编辑、查看、计提折旧（单期/批量）、导出折旧明细、导出资产台账、资产盘点（导入实盘）、差异处理、报废/处置申请、审批、查看折旧凭证、打印卡片 |
 | 状态与交互说明 | ①月折旧额按折旧方法与残值率计算（后端计算，前端展示），计提预览与手工验算一致（误差 0）；②计提为批量操作：执行后展示"本期计提 N 项，折旧总额 X 元，凭证号 FZ…"，借贷平衡校验通过；③同一期间重复计提时拦截并提示"本期已计提，如需更正请红冲凭证后重新计提"；④资产盘点差异生成差异清单（差异数量与金额），差异处理需审批；⑤报废/处置为危险操作（二次确认 + 原因必填），处置后资产状态变更为"已报废"（灰）并生成处置损益凭证；⑥资产状态徽标配色统一（3.2）；⑦折旧与处置凭证可从卡片详情跳转 |
-| 调用接口 | `GET /api/v1/finance/fixed-assets`、`POST /api/v1/finance/fixed-assets`、`PUT /api/v1/finance/fixed-assets/{id}`、`POST /api/v1/finance/fixed-assets/depreciate`（计提）、`GET /api/v1/finance/fixed-assets/depreciation/preview`、`POST /api/v1/finance/fixed-assets/stock-take`（资产盘点）、`POST /api/v1/finance/fixed-assets/{id}/disposal`（报废处置）、`GET /api/v1/finance/fixed-assets/export` |
+| 调用接口 | `GET /api/finance/fixed-assets`、`POST /api/finance/fixed-assets`、`PUT /api/finance/fixed-assets/{id}`、`POST /api/finance/fixed-assets/depreciate`（计提）、`GET /api/finance/fixed-assets/depreciation/preview`、`POST /api/finance/fixed-assets/stock-take`（资产盘点）、`POST /api/finance/fixed-assets/{id}/disposal`（报废处置）、`GET /api/finance/fixed-assets/export` |
 | 涉及需求编号 | FIN-06、FIN-01（折旧凭证）、FIN-08（期间控制）、SYS-05 |
 
 ### 4.29 期末处理与期初余额
@@ -1120,7 +1120,7 @@ flowchart LR
 | 关键字段/列 | 期间列：会计期间（YYYYMM）、状态徽标、凭证张数、已过账张数、未过账张数、月结开始/结束时间、关闭人、关闭时间；月结步骤字段：步骤名、状态（未执行/执行中/已完成/失败）、开始与结束时间、处理条数、结果摘要（凭证号、金额）；检查清单字段：检查项、当前值、阈值/期望、是否通过、查看明细；期初余额字段：科目编码、科目名称、方向、借方期初、贷方期初、存货类科目金额、与库存期初差异（必须 0）；试算条：借方合计、贷方合计、差额（必须 0） |
 | 主要操作按钮 | 期初余额：下载模板、导入、保存、**试算平衡校验**、生成期初调账凭证、导出、查看期初凭证；期间：执行月结（逐步或一键）、重跑单步（幂等）、查看检查清单明细、**关闭期间**（危险）、**期间重开**（危险，仅财务经理）、查看月结日志、导出月结报告 |
 | 状态与交互说明 | ①月结为长任务：执行时逐步展示状态，每步完成后展示处理条数与结果摘要（如"损益结转完成，生成凭证 FZ202608101，金额 X"）；步骤失败时展示失败原因与"重跑该步骤"按钮（幂等可重跑）；②**月结检查清单必须 5 项全部通过方可关闭期间**：任一项不通过时"关闭期间"按钮置灰，并在按钮旁展示不通过项与原因（如"上月暂估未匹配 12 条"），提供明细跳转；③**期间关闭**为危险操作：确认弹窗展示检查清单结果与影响范围，原因必填（≥5 字），关闭后提示"该期间已关闭，禁止新增、修改与过账凭证"；④**期间重开**仅财务经理权限，确认弹窗强提示"重开将允许该期间修改凭证，操作将写入审计日志"，原因必填；⑤已关闭期间在凭证页、核算页的相应按钮均置灰并提示原因（跨页面一致性）；⑥期初余额：试算平衡差额不为 0 时禁止提交并红色告警；存货类科目期初金额与 INV-11 期初库存金额不一致时禁止提交并展示差异明细；生成期初调账凭证后可在凭证页查询；⑦首个会计期间关闭后，期初余额页转为只读并提示"首个期间已关闭，期初余额不可修改"；⑧月结日志可导出，含每步开始/结束时间与处理条数 |
-| 调用接口 | `GET /api/v1/finance/periods`、`POST /api/v1/finance/periods/{period}/close`（期间关闭，原因必填）、`POST /api/v1/finance/periods/{period}/reopen`（期间重开）、`GET /api/v1/finance/periods/{period}/checklist`（月结检查清单 5 项）、`POST /api/v1/finance/periods/{period}/settle`（月结执行）、`GET /api/v1/finance/periods/{period}/settle/steps/{step}/progress`、`POST /api/v1/finance/periods/{period}/settle/steps/{step}/rerun`、`GET /api/v1/finance/periods/{period}/settle/log`、`GET /api/v1/finance/opening-balances`、`POST /api/v1/finance/opening-balances/import`、`POST /api/v1/finance/opening-balances/validate`（试算平衡 + 存货一致性）、`POST /api/v1/finance/opening-balances/submit`（生成期初调账凭证） |
+| 调用接口 | `GET /api/finance/periods`、`POST /api/finance/periods/{period}/close`（期间关闭，原因必填）、`POST /api/finance/periods/{period}/reopen`（期间重开）、`GET /api/finance/periods/{period}/checklist`（月结检查清单 5 项）、`POST /api/finance/periods/{period}/settle`（月结执行）、`GET /api/finance/periods/{period}/settle/steps/{step}/progress`、`POST /api/finance/periods/{period}/settle/steps/{step}/rerun`、`GET /api/finance/periods/{period}/settle/log`、`GET /api/finance/opening-balances`、`POST /api/finance/opening-balances/import`、`POST /api/finance/opening-balances/validate`（试算平衡 + 存货一致性）、`POST /api/finance/opening-balances/submit`（生成期初调账凭证） |
 | 涉及需求编号 | FIN-08、FIN-09、INV-11（期初库存联动）、PUR-06（暂估未匹配检查项）、INV-09（对账差异检查项）、FIN-04/FIN-05（成本结转）、SYS-05（期间重开留痕）、MFG-04（未完工工单检查项） |
 
 ### 4.30 报表中心
@@ -1134,7 +1134,7 @@ flowchart LR
 | 关键字段/列 | 销售（RPT-02）：销售订单执行状况（列为单号、客户、产品、数量、金额、已发货、未发余额、状态徽标）、销售排行（客户/产品/业务员、金额、占比、同比）、订单毛利分析（收入、成本、毛利、毛利率）、未交订单明细、销售对账单；采购（RPT-03）：采购订单执行跟踪（含未到货余额与预计到货日期）、采购价格走势、供应商准时率与合格率、采购申请来源分布（MRP/手工、紧急采购占比）；库存（RPT-04）：即时库存、库存流水账、库存周转率（周转天数/次数）、呆滞明细、安全库存预警清单、保质期预警清单；生产（RPT-05）：工单完工率、良品率、在制工单明细（含工序进度）、工时利用率、产品实际成本与毛利；财务（RPT-06 与 FIN-07）：应收账龄、应付账龄、现金流量预测、产品成本分析、资产负债表、利润表、现金流量表、科目余额表、明细账、总账；导出中心列：报表名、筛选条件摘要、格式、状态徽标（排队中/生成中/已完成/失败）、行数、创建时间、完成时间、文件大小、操作 |
 | 主要操作按钮 | 报表切换、查询、重置、快捷时间、图表与明细表切换、导出 Excel、导出 PDF、导出（当前筛选）、跳转导出中心、下载、重新导出、删除导出记录、查看口径说明、打印 |
 | 状态与交互说明 | ①**异步导出进度交互**：点击导出后先返回预估行数；≤5,000 行同步下载；超过则提交异步任务并提示"已提交导出任务，可在导出中心查看进度"，右上角 `a-notification` 在完成时提示并提供"立即下载"；导出中心任务状态徽标实时刷新（轮询 5 秒）；②单次导出 >50,000 行时拦截并提示"数据量超过 50,000 行，请缩小筛选范围后重试"；③导出内容受数据权限约束（导出 = 可见），导出文件行数与界面行数一致；④财务报表口径仅取**已过账**凭证，页面标注"草稿凭证不计入"；⑤汇总类报表查询响应 ≤5 秒、多维度月度分析 ≤10 秒，超时或数据量过大时提示缩小统计区间；⑥同一指标在仪表盘、明细报表、导出文件中口径一致，页面提供口径说明入口（抽屉）；⑦图表提供"数据表"切换（无障碍与核对）；⑧报表页筛选条件可由 URL 携带（期间与组织维度），便于从仪表盘跳转定位 |
-| 调用接口 | `GET /api/v1/reports/sales/order-execution`、`GET /api/v1/reports/sales/ranking`、`GET /api/v1/reports/sales/gross-profit`、`GET /api/v1/reports/sales/open-orders`、`GET /api/v1/reports/sales/statement`、`GET /api/v1/reports/purchase/order-tracking`、`GET /api/v1/reports/purchase/price-trend`、`GET /api/v1/reports/purchase/supplier-performance`、`GET /api/v1/reports/purchase/requisition-source`、`GET /api/v1/reports/inventory/stock`、`GET /api/v1/reports/inventory/transactions`、`GET /api/v1/reports/inventory/turnover`、`GET /api/v1/reports/inventory/slow-moving`、`GET /api/v1/reports/inventory/stock-alerts`、`GET /api/v1/reports/inventory/shelf-life-alerts`、`GET /api/v1/reports/manufacturing/completion-rate`、`GET /api/v1/reports/manufacturing/quality-rate`、`GET /api/v1/reports/manufacturing/wip`、`GET /api/v1/reports/manufacturing/labor-utilization`、`GET /api/v1/reports/manufacturing/product-cost`、`GET /api/v1/reports/finance/receivable-aging`、`GET /api/v1/reports/finance/payable-aging`、`GET /api/v1/reports/finance/cash-flow-forecast`、`GET /api/v1/reports/finance/statements/{type}`（资产负债表/利润表/现金流量表/科目余额表/明细账/总账）、`POST /api/v1/reports/export`（同步/异步导出）、`GET /api/v1/reports/export/{id}/progress`、`GET /api/v1/reports/export-tasks`（导出中心列表）、`GET /api/v1/reports/export-tasks/{id}/download`、`POST /api/v1/reports/export-tasks/{id}/retry`、`DELETE /api/v1/reports/export-tasks/{id}` |
+| 调用接口 | `GET /api/reports/sales/order-execution`、`GET /api/reports/sales/ranking`、`GET /api/reports/sales/gross-profit`、`GET /api/reports/sales/open-orders`、`GET /api/reports/sales/statement`、`GET /api/reports/purchase/order-tracking`、`GET /api/reports/purchase/price-trend`、`GET /api/reports/purchase/supplier-performance`、`GET /api/reports/purchase/requisition-source`、`GET /api/reports/inventory/stock`、`GET /api/reports/inventory/transactions`、`GET /api/reports/inventory/turnover`、`GET /api/reports/inventory/slow-moving`、`GET /api/reports/inventory/stock-alerts`、`GET /api/reports/inventory/shelf-life-alerts`、`GET /api/reports/manufacturing/completion-rate`、`GET /api/reports/manufacturing/quality-rate`、`GET /api/reports/manufacturing/wip`、`GET /api/reports/manufacturing/labor-utilization`、`GET /api/reports/manufacturing/product-cost`、`GET /api/reports/finance/receivable-aging`、`GET /api/reports/finance/payable-aging`、`GET /api/reports/finance/cash-flow-forecast`、`GET /api/reports/finance/statements/{type}`（资产负债表/利润表/现金流量表/科目余额表/明细账/总账）、`POST /api/reports/export`（同步/异步导出）、`GET /api/reports/export/{id}/progress`、`GET /api/reports/export-tasks`（导出中心列表）、`GET /api/reports/export-tasks/{id}/download`、`POST /api/reports/export-tasks/{id}/retry`、`DELETE /api/reports/export-tasks/{id}` |
 | 涉及需求编号 | RPT-01（跳转联动）、RPT-02、RPT-03、RPT-04、RPT-05、RPT-06、RPT-07、FIN-07（财务报表）、SYS-04（数据权限）、CS-03（多维汇总） |
 
 ---
@@ -1308,7 +1308,7 @@ flowchart TD
 ```
 erp-frontend/
 ├── package.json                     # 依赖：vue / vue-router / pinia / ant-design-vue@4 / echarts / axios
-├── vite.config.ts                   # 代理 /api/v1 → 后端；按需引入；gzip；sourcemap（非生产）
+├── vite.config.ts                   # 代理 /api → 后端；按需引入；gzip；sourcemap（非生产）
 ├── tsconfig.json                    # strict: true；paths 别名 @/*
 ├── index.html
 └── src/
@@ -1406,7 +1406,7 @@ erp-frontend/
 
 | 项 | 约定 |
 |----|------|
-| 实例配置 | `baseURL = '/api/v1'`；超时 30 秒（导出/长查询接口单独放宽至 60 秒）；`withCredentials` 关闭（Token 走请求头） |
+| 实例配置 | `baseURL = '/api'`；超时 30 秒（导出/长查询接口单独放宽至 60 秒）；`withCredentials` 关闭（Token 走请求头） |
 | 请求拦截器职责 | ①注入 `Authorization: Bearer {accessToken}`；②注入 `Content-Type: application/json`；③注入 `X-Request-Id`（UUID，用于链路追踪）；④写操作注入 `Idempotent-Key`（由调用方传入或自动生成）；⑤接口级 Loading 控制（按配置 `showLoading`，默认对写操作开启按钮 loading，不做全屏遮罩）；⑥取消重复请求（相同方法 + URL + 参数在 500ms 内重复提交时取消前一个，主要覆盖查询类接口） |
 | 响应拦截器职责 | ①判定 HTTP 状态与 `code`，按 3.10 映射表统一处理；②`code = 200` 时直接返回 `data`（分页返回 `list/total/pageNum/pageSize/pages` 结构）；③业务错误统一提示（使用后端 `message`）；④401 触发一次静默刷新并重放原请求（刷新接口本身除外）；⑤清除该请求的 Loading 计数 |
 | Token 管理 | access token 存于内存 + sessionStorage（刷新页面可恢复）；refresh token 存于 sessionStorage；不在 localStorage 长期保存 refresh token；登出时清空并跳登录 |
@@ -1432,7 +1432,7 @@ erp-frontend/
 
 | 项 | 约定 |
 |----|------|
-| 字典来源 | 后端字典接口（`/api/v1/system/dicts/{type}/items`）为唯一来源；前端**禁止在代码中硬编码字典选项**（状态/类型/分类等） |
+| 字典来源 | 后端字典接口（`/api/system/dicts/{type}/items`）为唯一来源；前端**禁止在代码中硬编码字典选项**（状态/类型/分类等） |
 | 缓存与刷新 | `useDictStore` 统一加载与缓存（TTL 30 分钟）；页面通过 `useDict('order_status')` 读取；字典变更后由后端缓存失效驱动，前端在下一次会话或手动刷新时更新 |
 | 下拉复用 | 统一使用 `AppDictSelect`（`dictType` 属性驱动），支持 `allow-clear`、`show-search`、禁用项渲染 |
 | 徽标复用 | 统一使用 `AppStatusTag`（`field` + `value` 驱动），配色取自 `constants/statusColor.ts`（即 3.2 映射表的唯一实现处）；未命中码值时显示 `未知(<code>)` 并使用 default 色 |
@@ -1444,7 +1444,7 @@ erp-frontend/
 
 ```mermaid
 flowchart TD
-    A["用户登录成功"] --> B["GET /api/v1/auth/me<br/>返回用户信息 + 角色 + 权限点 + 菜单树 + 默认落地页"]
+    A["用户登录成功"] --> B["GET /api/auth/me<br/>返回用户信息 + 角色 + 权限点 + 菜单树 + 默认落地页"]
     B --> C["usePermissionStore 生成动态路由<br/>仅装配有权限的页面路由"]
     C --> D["useUserStore 保存权限点集合"]
     D --> E{"路由跳转"}
@@ -1489,57 +1489,57 @@ flowchart TD
 ---
 ## 七、页面与接口/需求覆盖对照表
 
-> 本章保证"无页面无接口、无接口无入口"。接口路径统一前缀 `/api/v1`；分页响应统一为 `list/total/pageNum/pageSize/pages`；状态流转一律走动作接口（动词场景 POST）；导出统一 `GET /xxx/export` 或异步导出接口（见 3.12）。
+> 本章保证"无页面无接口、无接口无入口"。接口路径统一前缀 `/api`；分页响应统一为 `list/total/pageNum/pageSize/pages`；状态流转一律走动作接口（动词场景 POST）；导出统一 `GET /xxx/export` 或异步导出接口（见 3.12）。
 
 | 页面名称 | 路由 | 主要接口（路径） | 涉及需求编号 | 所属开发子阶段 |
 |---------|------|----------------|-------------|--------------|
-| 登录页 | `/login` | `POST /api/v1/auth/login`、`GET /api/v1/auth/captcha`、`POST /api/v1/auth/refresh`、`POST /api/v1/auth/logout`、`GET /api/v1/auth/me`、`PUT /api/v1/auth/password` | SYS-01、SYS-09 | D2 |
-| 经营仪表盘 | `/dashboard` | `GET /api/v1/reports/dashboard`、`/dashboard/trend`、`/dashboard/ranking`、`/dashboard/metrics/{code}/definition` | RPT-01 | D9 |
-| 用户管理 | `/system/user` | `GET/POST /api/v1/system/users`、`PUT /api/v1/system/users/{id}`、`PUT .../{id}/status`、`PUT .../{id}/password/reset`、`PUT .../{id}/roles`、`DELETE .../{id}` | SYS-02、SYS-09 | D2 |
-| 角色与授权 | `/system/role`、`/system/role/auth/:id` | `GET/POST/PUT/DELETE /api/v1/system/roles`、`GET /api/v1/system/menus/tree`、`GET/PUT /api/v1/system/roles/{id}/permissions` | SYS-03、SYS-04 | D2 |
-| 菜单管理 | `/system/menu` | `GET/POST/PUT/DELETE /api/v1/system/menus` | SYS-03 | D2 |
-| 数据字典 | `/system/dict` | `GET/POST/PUT/DELETE /api/v1/system/dicts`、`GET/PUT /api/v1/system/dict-items` | SYS-06 | D2 |
-| 系统参数 | `/system/param` | `GET /api/v1/system/params`、`PUT /api/v1/system/params/{key}` | SYS-06 | D2 |
-| 编号规则 | `/system/code-rule` | `GET /api/v1/system/code-rules` | SYS-07 | D2 |
-| 审计日志 / 登录日志 | `/system/audit-log`、`/system/login-log` | `GET /api/v1/system/audit-logs`（含 `/{id}` 详情）、`GET /api/v1/system/login-logs`、`GET /api/v1/system/audit-logs/export` | SYS-05、SYS-01 | D2 |
-| 物料分类树 | `/base/material-category` | `GET/POST/PUT /api/v1/base/material-categories`、`/tree` | MD-06 | D3 |
-| 物料主数据 / 详情 / 编辑 | `/base/material`、`/base/material/detail/:id`、`/base/material/edit/:id?` | `GET/POST/PUT/DELETE /api/v1/base/materials`、`PUT .../{id}/status`、`GET /api/v1/base/materials/next-code`、`POST /api/v1/base/materials/import`、`GET /api/v1/base/materials/export` | MD-01~MD-06、SYS-11、SYS-10 | D3 |
-| BOM 管理与反查 | `/base/bom`、`/base/bom/detail/:id`、`/base/bom/edit/:id?` | `GET/POST/PUT /api/v1/base/boms`、`GET .../{id}/tree`、`POST .../{id}/submit|approve|reject`、`GET .../{id}/versions`、`GET /api/v1/base/boms/where-used`、`POST /api/v1/base/boms/validate`、`PUT .../{id}/substitutes` | BOM-01~BOM-07 | D3 |
-| 客户档案 / 详情 | `/base/customer`、`/base/customer/detail/:id` | `GET/POST/PUT /api/v1/base/customers`、`PUT .../{id}/status`、`GET .../{id}/credit`、`PUT /api/v1/base/{type}/{id}/tags`、`GET /api/v1/base/customers/export` | CS-01、CS-03 | D3 |
-| 供应商档案 / 详情 | `/base/supplier`、`/base/supplier/detail/:id` | `GET/POST/PUT /api/v1/base/suppliers`、`PUT .../{id}/status`、`GET /api/v1/purchase/supplier-scores` | CS-02、CS-03、PUR-08 | D3（绩效数据在 D5 接入） |
-| 仓库与库位 | `/base/warehouse` | `GET/POST/PUT /api/v1/base/warehouses`、`/api/v1/base/locations` | INV-01 | D3 |
-| 销售订单列表 / 单据页 / 详情 | `/sales/order`、`/sales/order/edit/:id?`、`/sales/order/detail/:id` | `GET/POST/PUT /api/v1/sales/orders`、`POST .../{id}/submit|approve|reject|close|unapprove|special-approve`、`GET/POST .../{id}/changes`、`POST /api/v1/sales/orders/validate-credit`、`GET /api/v1/sales/orders/export`、`GET /api/v1/sales/price-policies/quote` | SAL-01、SAL-02、SAL-04、SAL-07 | D6 |
-| 订单执行跟踪 / 跟单看板 | `/sales/order/detail/:id`、`/sales/tracking` | `GET /api/v1/sales/orders/{id}/track`、`GET /api/v1/sales/tracking`、`/tracking/summary` | SAL-03、SAL-08 | D6 |
-| 发货通知单 / 销售出库单 | `/sales/delivery-note`、`/sales/outbound` | `GET/POST /api/v1/sales/delivery-notes`、`POST .../{id}/pick-confirm`、`GET/POST /api/v1/sales/outbounds` | SAL-05、INV-03 | D6 |
-| 销售退货单 | `/sales/return`、`/sales/return/detail/:id` | `GET/POST /api/v1/sales/returns`、`POST .../{id}/quality-confirm|refund|exchange` | SAL-06 | D6 |
-| 销售价格策略 | `/sales/price-policy` | `GET/POST/PUT /api/v1/sales/price-policies` | SAL-07 | D6 |
-| 采购申请 | `/purchase/requisition` | `GET/POST /api/v1/purchase/requisitions`、`POST /api/v1/purchase/requisitions/from-mrp`、`POST .../{id}/approve|to-order` | PUR-01、MFG-03、INV-07（预警转申请） | D5 |
-| 采购订单列表 / 单据页 / 详情 | `/purchase/order`、`/purchase/order/edit/:id?`、`/purchase/order/detail/:id` | `GET/POST/PUT /api/v1/purchase/orders`、`POST .../{id}/submit|approve|reject|close|unapprove`、`POST /api/v1/purchase/orders/batch-approve`、`GET /api/v1/purchase/price-history/last-price`、`GET /api/v1/purchase/orders/export` | PUR-02、PUR-07 | D5 |
-| 收货与质检 / 采购退货 | `/purchase/receipt`、`/purchase/receipt/detail/:id`、`/purchase/return` | `GET/POST /api/v1/purchase/receipts`、`POST .../{id}/quality-confirm|inbound-confirm|cancel`、`GET/POST /api/v1/purchase/returns`、`POST .../{id}/approve` | PUR-03、PUR-04、PUR-06 | D5 |
-| 三单匹配 | `/purchase/match` | `GET /api/v1/purchase/match-results`、`POST .../run`、`GET .../{id}/diff`、`POST .../{id}/confirm`、`POST .../batch-confirm`、`POST .../{id}/differences`、`GET /api/v1/purchase/estimates`、`/estimates/unmatched` | PUR-05、PUR-06 | D5 |
-| 采购价格 / 供应商绩效 | `/purchase/price`、`/purchase/supplier-score` | `GET /api/v1/purchase/price-history`、`/trend`、`/comparison`、`/export`、`GET /api/v1/purchase/supplier-scores`、`/detail`、`/export` | PUR-07、PUR-08 | D5 |
-| 即时库存 / 库存流水 | `/inventory/stock`、`/inventory/transaction` | `GET /api/v1/inventory/stock`、`/stock/summary`、`/stock/{materialId}/distribution`、`/stock/available`、`GET /api/v1/inventory/transactions`、`/transactions/export`、`/stock/export` | INV-01、INV-02、INV-03、INV-09 | D4 |
-| 库存盘点 | `/inventory/stock-take`、`/inventory/stock-take/detail/:id` | `GET/POST /api/v1/inventory/stock-takes`、`GET .../{id}`、`PUT .../{id}/items`、`GET .../{id}/template`、`POST .../{id}/import`、`POST .../{id}/submit|approve`、`GET .../{id}/result` | INV-06、INV-09 | D4 |
-| 库位调拨 | `/inventory/transfer` | `GET/POST/PUT /api/v1/inventory/transfers`、`POST .../{id}/approve|reverse`、`GET .../{id}/transactions` | INV-10 | D4 |
-| 批次追溯 | `/inventory/batch-trace` | `GET /api/v1/inventory/batch-traces`、`/batch-traces/{id}/path` | INV-04 | D4 |
-| 库存 / 保质期 / 呆滞预警 | `/inventory/alert`、`/inventory/shelf-life`、`/inventory/slow-moving` | `GET /api/v1/inventory/alerts`、`POST .../{id}/to-requisition|ignore`、`POST /api/v1/inventory/alerts/batch-to-requisition`、`GET /api/v1/inventory/shelf-life-alerts`、`POST .../{id}/release-request`、`GET /api/v1/inventory/slow-moving`、`POST .../{id}/disposal` | INV-05、INV-07、INV-08 | D4 |
-| 期初库存建账 | `/inventory/opening` | `GET /api/v1/inventory/opening-balances`、`/template`、`POST .../import`、`/validate`、`/submit` | INV-11 | D4（正式录入在阶段六） |
-| MRP 运算 | `/manufacturing/mrp` | `GET/PUT /api/v1/manufacturing/mrp/params`、`POST /api/v1/manufacturing/mrp/run`、`GET /mrp/tasks/{taskId}/progress`、`POST .../cancel`、`GET /mrp/plans`、`/plans/{id}`、`/plans/{id}/purchase-items`、`/manufacture-items`、`/missing-params`、`POST /mrp/plans/items/to-requisition|to-work-order`、`/plans/batch-convert`、`GET /plans/{id}/export` | MFG-01、MFG-02、MFG-03 | D7 |
-| 生产工单列表 / 编辑 / 详情 | `/manufacturing/work-order`、`/work-order/edit/:id?`、`/work-order/detail/:id` | `GET/POST/PUT /api/v1/manufacturing/work-orders`、`POST .../{id}/release|cancel|close`、`DELETE .../{id}`、`GET .../{id}/progress`、`/materials`、`/reports`、`/cost`、`POST /api/v1/manufacturing/work-orders/batch-release`、`GET .../export` | MFG-04、MFG-08、MFG-09 | D7 |
-| 生产领料 | `/manufacturing/issue` | `GET/POST/PUT /api/v1/manufacturing/issues`、`POST .../{id}/submit|approve`、`GET .../{id}/stream` | MFG-05、BOM-02、BOM-04 | D7 |
-| 生产报工 | `/manufacturing/report` | `GET /api/v1/manufacturing/reports`、`POST /api/v1/manufacturing/work-orders/{id}/report`、`POST /api/v1/manufacturing/reports/{id}/revoke` | MFG-06、MFG-09 | D7 |
-| 完工入库 | `/manufacturing/finish-inbound` | `GET /api/v1/manufacturing/finish-inbounds`、`POST /api/v1/manufacturing/work-orders/{id}/finish-inbound` | MFG-07 | D7 |
-| 委外加工 | `/manufacturing/outsourcing` | `GET/POST /api/v1/manufacturing/outsourcing-orders`、`POST .../{id}/issue|receive|difference|difference/approve|settle` | MFG-10 | D7 |
-| 工单成本 | `/manufacturing/cost` | `GET /api/v1/manufacturing/costs`、`POST .../calculate`、`GET .../tasks/{taskId}/progress`、`GET .../{workOrderId}/detail`、`/standard-vs-actual`、`/export` | MFG-08、FIN-05 | D8 |
-| 会计凭证 / 详情 / 科目表 | `/finance/voucher`、`/finance/voucher/detail/:id`、`/finance/subject` | `GET /api/v1/finance/vouchers`（含 `/{id}`）、`POST .../{id}/post`、`/batch-post`、`POST .../{id}/reverse`、`GET .../{id}/source`、`/reverse-relations`、`/vouchers/export`、`GET /api/v1/finance/subjects`、`/tree` | FIN-01、FIN-08 | D8 |
+| 登录页 | `/login` | `POST /api/auth/login`、`GET /api/auth/captcha`、`POST /api/auth/refresh`、`POST /api/auth/logout`、`GET /api/auth/me`、`PUT /api/auth/password` | SYS-01、SYS-09 | D2 |
+| 经营仪表盘 | `/dashboard` | `GET /api/reports/dashboard`、`/dashboard/trend`、`/dashboard/ranking`、`/dashboard/metrics/{code}/definition` | RPT-01 | D9 |
+| 用户管理 | `/system/user` | `GET/POST /api/system/users`、`PUT /api/system/users/{id}`、`PUT .../{id}/status`、`PUT .../{id}/password/reset`、`PUT .../{id}/roles`、`DELETE .../{id}` | SYS-02、SYS-09 | D2 |
+| 角色与授权 | `/system/role`、`/system/role/auth/:id` | `GET/POST/PUT/DELETE /api/system/roles`、`GET /api/system/menus/tree`、`GET/PUT /api/system/roles/{id}/permissions` | SYS-03、SYS-04 | D2 |
+| 菜单管理 | `/system/menu` | `GET/POST/PUT/DELETE /api/system/menus` | SYS-03 | D2 |
+| 数据字典 | `/system/dict` | `GET/POST/PUT/DELETE /api/system/dicts`、`GET/PUT /api/system/dict-items` | SYS-06 | D2 |
+| 系统参数 | `/system/param` | `GET /api/system/params`、`PUT /api/system/params/{key}` | SYS-06 | D2 |
+| 编号规则 | `/system/code-rule` | `GET /api/system/code-rules` | SYS-07 | D2 |
+| 审计日志 / 登录日志 | `/system/audit-log`、`/system/login-log` | `GET /api/system/audit-logs`（含 `/{id}` 详情）、`GET /api/system/login-logs`、`GET /api/system/audit-logs/export` | SYS-05、SYS-01 | D2 |
+| 物料分类树 | `/base/material-category` | `GET/POST/PUT /api/base/material-categories`、`/tree` | MD-06 | D3 |
+| 物料主数据 / 详情 / 编辑 | `/base/material`、`/base/material/detail/:id`、`/base/material/edit/:id?` | `GET/POST/PUT/DELETE /api/base/materials`、`PUT .../{id}/status`、`GET /api/base/materials/next-code`、`POST /api/base/materials/import`、`GET /api/base/materials/export` | MD-01~MD-06、SYS-11、SYS-10 | D3 |
+| BOM 管理与反查 | `/base/bom`、`/base/bom/detail/:id`、`/base/bom/edit/:id?` | `GET/POST/PUT /api/base/boms`、`GET .../{id}/tree`、`POST .../{id}/submit|approve|reject`、`GET .../{id}/versions`、`GET /api/base/boms/where-used`、`POST /api/base/boms/validate`、`PUT .../{id}/substitutes` | BOM-01~BOM-07 | D3 |
+| 客户档案 / 详情 | `/base/customer`、`/base/customer/detail/:id` | `GET/POST/PUT /api/base/customers`、`PUT .../{id}/status`、`GET .../{id}/credit`、`PUT /api/base/{type}/{id}/tags`、`GET /api/base/customers/export` | CS-01、CS-03 | D3 |
+| 供应商档案 / 详情 | `/base/supplier`、`/base/supplier/detail/:id` | `GET/POST/PUT /api/base/suppliers`、`PUT .../{id}/status`、`GET /api/purchase/supplier-scores` | CS-02、CS-03、PUR-08 | D3（绩效数据在 D5 接入） |
+| 仓库与库位 | `/base/warehouse` | `GET/POST/PUT /api/base/warehouses`、`/api/base/locations` | INV-01 | D3 |
+| 销售订单列表 / 单据页 / 详情 | `/sales/order`、`/sales/order/edit/:id?`、`/sales/order/detail/:id` | `GET/POST/PUT /api/sales/orders`、`POST .../{id}/submit|approve|reject|close|unapprove|special-approve`、`GET/POST .../{id}/changes`、`POST /api/sales/orders/validate-credit`、`GET /api/sales/orders/export`、`GET /api/sales/price-policies/quote` | SAL-01、SAL-02、SAL-04、SAL-07 | D6 |
+| 订单执行跟踪 / 跟单看板 | `/sales/order/detail/:id`、`/sales/tracking` | `GET /api/sales/orders/{id}/track`、`GET /api/sales/tracking`、`/tracking/summary` | SAL-03、SAL-08 | D6 |
+| 发货通知单 / 销售出库单 | `/sales/delivery-note`、`/sales/outbound` | `GET/POST /api/sales/delivery-notes`、`POST .../{id}/pick-confirm`、`GET/POST /api/sales/outbounds` | SAL-05、INV-03 | D6 |
+| 销售退货单 | `/sales/return`、`/sales/return/detail/:id` | `GET/POST /api/sales/returns`、`POST .../{id}/quality-confirm|refund|exchange` | SAL-06 | D6 |
+| 销售价格策略 | `/sales/price-policy` | `GET/POST/PUT /api/sales/price-policies` | SAL-07 | D6 |
+| 采购申请 | `/purchase/requisition` | `GET/POST /api/purchase/requisitions`、`POST /api/purchase/requisitions/from-mrp`、`POST .../{id}/approve|to-order` | PUR-01、MFG-03、INV-07（预警转申请） | D5 |
+| 采购订单列表 / 单据页 / 详情 | `/purchase/order`、`/purchase/order/edit/:id?`、`/purchase/order/detail/:id` | `GET/POST/PUT /api/purchase/orders`、`POST .../{id}/submit|approve|reject|close|unapprove`、`POST /api/purchase/orders/batch-approve`、`GET /api/purchase/price-history/last-price`、`GET /api/purchase/orders/export` | PUR-02、PUR-07 | D5 |
+| 收货与质检 / 采购退货 | `/purchase/receipt`、`/purchase/receipt/detail/:id`、`/purchase/return` | `GET/POST /api/purchase/receipts`、`POST .../{id}/quality-confirm|inbound-confirm|cancel`、`GET/POST /api/purchase/returns`、`POST .../{id}/approve` | PUR-03、PUR-04、PUR-06 | D5 |
+| 三单匹配 | `/purchase/match` | `GET /api/purchase/match-results`、`POST .../run`、`GET .../{id}/diff`、`POST .../{id}/confirm`、`POST .../batch-confirm`、`POST .../{id}/differences`、`GET /api/purchase/estimates`、`/estimates/unmatched` | PUR-05、PUR-06 | D5 |
+| 采购价格 / 供应商绩效 | `/purchase/price`、`/purchase/supplier-score` | `GET /api/purchase/price-history`、`/trend`、`/comparison`、`/export`、`GET /api/purchase/supplier-scores`、`/detail`、`/export` | PUR-07、PUR-08 | D5 |
+| 即时库存 / 库存流水 | `/inventory/stock`、`/inventory/transaction` | `GET /api/inventory/stock`、`/stock/summary`、`/stock/{materialId}/distribution`、`/stock/available`、`GET /api/inventory/transactions`、`/transactions/export`、`/stock/export` | INV-01、INV-02、INV-03、INV-09 | D4 |
+| 库存盘点 | `/inventory/stock-take`、`/inventory/stock-take/detail/:id` | `GET/POST /api/inventory/stock-takes`、`GET .../{id}`、`PUT .../{id}/items`、`GET .../{id}/template`、`POST .../{id}/import`、`POST .../{id}/submit|approve`、`GET .../{id}/result` | INV-06、INV-09 | D4 |
+| 库位调拨 | `/inventory/transfer` | `GET/POST/PUT /api/inventory/transfers`、`POST .../{id}/approve|reverse`、`GET .../{id}/transactions` | INV-10 | D4 |
+| 批次追溯 | `/inventory/batch-trace` | `GET /api/inventory/batch-traces`、`/batch-traces/{id}/path` | INV-04 | D4 |
+| 库存 / 保质期 / 呆滞预警 | `/inventory/alert`、`/inventory/shelf-life`、`/inventory/slow-moving` | `GET /api/inventory/alerts`、`POST .../{id}/to-requisition|ignore`、`POST /api/inventory/alerts/batch-to-requisition`、`GET /api/inventory/shelf-life-alerts`、`POST .../{id}/release-request`、`GET /api/inventory/slow-moving`、`POST .../{id}/disposal` | INV-05、INV-07、INV-08 | D4 |
+| 期初库存建账 | `/inventory/opening` | `GET /api/inventory/opening-balances`、`/template`、`POST .../import`、`/validate`、`/submit` | INV-11 | D4（正式录入在阶段六） |
+| MRP 运算 | `/manufacturing/mrp` | `GET/PUT /api/manufacturing/mrp/params`、`POST /api/manufacturing/mrp/run`、`GET /mrp/tasks/{taskId}/progress`、`POST .../cancel`、`GET /mrp/plans`、`/plans/{id}`、`/plans/{id}/purchase-items`、`/manufacture-items`、`/missing-params`、`POST /mrp/plans/items/to-requisition|to-work-order`、`/plans/batch-convert`、`GET /plans/{id}/export` | MFG-01、MFG-02、MFG-03 | D7 |
+| 生产工单列表 / 编辑 / 详情 | `/manufacturing/work-order`、`/work-order/edit/:id?`、`/work-order/detail/:id` | `GET/POST/PUT /api/manufacturing/work-orders`、`POST .../{id}/release|cancel|close`、`DELETE .../{id}`、`GET .../{id}/progress`、`/materials`、`/reports`、`/cost`、`POST /api/manufacturing/work-orders/batch-release`、`GET .../export` | MFG-04、MFG-08、MFG-09 | D7 |
+| 生产领料 | `/manufacturing/issue` | `GET/POST/PUT /api/manufacturing/issues`、`POST .../{id}/submit|approve`、`GET .../{id}/stream` | MFG-05、BOM-02、BOM-04 | D7 |
+| 生产报工 | `/manufacturing/report` | `GET /api/manufacturing/reports`、`POST /api/manufacturing/work-orders/{id}/report`、`POST /api/manufacturing/reports/{id}/revoke` | MFG-06、MFG-09 | D7 |
+| 完工入库 | `/manufacturing/finish-inbound` | `GET /api/manufacturing/finish-inbounds`、`POST /api/manufacturing/work-orders/{id}/finish-inbound` | MFG-07 | D7 |
+| 委外加工 | `/manufacturing/outsourcing` | `GET/POST /api/manufacturing/outsourcing-orders`、`POST .../{id}/issue|receive|difference|difference/approve|settle` | MFG-10 | D7 |
+| 工单成本 | `/manufacturing/cost` | `GET /api/manufacturing/costs`、`POST .../calculate`、`GET .../tasks/{taskId}/progress`、`GET .../{workOrderId}/detail`、`/standard-vs-actual`、`/export` | MFG-08、FIN-05 | D8 |
+| 会计凭证 / 详情 / 科目表 | `/finance/voucher`、`/finance/voucher/detail/:id`、`/finance/subject` | `GET /api/finance/vouchers`（含 `/{id}`）、`POST .../{id}/post`、`/batch-post`、`POST .../{id}/reverse`、`GET .../{id}/source`、`/reverse-relations`、`/vouchers/export`、`GET /api/finance/subjects`、`/tree` | FIN-01、FIN-08 | D8 |
 | 存货核算 / 成本核算 | `/finance/inventory-accounting`、`/finance/cost-accounting` | `GET .../inventory-accounting`、`POST .../calculate`、`/recalculate`、`GET .../tasks/{taskId}/progress`、`GET .../{materialId}/transactions`、`/export`、`GET .../cost-accounting`、`POST .../calculate`、`GET .../standard-vs-actual`、`/export` | FIN-04、FIN-05 | D8 |
-| 应收账款 / 应付账款 | `/finance/receivable`、`/finance/payable` | `GET /api/v1/finance/receivables`、`/aging`、`/dunning`、`/reconciliation-export`、`GET /api/v1/finance/payables`、`/aging`、`/payment-plan` | FIN-02、FIN-03 | D8 |
-| 收付款管理 | `/finance/receipt-payment` | `GET/POST /api/v1/finance/receipts`、`POST .../{id}/write-off`、`/write-off/cancel`、`POST /api/v1/finance/payments/apply`、`POST .../{id}/approve`、`POST /api/v1/finance/payments`、`POST .../{id}/write-off` | FIN-02、FIN-03 | D8 |
-| 固定资产 | `/finance/fixed-asset` | `GET/POST/PUT /api/v1/finance/fixed-assets`、`POST .../depreciate`、`GET .../depreciation/preview`、`POST .../stock-take`、`POST .../{id}/disposal`、`GET .../export` | FIN-06 | D8 |
-| 期末处理 | `/finance/period-close` | `GET /api/v1/finance/periods`、`POST .../{period}/settle`、`GET .../checklist`、`POST .../{period}/close|reopen`、`GET .../settle/log` | FIN-08 | D8 |
-| 期初余额建账 | `/finance/opening-balance` | `GET /api/v1/finance/opening-balances`、`POST .../import`、`/validate`、`/submit` | FIN-09 | D8（正式录入在阶段六） |
-| 报表中心（6 类报表） | `/report/sales|purchase|inventory|manufacturing|finance` | 见 4.30 调用接口栏（各域报表查询接口 + `GET /api/v1/reports/finance/statements/{type}`） | RPT-02~RPT-06、FIN-07 | D9 |
-| 导出中心 | `/report/export-center` | `POST /api/v1/reports/export`、`GET /api/v1/reports/export/{id}/progress`、`GET /api/v1/reports/export-tasks`、`GET .../{id}/download`、`POST .../{id}/retry`、`DELETE .../{id}` | RPT-07 | D9 |
+| 应收账款 / 应付账款 | `/finance/receivable`、`/finance/payable` | `GET /api/finance/receivables`、`/aging`、`/dunning`、`/reconciliation-export`、`GET /api/finance/payables`、`/aging`、`/payment-plan` | FIN-02、FIN-03 | D8 |
+| 收付款管理 | `/finance/receipt-payment` | `GET/POST /api/finance/receipts`、`POST .../{id}/write-off`、`/write-off/cancel`、`POST /api/finance/payments/apply`、`POST .../{id}/approve`、`POST /api/finance/payments`、`POST .../{id}/write-off` | FIN-02、FIN-03 | D8 |
+| 固定资产 | `/finance/fixed-asset` | `GET/POST/PUT /api/finance/fixed-assets`、`POST .../depreciate`、`GET .../depreciation/preview`、`POST .../stock-take`、`POST .../{id}/disposal`、`GET .../export` | FIN-06 | D8 |
+| 期末处理 | `/finance/period-close` | `GET /api/finance/periods`、`POST .../{period}/settle`、`GET .../checklist`、`POST .../{period}/close|reopen`、`GET .../settle/log` | FIN-08 | D8 |
+| 期初余额建账 | `/finance/opening-balance` | `GET /api/finance/opening-balances`、`POST .../import`、`/validate`、`/submit` | FIN-09 | D8（正式录入在阶段六） |
+| 报表中心（6 类报表） | `/report/sales|purchase|inventory|manufacturing|finance` | 见 4.30 调用接口栏（各域报表查询接口 + `GET /api/reports/finance/statements/{type}`） | RPT-02~RPT-06、FIN-07 | D9 |
+| 导出中心 | `/report/export-center` | `POST /api/reports/export`、`GET /api/reports/export/{id}/progress`、`GET /api/reports/export-tasks`、`GET .../{id}/download`、`POST .../{id}/retry`、`DELETE .../{id}` | RPT-07 | D9 |
 | 无权限 / 不存在提示页 | `/403`、`/404` | 无独立接口（由路由与拦截器驱动） | SYS-03（403） | D2 |
 
 ### 7.1 需求覆盖结论（80 条逐域核对）
@@ -1604,7 +1604,7 @@ flowchart TD
 | UX-07 | 是否提供暗色主题？ | 中 | **本期不提供暗色主题**，仅提供亮色主题；不提供主题切换入口（Ant Design Vue 默认亮色 Token），避免徽标配色与对比度需要二次校准 | 已关闭 |
 | UX-08 | 键盘快捷操作覆盖到哪些范围？ | 中 | 范围限定为：单据页与表单（Enter/Tab/Shift+Tab/方向键/Esc/Ctrl+S）；查询表单 Enter 查询；弹窗 Esc 关闭；**不做全局快捷键（如 Ctrl+K 搜索）与自定义快捷键**（3.4、3.7） | 已关闭 |
 | UX-09 | 是否提供界面语言切换？ | 中 | **本期界面固定中文，不提供语言切换入口**；文案集中于 `locales/zh-CN.ts` 预留 i18n 抽取能力；与《概要设计说明书》E-03 结论一致（1.2 原则 10、R-04） | 已关闭 |
-| UX-10 | 前端 API 路径口径：旧《API设计与规范文档》示例为 `/api/...`，与 `/api/v1` 冲突 | 高 | **统一以 `/api/v1` 为准**（AGENTS.md 架构约束 + 《概要设计说明书》4.10 + 需求 6.2-1）；旧文档中的 `/api/...` 示例不再作为实现依据，接口设计文档定稿时按 `/api/v1` 登记 | 已关闭 |
+| UX-10 | 前端 API 路径口径：旧《API设计与规范文档》示例为 `/api/...`，与 `/api` 冲突 | 高 | **统一以 `/api` 为准**（AGENTS.md 架构约束 + 《概要设计说明书》4.10 + 需求 6.2-1）；旧文档中的 `/api/...` 示例不再作为实现依据，接口设计文档定稿时按 `/api` 登记 | 已关闭 |
 | UX-11 | 单据编号前缀口径：需求 SYS-07 示例为 `PR`（采购申请）/`RE`（收货单）/`RT-P`（采购退货），统一裁定为 `PA`/`GR`/`PR` | 高 | **以统一裁定为准**：采购申请 `PA`、采购收货单 `GR`、采购退货单 `PR`（其余前缀同裁定清单）；编号规则页展示对照表，编号生成与前端展示保持一致；差异在《接口设计文档》中同步登记 | 已关闭 |
 | UX-12 | 物料编码示例口径：旧文档中的 `MAT-IC-001` 是否继续使用？ | 中 | **作废**，统一使用 `2 位一级分类 + 2 位二级分类 + 6 位流水`（如 `01-03-000128`）；前端编码字段只读自动生成，手工录入旧格式被拒（MD-01、4.7） | 已关闭 |
 | UX-13 | 工单状态取值数量：数据库基线 5 态 vs 需求 6 态 | 高 | **以 6 态为准**：`0-计划 1-已下达 2-领料中 3-加工中 4-已完工 5-已关闭`；状态徽标、筛选、动作渲染全部按 6 态实现（3.2、4.22） | 已关闭 |
