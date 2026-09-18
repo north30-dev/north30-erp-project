@@ -136,7 +136,7 @@ erp-backend/                          # 后端根目录
 | 1.4 | 建表：sys_user、sys_role、sys_user_role | 数据库就绪 |
 | 1.5 | 编写 `erp-system`：登录接口（AuthController + AuthService） | 登录接口可调通 |
 
-**里程碑**：`curl -X POST /api/v1/auth/login` 返回 token ✅
+**里程碑**：`curl -X POST /api/auth/login` 返回 token ✅
 
 ### 第二阶段：系统管理完善（2-3 周）
 

@@ -130,4 +130,4 @@ mvn clean compile
 mvn spring-boot:run -pl erp-bootstrap
 ```
 
-编码约定速览：统一 UTF-8 + LF 换行符；统一响应体 `Result<T>`；金额计算必须 `BigDecimal`；增删改必须 `@Transactional(rollbackFor = Exception.class)`；关键写操作记录审计日志；API 前缀 `/api/v1`。完整规范见 [AGENTS.md](AGENTS.md) 与 [编码规范文档](docs/ERP系统开发编码规范文档.md)。
+编码约定速览：统一 UTF-8 + LF 换行符；统一响应体 `Result<T>`；金额计算必须 `BigDecimal`；增删改必须 `@Transactional(rollbackFor = Exception.class)`；关键写操作记录审计日志；API 前缀 `/api`。完整规范见 [AGENTS.md](AGENTS.md) 与 [编码规范文档](docs/ERP系统开发编码规范文档.md)。

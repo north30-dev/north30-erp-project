@@ -49,7 +49,7 @@
 - 命名：Entity 对应表名大驼峰（`PurOrder` ↔ `pur_order`）；DTO/VO 后缀 `DTO`/`VO`；实现类 `Impl` 后缀；枚举 `Enum` 后缀；工具类 `Util` 后缀。
 - 实体继承 `BaseEntity`（审计字段 id/create_by/create_time/update_by/update_time/version/is_deleted/remark 自动填充，勿重复定义）。
 - 表名前缀：`sys_`（系统）/ `base_`（基础数据）/ `pur_`（采购）/ `sal_`（销售）/ `inv_`（库存）/ `mf_`（生产）/ `fin_`（财务），单数形式。
-- API 前缀统一 `/api/v1`，RESTful 风格，动词场景走 POST（如 `/api/v1/purchase/orders/{id}/approve`）。
+- API 前缀统一 `/api`，RESTful 风格，动词场景走 POST（如 `/api/purchase/orders/{id}/approve`）。
 
 ## 6. 技术栈红线
 

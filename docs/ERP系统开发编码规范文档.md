@@ -99,14 +99,14 @@ me.north30.erp.[模块]              # erp-system / erp-base / erp-business（er
 
 | 操作 | HTTP方法 | URL示例 | 说明 |
 |------|---------|---------|------|
-| 分页查询 | GET | `/api/v1/purchase/orders?pageNum=1&pageSize=20` | 查询列表（带分页） |
-| 详情查询 | GET | `/api/v1/purchase/orders/{id}` | 查询单条记录 |
-| 新增 | POST | `/api/v1/purchase/orders` | 创建资源，Body传参 |
-| 修改 | PUT | `/api/v1/purchase/orders/{id}` | 全量/部分更新（推荐直接用POST亦可） |
-| 删除 | DELETE | `/api/v1/purchase/orders/{id}` | 逻辑删除（配合状态字段） |
-| 审核 | POST | `/api/v1/purchase/orders/{id}/approve` | 动词场景，走POST |
+| 分页查询 | GET | `/api/purchase/orders?pageNum=1&pageSize=20` | 查询列表（带分页） |
+| 详情查询 | GET | `/api/purchase/orders/{id}` | 查询单条记录 |
+| 新增 | POST | `/api/purchase/orders` | 创建资源，Body传参 |
+| 修改 | PUT | `/api/purchase/orders/{id}` | 全量/部分更新（推荐直接用POST亦可） |
+| 删除 | DELETE | `/api/purchase/orders/{id}` | 逻辑删除（配合状态字段） |
+| 审核 | POST | `/api/purchase/orders/{id}/approve` | 动词场景，走POST |
 
-> **重要**：禁止在URL中出现动词的复数形式与名词混淆，所有接口路径必须带有版本号 `/api/v1/...`。
+> **重要**：禁止在URL中出现动词的复数形式与名词混淆，所有接口统一前缀 `/api`，**不使用版本号前缀**（如 `/api/v1`）。
 
 ### 2.5 数据库操作规范（Mapper/MyBatis-Plus）
 
@@ -304,7 +304,7 @@ export interface PurchaseOrder {
 
 export function getOrderList(params: QueryParams) {
   return request<PageResult<PurchaseOrder>>({
-    url: '/api/v1/purchase/orders',
+    url: '/api/purchase/orders',
     method: 'get',
     params
   });
