@@ -12,18 +12,32 @@ public class BusinessException extends RuntimeException {
     /** 业务错误码 */
     private final int code;
 
+    /**
+     * 构造函数：根据业务错误码创建异常。
+     * @param errorCode 业务错误码
+     */
     public BusinessException(ErrorCode errorCode) {
         super(errorCode.getMessage());
         this.code = errorCode.getCode();
     }
 
+    /**
+     * 构造函数：根据业务错误码和自定义提示消息创建异常。
+     * @param errorCode 业务错误码
+     * @param customMessage 自定义提示消息
+     */
     public BusinessException(ErrorCode errorCode, String customMessage) {
         super(customMessage);
         this.code = errorCode.getCode();
     }
 
-    public BusinessException(int code, String message) {
-        super(message);
+    /**
+     * 构造函数：根据业务状态码和自定义提示消息创建异常。
+     * @param code 业务状态码
+     * @param customMessage 自定义提示消息
+     */
+    public BusinessException(int code, String customMessage) {
+        super(customMessage);
         this.code = code;
     }
 }

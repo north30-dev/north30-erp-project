@@ -16,7 +16,7 @@ import lombok.Getter;
  * </ul>
  */
 @Getter
-public enum ErrorCode {
+public enum CommonErrorCode implements ErrorCode {
 
     /** 操作成功 */
     SUCCESS(200, "操作成功"),
@@ -45,8 +45,18 @@ public enum ErrorCode {
     /** 默认提示消息 */
     private final String message;
 
-    ErrorCode(int code, String message) {
+    CommonErrorCode(int code, String message) {
         this.code = code;
         this.message = message;
+    }
+
+    @Override
+    public int getCode() {
+        return code;
+    }
+
+    @Override
+    public String getMessage() {
+        return message;
     }
 }
