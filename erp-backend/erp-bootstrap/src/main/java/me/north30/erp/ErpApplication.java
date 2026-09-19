@@ -1,5 +1,6 @@
 package me.north30.erp;
 
+import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
@@ -7,6 +8,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * ERP 系统唯一启动入口（全工程不允许出现第二个启动类）。
  */
 @SpringBootApplication
+@MapperScan("me.north30.erp.**.mapper")
 public class ErpApplication {
 
     public static void main(String[] args) {

@@ -50,6 +50,12 @@
                 <artifactId>mybatis-plus-jsqlparser</artifactId>
                 <version>${mybatis-plus.version}</version>
             </dependency>
+            <!-- MP 注解构件：erp-common 的 BaseEntity 仅依赖注解，不引入 MP 核心 -->
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-annotation</artifactId>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
             <!-- API 文档（Boot 4 下禁用 Knife4j，统一使用 springdoc-openapi 3.x） -->
             <dependency>
                 <groupId>org.springdoc</groupId>

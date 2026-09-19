@@ -20,9 +20,18 @@ spring:
 server:
   port: 8080
 
-# 预留：D2 引入 MyBatis-Plus 时启用 mapper-locations
-# mybatis-plus:
-#   mapper-locations: classpath*:/mapper/**/*.xml
+# MyBatis-Plus 配置（D1 骨架：逻辑删除 + 驼峰映射；分页/乐观锁插件见 MybatisPlusConfig）
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  global-config:
+    banner: false
+    db-config:
+      id-type: assign_id
+      logic-delete-field: isDeleted     # 逻辑删除字段（对应 BaseEntity.isDeleted，SMALLINT）
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    map-underscore-to-camel-case: true
 
 # 预留：D2 添加 JWT 配置（spring-boot-starter-oauth2-resource-server + Nimbus）
 # erp:
