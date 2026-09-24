@@ -30,6 +30,7 @@ public record Result<T>(
      * 辅助构造器：自动填充 timestamp 和 traceId。
      * 所有工厂方法都通过这个构造器创建实例。
      */
+    // TODO 异步线程/定时任务/MQ消费场景下 MDC 可能为空，后续用 TaskDecorator 统一传递
     private Result(int code, String message, T data) {
         this(code, message, data, System.currentTimeMillis(), MDC.get("traceId"));
     }

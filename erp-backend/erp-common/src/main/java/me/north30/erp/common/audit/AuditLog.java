@@ -15,11 +15,11 @@ import java.lang.annotation.Target;
 @Documented
 public @interface AuditLog {
 
-    /** 业务模块名称，如：采购订单 */
-    String module();
+    /** 业务模块，对齐错误码分区 */
+    AuditModuleEnum module();
 
-    /** 操作类型，如：创建、修改、审核、删除 */
-    String operateType();
+    /** 操作类型 */
+    OperateTypeEnum operateType();
 
     /** 单据编号/业务标识，如：PO20260918001 */
     String bizCode() default "";
