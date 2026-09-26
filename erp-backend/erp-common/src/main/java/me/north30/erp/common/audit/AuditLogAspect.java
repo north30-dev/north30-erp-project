@@ -37,7 +37,7 @@ public class AuditLogAspect {
             // D2 接入 JWT 后从安全上下文取当前用户
             String operator = "anonymous";
             log.info("审计日志 | 操作人: {} | IP: {} | URI: {} | 模块: {} | 操作类型: {} | 单据号: {} | 方法: {} | 耗时: {}ms",
-                    operator, ip, uri, auditLog.module(), auditLog.operateType(),
+                    operator, ip, uri, auditLog.module().getDesc(), auditLog.operateType().getDesc(),
                     auditLog.bizCode(), joinPoint.getSignature().toShortString(), cost);
         }
     }
