@@ -9,7 +9,7 @@ import me.north30.erp.system.core.vo.LoginLogVO;
 /**
  * 日志查询服务（SYS-01/SYS-05：审计日志只读查询 + 登录日志只读查询）。
  */
-public interface ISysLogQueryService {
+public interface SysLogQueryService {
 
     /**
      * 审计日志分页查询（接口文档 5.8.1，权限点 system:auditlog:list）。

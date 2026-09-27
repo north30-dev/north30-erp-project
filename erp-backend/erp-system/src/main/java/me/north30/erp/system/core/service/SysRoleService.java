@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * 角色服务接口。
  */
-public interface ISysRoleService {
+public interface SysRoleService {
 
     /**
      * 按主键查询。

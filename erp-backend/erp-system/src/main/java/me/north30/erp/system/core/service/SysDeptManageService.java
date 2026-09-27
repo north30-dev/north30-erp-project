@@ -11,7 +11,7 @@ import java.util.List;
 /**
  * 组织/部门管理服务接口（接口文档 5.4，29-32 号接口）。
  */
-public interface ISysDeptManageService {
+public interface SysDeptManageService {
 
     /**
      * 组织部门树查询：一次查全量后内存组树（禁 N+1）。

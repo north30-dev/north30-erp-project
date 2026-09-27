@@ -12,7 +12,7 @@ import me.north30.erp.system.core.entity.SysUser;
 import me.north30.erp.system.core.enums.SystemManageErrorCode;
 import me.north30.erp.system.core.mapper.SysDeptMapper;
 import me.north30.erp.system.core.mapper.SysUserMapper;
-import me.north30.erp.system.core.service.ISysDeptManageService;
+import me.north30.erp.system.core.service.SysDeptManageService;
 import me.north30.erp.system.core.util.DateTimeFormatUtil;
 import me.north30.erp.system.core.util.DeptTreeUtil;
 import me.north30.erp.system.core.vo.DeptMutationVO;
@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
-public class SysDeptManageServiceImpl implements ISysDeptManageService {
+public class SysDeptManageServiceImpl implements SysDeptManageService {
 
     /** 顶级组织父 ID */
     private static final long ROOT_PARENT_ID = 0L;

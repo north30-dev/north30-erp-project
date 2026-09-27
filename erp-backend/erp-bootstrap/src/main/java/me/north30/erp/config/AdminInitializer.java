@@ -7,11 +7,11 @@ import me.north30.erp.system.core.entity.SysRole;
 import me.north30.erp.system.core.entity.SysRoleMenu;
 import me.north30.erp.system.core.entity.SysUser;
 import me.north30.erp.system.core.entity.SysUserRole;
-import me.north30.erp.system.core.service.ISysMenuService;
-import me.north30.erp.system.core.service.ISysRoleMenuService;
-import me.north30.erp.system.core.service.ISysRoleService;
-import me.north30.erp.system.core.service.ISysUserRoleService;
-import me.north30.erp.system.core.service.ISysUserService;
+import me.north30.erp.system.core.service.SysMenuService;
+import me.north30.erp.system.core.service.SysRoleMenuService;
+import me.north30.erp.system.core.service.SysRoleService;
+import me.north30.erp.system.core.service.SysUserRoleService;
+import me.north30.erp.system.core.service.SysUserService;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -41,11 +41,11 @@ public class AdminInitializer implements ApplicationRunner {
     /** 超级管理员角色编码 */
     private static final String ADMIN_ROLE_CODE = "admin";
 
-    private final ISysUserService sysUserService;
-    private final ISysRoleService sysRoleService;
-    private final ISysMenuService sysMenuService;
-    private final ISysUserRoleService sysUserRoleService;
-    private final ISysRoleMenuService sysRoleMenuService;
+    private final SysUserService sysUserService;
+    private final SysRoleService sysRoleService;
+    private final SysMenuService sysMenuService;
+    private final SysUserRoleService sysUserRoleService;
+    private final SysRoleMenuService sysRoleMenuService;
     private final PasswordEncoder passwordEncoder;
 
     @Override

@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 /**
  * 用户服务接口。
  */
-public interface ISysUserService {
+public interface SysUserService {
 
     /**
      * 按用户名查询（逻辑删除过滤）。

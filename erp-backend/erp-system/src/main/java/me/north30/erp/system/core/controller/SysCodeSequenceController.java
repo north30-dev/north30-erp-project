@@ -5,7 +5,7 @@ import me.north30.erp.common.result.PageResult;
 import me.north30.erp.common.result.Result;
 import me.north30.erp.system.core.dto.CodeSequenceQueryDTO;
 import me.north30.erp.system.core.dto.CodeSequenceResetDTO;
-import me.north30.erp.system.core.service.ISysCodeSequenceService;
+import me.north30.erp.system.core.service.SysCodeSequenceService;
 import me.north30.erp.system.core.vo.CodeSequenceResetVO;
 import me.north30.erp.system.core.vo.CodeSequenceVO;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,9 +22,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/system/code-sequences")
 public class SysCodeSequenceController {
 
-    private final ISysCodeSequenceService sysCodeSequenceService;
+    private final SysCodeSequenceService sysCodeSequenceService;
 
-    public SysCodeSequenceController(ISysCodeSequenceService sysCodeSequenceService) {
+    public SysCodeSequenceController(SysCodeSequenceService sysCodeSequenceService) {
         this.sysCodeSequenceService = sysCodeSequenceService;
     }
 

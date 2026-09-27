@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * 角色-菜单关联服务接口。
  */
-public interface ISysRoleMenuService {
+public interface SysRoleMenuService {
 
     /**
      * 按角色 ID 集合查询关联。

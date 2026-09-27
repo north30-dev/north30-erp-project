@@ -1,6 +1,7 @@
 package me.north30.erp.system.core.service.impl;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import me.north30.erp.common.constant.RedisKeyConstants;
 import me.north30.erp.common.constant.TtlConstants;
@@ -12,28 +13,16 @@ import me.north30.erp.common.jwt.JwtTokenProvider;
 import me.north30.erp.system.core.dto.ChangePasswordDTO;
 import me.north30.erp.system.core.dto.LoginDTO;
 import me.north30.erp.system.core.dto.RefreshTokenDTO;
-import me.north30.erp.system.core.entity.SysDept;
 import me.north30.erp.system.core.entity.SysLoginLog;
-import me.north30.erp.system.core.entity.SysMenu;
-import me.north30.erp.system.core.entity.SysRole;
-import me.north30.erp.system.core.entity.SysRoleMenu;
 import me.north30.erp.system.core.entity.SysUser;
-import me.north30.erp.system.core.entity.SysUserRole;
 import me.north30.erp.system.core.enums.LoginTypeEnum;
 import me.north30.erp.system.core.security.LoginUser;
 import me.north30.erp.system.core.security.SecurityUtils;
 import me.north30.erp.system.core.service.AuthService;
-import me.north30.erp.system.core.service.ISysDeptService;
-import me.north30.erp.system.core.service.ISysLoginLogService;
-import me.north30.erp.system.core.service.ISysMenuService;
-import me.north30.erp.system.core.service.ISysRoleMenuService;
-import me.north30.erp.system.core.service.ISysRoleService;
-import me.north30.erp.system.core.service.ISysUserRoleService;
-import me.north30.erp.system.core.service.ISysUserService;
-import me.north30.erp.system.core.service.UserSecurityQueryService;
+import me.north30.erp.system.core.service.SysLoginLogService;
+import me.north30.erp.system.core.service.UserAccessService;
 import me.north30.erp.system.core.service.dto.UserSecurityData;
 import me.north30.erp.system.core.util.CaptchaUtil;
-import me.north30.erp.system.core.util.MenuTreeUtil;
 import me.north30.erp.system.core.vo.CaptchaVO;
 import me.north30.erp.system.core.vo.ChangePasswordVO;
 import me.north30.erp.system.core.vo.CurrentUserVO;
@@ -52,70 +41,37 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 /**
  * 认证授权服务实现。
  * <p>令牌失效机制（详细设计 2.5/ADR-11）：Redis 会话白名单 + 短 TTL；
- * 数据库写操作与 Redis 操作分离，事务提交后再写缓存；Redis 不可用时降级仅验签并 WARN。</p>
+ * 数据库写操作与 Redis 操作分离，事务提交后再写缓存；Redis 不可用时降级仅验签并 WARN。
+ * 用户/部门/角色/菜单/权限点/数据范围取数编排统一收敛至 {@link UserAccessService}，
+ * 本类只依赖该聚合服务完成认证与账号自治流程。</p>
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    /** 数据范围档位按"最宽"排序：1-全部 2-本组织及下级 3-本组织 4-本部门及下级 5-本部门 6-仅本人 9-自定义 */
-    private static final List<Integer> DATA_SCOPE_ORDER = List.of(1, 2, 3, 4, 5, 6, 9);
-
     private final StringRedisTemplate stringRedisTemplate;
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
-    private final ISysUserService sysUserService;
-    private final ISysLoginLogService sysLoginLogService;
-    private final ISysDeptService sysDeptService;
-    private final ISysUserRoleService sysUserRoleService;
-    private final ISysRoleService sysRoleService;
-    private final ISysRoleMenuService sysRoleMenuService;
-    private final ISysMenuService sysMenuService;
-    private final UserSecurityQueryService userSecurityQueryService;
-
-    public AuthServiceImpl(StringRedisTemplate stringRedisTemplate,
-                           JwtTokenProvider jwtTokenProvider,
-                           PasswordEncoder passwordEncoder,
-                           ISysUserService sysUserService,
-                           ISysLoginLogService sysLoginLogService,
-                           ISysDeptService sysDeptService,
-                           ISysUserRoleService sysUserRoleService,
-                           ISysRoleService sysRoleService,
-                           ISysRoleMenuService sysRoleMenuService,
-                           ISysMenuService sysMenuService,
-                           UserSecurityQueryService userSecurityQueryService) {
-        this.stringRedisTemplate = stringRedisTemplate;
-        this.jwtTokenProvider = jwtTokenProvider;
-        this.passwordEncoder = passwordEncoder;
-        this.sysUserService = sysUserService;
-        this.sysLoginLogService = sysLoginLogService;
-        this.sysDeptService = sysDeptService;
-        this.sysUserRoleService = sysUserRoleService;
-        this.sysRoleService = sysRoleService;
-        this.sysRoleMenuService = sysRoleMenuService;
-        this.sysMenuService = sysMenuService;
-        this.userSecurityQueryService = userSecurityQueryService;
-    }
+    private final UserAccessService userAccessService;
+    private final SysLoginLogService sysLoginLogService;
 
     @Override
     public CaptchaVO createCaptcha() {
-        String captchaKey = java.util.UUID.randomUUID().toString().replace("-", "");
+        String captchaKey = UUID.randomUUID().toString().replace("-", "");
         String code = CaptchaUtil.randomCode();
         try {
             stringRedisTemplate.opsForValue().set(RedisKeyConstants.captchaKey(captchaKey), code,
@@ -140,7 +96,7 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(SystemErrorCode.CAPTCHA_ERROR);
         }
         // 2. 账号存在性校验（登录失败统一提示 18001，避免泄露账号存在性）
-        SysUser user = sysUserService.getByUsername(dto.username());
+        SysUser user = userAccessService.getByUsername(dto.username());
         if (user == null) {
             recordLoginLog(null, dto.username(), LoginTypeEnum.LOGIN_FAIL, false, "用户名或密码错误");
             throw new BusinessException(SystemErrorCode.USERNAME_PASSWORD_ERROR);
@@ -182,7 +138,7 @@ public class AuthServiceImpl implements AuthService {
         // 7. 写登录日志 + 更新最后登录信息（各写操作独立事务）
         recordLoginLog(user.getId(), user.getUsername(), LoginTypeEnum.LOGIN, true, null);
         LocalDateTime now = LocalDateTime.now();
-        sysUserService.updateLastLogin(user.getId(), resolveClientIp(), now);
+        userAccessService.updateLastLogin(user.getId(), resolveClientIp(), now);
         // 8. 事务提交后写 Redis 会话白名单（登出/停用即时失效的关键）
         try {
             stringRedisTemplate.opsForValue().set(RedisKeyConstants.sessionKey(user.getId(), access.jti()),
@@ -195,8 +151,8 @@ public class AuthServiceImpl implements AuthService {
         // 9. 组装返回
         boolean passwordExpired = isPasswordExpired(user.getPasswordUpdateTime());
         LoginVO.LoginUserInfoVO userInfo = new LoginVO.LoginUserInfoVO(user.getId(), user.getUsername(),
-            user.getRealName(), user.getDeptId(), resolveDeptName(user.getDeptId()),
-            loadRoleCodes(user.getId()), user.getIsAdmin(), passwordExpired);
+            user.getRealName(), user.getDeptId(), userAccessService.getDeptName(user.getDeptId()),
+            userAccessService.listRoleCodes(user.getId()), user.getIsAdmin(), passwordExpired);
         return new LoginVO(access.token(), "Bearer", (int) access.ttlSeconds(), refresh.token(), userInfo);
     }
 
@@ -230,7 +186,7 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(CommonErrorCode.REFRESH_TOKEN_INVALID);
         }
         // 4. 账号状态校验
-        SysUser user = sysUserService.getById(userId);
+        SysUser user = userAccessService.getUserById(userId);
         if (user == null || user.getStatus() == null || user.getStatus() != 1) {
             throw new BusinessException(SystemErrorCode.ACCOUNT_DISABLED);
         }
@@ -266,26 +222,25 @@ public class AuthServiceImpl implements AuthService {
     @Transactional(readOnly = true)
     public CurrentUserVO currentUser() {
         LoginUser currentUser = SecurityUtils.requireCurrentUser();
-        SysUser user = sysUserService.getById(currentUser.userId());
+        SysUser user = userAccessService.getUserById(currentUser.userId());
         if (user == null) {
             throw new BusinessException(SystemErrorCode.USER_NOT_FOUND, "用户 " + currentUser.username() + " 不存在");
         }
-        UserSecurityData securityData = userSecurityQueryService.loadByUserId(user.getId());
+        UserSecurityData securityData = userAccessService.loadByUserId(user.getId());
         List<String> roleCodes = securityData != null ? securityData.roleCodes() : List.of();
-        SysDept dept = user.getDeptId() != null ? sysDeptService.getById(user.getDeptId()) : null;
-        List<SysRole> roles = loadRoles(user.getId());
+        Integer dataScope = securityData != null ? securityData.widestDataScope() : 6;
         return new CurrentUserVO(
             user.getId(),
             user.getUserCode(),
             user.getUsername(),
             user.getRealName(),
             user.getDeptId(),
-            dept != null ? dept.getDeptName() : null,
+            userAccessService.getDeptName(user.getDeptId()),
             maskPhone(user.getPhone()),
             user.getEmail(),
             parseWarehouseIds(user.getWarehouseIds()),
             roleCodes,
-            resolveWidestDataScope(roles),
+            dataScope,
             user.getLastLoginTime() != null ? user.getLastLoginTime().format(DATETIME_FORMATTER) : null,
             user.getLastLoginIp()
         );
@@ -295,34 +250,18 @@ public class AuthServiceImpl implements AuthService {
     @Transactional(readOnly = true)
     public List<MenuTreeVO> currentUserMenus() {
         LoginUser currentUser = SecurityUtils.requireCurrentUser();
-        SysUser user = sysUserService.getById(currentUser.userId());
+        SysUser user = userAccessService.getUserById(currentUser.userId());
         if (user == null) {
             throw new BusinessException(SystemErrorCode.USER_NOT_FOUND, "用户 " + currentUser.username() + " 不存在");
         }
-        // 一次性查出可见菜单（目录/菜单两级），内存组树，避免 N+1
-        List<SysMenu> menus;
-        if (isAdmin(user)) {
-            menus = sysMenuService.listEnabled().stream()
-                .filter(menu -> menu.getMenuType() != null && menu.getMenuType() != 3)
-                .toList();
-        } else {
-            List<Long> roleIds = sysUserRoleService.listByUserId(user.getId()).stream()
-                .map(SysUserRole::getRoleId)
-                .toList();
-            Set<Long> menuIds = new LinkedHashSet<>(sysRoleMenuIdsByRoles(roleIds));
-            // 补齐父级链（角色可能只勾选叶子菜单）
-            Set<Long> resultIds = expandWithAncestors(menuIds);
-            menus = sysMenuService.listEnabledByIds(resultIds).stream()
-                .filter(menu -> menu.getMenuType() != null && menu.getMenuType() != 3)
-                .toList();
-        }
-        return MenuTreeUtil.buildTree(menus.stream().map(MenuTreeUtil::toVO).toList());
+        // 菜单取数编排收敛至聚合服务：admin 全量组树，普通用户按角色并集一次查全量启用菜单内存补父链
+        return userAccessService.listMenuTree(user.getId(), isAdmin(user));
     }
 
     @Override
     public UserPermsVO currentUserPerms() {
         LoginUser currentUser = SecurityUtils.requireCurrentUser();
-        UserSecurityData data = userSecurityQueryService.loadByUserId(currentUser.userId());
+        UserSecurityData data = userAccessService.loadByUserId(currentUser.userId());
         if (data == null) {
             throw new BusinessException(SystemErrorCode.USER_NOT_FOUND, "用户 " + currentUser.username() + " 不存在");
         }
@@ -332,7 +271,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public ChangePasswordVO changePassword(ChangePasswordDTO dto) {
         LoginUser currentUser = SecurityUtils.requireCurrentUser();
-        SysUser user = sysUserService.getById(currentUser.userId());
+        SysUser user = userAccessService.getUserById(currentUser.userId());
         if (user == null) {
             throw new BusinessException(SystemErrorCode.USER_NOT_FOUND, "用户 " + currentUser.username() + " 不存在");
         }
@@ -352,7 +291,7 @@ public class AuthServiceImpl implements AuthService {
         LocalDateTime now = LocalDateTime.now();
         user.setPassword(passwordEncoder.encode(dto.newPassword()));
         user.setPasswordUpdateTime(now);
-        sysUserService.updateUser(user);
+        userAccessService.updateUser(user);
         invalidateUserSessions(user.getId());
         log.info("用户修改密码成功，已强制重新登录 | userId: {}", user.getId());
         return new ChangePasswordVO(now.format(DATETIME_FORMATTER), Boolean.TRUE);
@@ -407,80 +346,6 @@ public class AuthServiceImpl implements AuthService {
     }
 
     /**
-     * 查询用户角色编码集合（两次批量查询，无循环查库）。
-     */
-    private List<String> loadRoleCodes(Long userId) {
-        return loadRoles(userId).stream()
-            .map(SysRole::getRoleCode)
-            .toList();
-    }
-
-    /**
-     * 查询用户启用角色集合（两次批量查询，无循环查库）。
-     */
-    private List<SysRole> loadRoles(Long userId) {
-        List<Long> roleIds = sysUserRoleService.listByUserId(userId).stream()
-            .map(SysUserRole::getRoleId)
-            .toList();
-        return sysRoleService.listByIds(roleIds).stream()
-            .filter(role -> role.getStatus() != null && role.getStatus() == 1)
-            .toList();
-    }
-
-    /**
-     * 按角色集合查询角色-菜单关联的菜单 ID（一次 IN 批量查询，无循环查库）。
-     */
-    private List<Long> sysRoleMenuIdsByRoles(List<Long> roleIds) {
-        if (roleIds.isEmpty()) {
-            return List.of();
-        }
-        return sysRoleMenuService.listByRoleIds(roleIds).stream()
-            .map(SysRoleMenu::getMenuId)
-            .toList();
-    }
-
-    /**
-     * 补齐菜单父级链：从已有菜单出发向上收集祖先 ID。
-     */
-    private Set<Long> expandWithAncestors(Set<Long> menuIds) {
-        Set<Long> result = new HashSet<>(menuIds);
-        if (menuIds.isEmpty()) {
-            return result;
-        }
-        Set<Long> pending = new HashSet<>(menuIds);
-        while (!pending.isEmpty()) {
-            Set<Long> parents = sysMenuService.listEnabledByIds(pending).stream()
-                .map(SysMenu::getParentId)
-                .filter(pid -> pid != null && pid != 0)
-                .collect(java.util.stream.Collectors.toSet());
-            parents.removeAll(result);
-            if (parents.isEmpty()) {
-                break;
-            }
-            result.addAll(parents);
-            pending = parents;
-        }
-        return result;
-    }
-
-    /**
-     * 多角色取最宽数据范围档位（1-全部 > 2 > 3 > 4 > 5 > 6 > 9-自定义；无角色按"仅本人"）。
-     */
-    private Integer resolveWidestDataScope(List<SysRole> roles) {
-        if (roles.isEmpty()) {
-            return 6;
-        }
-        Set<Integer> scopes = roles.stream()
-            .map(SysRole::getDataScope)
-            .filter(scope -> scope != null)
-            .collect(Collectors.toSet());
-        return DATA_SCOPE_ORDER.stream()
-            .filter(scopes::contains)
-            .findFirst()
-            .orElse(9);
-    }
-
-    /**
      * 记录登录日志（独立写事务，失败不影响主流程语义由调用方决定）。
      */
     private void recordLoginLog(Long userId, String username, LoginTypeEnum loginType,
@@ -519,14 +384,6 @@ public class AuthServiceImpl implements AuthService {
         if (keys != null && !keys.isEmpty()) {
             stringRedisTemplate.delete(keys);
         }
-    }
-
-    private String resolveDeptName(Long deptId) {
-        if (deptId == null) {
-            return null;
-        }
-        SysDept dept = sysDeptService.getById(deptId);
-        return dept != null ? dept.getDeptName() : null;
     }
 
     /**

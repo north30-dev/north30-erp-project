@@ -6,7 +6,7 @@ import me.north30.erp.common.result.Result;
 import me.north30.erp.system.core.dto.DictItemCreateDTO;
 import me.north30.erp.system.core.dto.DictItemQueryDTO;
 import me.north30.erp.system.core.dto.DictItemUpdateDTO;
-import me.north30.erp.system.core.service.ISysDictItemService;
+import me.north30.erp.system.core.service.SysDictItemService;
 import me.north30.erp.system.core.vo.DictItemVO;
 import me.north30.erp.system.core.vo.MutationVO;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,9 +26,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/system/dict-items")
 public class SysDictItemController {
 
-    private final ISysDictItemService sysDictItemService;
+    private final SysDictItemService sysDictItemService;
 
-    public SysDictItemController(ISysDictItemService sysDictItemService) {
+    public SysDictItemController(SysDictItemService sysDictItemService) {
         this.sysDictItemService = sysDictItemService;
     }
 

@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import me.north30.erp.system.core.entity.SysRoleMenu;
 import me.north30.erp.system.core.mapper.SysRoleMenuMapper;
-import me.north30.erp.system.core.service.ISysRoleMenuService;
+import me.north30.erp.system.core.service.SysRoleMenuService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -17,7 +17,7 @@ import java.util.List;
  */
 @Service
 @RequiredArgsConstructor
-public class SysRoleMenuServiceImpl implements ISysRoleMenuService {
+public class SysRoleMenuServiceImpl implements SysRoleMenuService {
 
     private final SysRoleMenuMapper sysRoleMenuMapper;
 

@@ -2,7 +2,7 @@ package me.north30.erp.system.core.security;
 
 import me.north30.erp.common.constant.RedisKeyConstants;
 import me.north30.erp.common.jwt.JwtTokenProvider;
-import me.north30.erp.system.core.service.UserSecurityQueryService;
+import me.north30.erp.system.core.service.UserAccessService;
 import me.north30.erp.system.core.service.dto.UserSecurityData;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
@@ -26,12 +26,12 @@ import java.util.Set;
 public class JwtLoginUserConverter implements Converter<Jwt, AbstractAuthenticationToken> {
 
     private final StringRedisTemplate stringRedisTemplate;
-    private final UserSecurityQueryService userSecurityQueryService;
+    private final UserAccessService userAccessService;
 
     public JwtLoginUserConverter(StringRedisTemplate stringRedisTemplate,
-                                 UserSecurityQueryService userSecurityQueryService) {
+                                 UserAccessService userAccessService) {
         this.stringRedisTemplate = stringRedisTemplate;
-        this.userSecurityQueryService = userSecurityQueryService;
+        this.userAccessService = userAccessService;
     }
 
     @Override
@@ -55,7 +55,7 @@ public class JwtLoginUserConverter implements Converter<Jwt, AbstractAuthenticat
             throw new InsufficientAuthenticationException("登录会话不存在或已失效");
         }
         // 3. 账号状态 + 角色权限点实时查询（用户停用 → 401）
-        UserSecurityData data = userSecurityQueryService.loadByUserId(userId);
+        UserSecurityData data = userAccessService.loadByUserId(userId);
         if (data == null || data.status() == null || data.status() != 1) {
             throw new DisabledException("账号已停用或不存在");
         }

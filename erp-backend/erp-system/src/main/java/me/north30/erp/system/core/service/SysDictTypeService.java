@@ -10,7 +10,7 @@ import me.north30.erp.system.core.vo.MutationVO;
 /**
  * 字典类型管理服务接口（接口文档 5.5.1-5.5.4，33-36 号接口）。
  */
-public interface ISysDictTypeService {
+public interface SysDictTypeService {
 
     /**
      * 字典类型分页查询，携带字典项数量（一条分组统计，禁 N+1）。

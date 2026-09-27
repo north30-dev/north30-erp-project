@@ -11,7 +11,7 @@ import me.north30.erp.system.core.vo.MutationVO;
 /**
  * 系统参数管理服务接口（接口文档 5.6，41-44 号接口）。
  */
-public interface ISysConfigService {
+public interface SysConfigService {
 
     /**
      * 系统参数分页查询。

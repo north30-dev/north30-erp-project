@@ -2,7 +2,7 @@ package me.north30.erp.system.core.controller;
 
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.common.result.Result;
-import me.north30.erp.system.core.service.ISysImportTaskService;
+import me.north30.erp.system.core.service.SysImportTaskService;
 import me.north30.erp.system.core.vo.ImportResultVO;
 import me.north30.erp.system.core.vo.ImportTaskVO;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,9 +21,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/system/imports")
 public class ImportTaskController {
 
-    private final ISysImportTaskService importTaskService;
+    private final SysImportTaskService importTaskService;
 
-    public ImportTaskController(ISysImportTaskService importTaskService) {
+    public ImportTaskController(SysImportTaskService importTaskService) {
         this.importTaskService = importTaskService;
     }
 

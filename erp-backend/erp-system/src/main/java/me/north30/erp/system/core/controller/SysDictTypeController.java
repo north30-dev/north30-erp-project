@@ -6,7 +6,7 @@ import me.north30.erp.common.result.Result;
 import me.north30.erp.system.core.dto.DictTypeCreateDTO;
 import me.north30.erp.system.core.dto.DictTypeQueryDTO;
 import me.north30.erp.system.core.dto.DictTypeUpdateDTO;
-import me.north30.erp.system.core.service.ISysDictTypeService;
+import me.north30.erp.system.core.service.SysDictTypeService;
 import me.north30.erp.system.core.vo.DictTypeVO;
 import me.north30.erp.system.core.vo.MutationVO;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,9 +26,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/system/dict-types")
 public class SysDictTypeController {
 
-    private final ISysDictTypeService sysDictTypeService;
+    private final SysDictTypeService sysDictTypeService;
 
-    public SysDictTypeController(ISysDictTypeService sysDictTypeService) {
+    public SysDictTypeController(SysDictTypeService sysDictTypeService) {
         this.sysDictTypeService = sysDictTypeService;
     }
 

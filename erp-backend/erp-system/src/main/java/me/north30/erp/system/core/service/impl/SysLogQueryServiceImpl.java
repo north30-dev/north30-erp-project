@@ -15,7 +15,7 @@ import me.north30.erp.system.core.entity.SysLoginLog;
 import me.north30.erp.system.core.enums.SystemManageErrorCode;
 import me.north30.erp.system.core.mapper.AuditLogQueryMapper;
 import me.north30.erp.system.core.mapper.SysLoginLogMapper;
-import me.north30.erp.system.core.service.ISysLogQueryService;
+import me.north30.erp.system.core.service.SysLogQueryService;
 import me.north30.erp.system.core.vo.AuditLogVO;
 import me.north30.erp.system.core.vo.LoginLogVO;
 import org.springframework.stereotype.Service;
@@ -41,7 +41,7 @@ import java.util.TreeSet;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class SysLogQueryServiceImpl implements ISysLogQueryService {
+public class SysLogQueryServiceImpl implements SysLogQueryService {
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");

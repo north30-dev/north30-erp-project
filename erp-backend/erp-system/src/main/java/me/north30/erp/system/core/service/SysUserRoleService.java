@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * 用户-角色关联服务接口。
  */
-public interface ISysUserRoleService {
+public interface SysUserRoleService {
 
     /**
      * 按用户 ID 查询关联。

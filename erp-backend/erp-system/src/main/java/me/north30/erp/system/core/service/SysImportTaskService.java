@@ -9,7 +9,7 @@ import me.north30.erp.system.core.vo.ImportTaskVO;
  * <p>D2 口径：schema.sql 的 76 张表中未建导入任务表（无 sys_import_task），
  * 写入能力属后续模块（物料/期初库存导入为 D3/D4 落地），本阶段仅提供查询接口骨架。</p>
  */
-public interface ISysImportTaskService {
+public interface SysImportTaskService {
 
     /**
      * 导入任务分页查询（D2 无任务表，返回空分页）。

@@ -10,7 +10,7 @@ import me.north30.erp.system.core.vo.CodeSequenceVO;
  * 单据编号序列服务接口（接口文档 5.7，45-46 号接口）。
  * <p>仅提供查询与重置，发号逻辑由后续业务模块实现。</p>
  */
-public interface ISysCodeSequenceService {
+public interface SysCodeSequenceService {
 
     /**
      * 编号序列分页查询，携带下一编号预览。

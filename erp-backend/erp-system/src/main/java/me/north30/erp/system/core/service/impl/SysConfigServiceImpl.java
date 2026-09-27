@@ -13,7 +13,7 @@ import me.north30.erp.system.core.dto.ConfigUpdateDTO;
 import me.north30.erp.system.core.entity.SysConfig;
 import me.north30.erp.system.core.enums.SystemManageErrorCode;
 import me.north30.erp.system.core.mapper.SysConfigMapper;
-import me.north30.erp.system.core.service.ISysConfigService;
+import me.north30.erp.system.core.service.SysConfigService;
 import me.north30.erp.system.core.util.DateTimeFormatUtil;
 import me.north30.erp.system.core.vo.ConfigUpdateVO;
 import me.north30.erp.system.core.vo.ConfigVO;
@@ -35,7 +35,7 @@ import java.util.Map;
  */
 @Service
 @RequiredArgsConstructor
-public class SysConfigServiceImpl implements ISysConfigService {
+public class SysConfigServiceImpl implements SysConfigService {
 
     /** 默认启用状态 */
     private static final int STATUS_ENABLED = 1;

@@ -4,7 +4,7 @@ import jakarta.validation.Valid;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.common.result.Result;
 import me.north30.erp.system.core.dto.LoginLogQueryDTO;
-import me.north30.erp.system.core.service.ISysLogQueryService;
+import me.north30.erp.system.core.service.SysLogQueryService;
 import me.north30.erp.system.core.vo.LoginLogVO;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,9 +18,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/system/login-logs")
 public class LoginLogController {
 
-    private final ISysLogQueryService logQueryService;
+    private final SysLogQueryService logQueryService;
 
-    public LoginLogController(ISysLogQueryService logQueryService) {
+    public LoginLogController(SysLogQueryService logQueryService) {
         this.logQueryService = logQueryService;
     }
 

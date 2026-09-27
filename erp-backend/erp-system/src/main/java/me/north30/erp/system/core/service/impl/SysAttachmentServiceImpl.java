@@ -9,7 +9,7 @@ import me.north30.erp.system.core.enums.SystemManageErrorCode;
 import me.north30.erp.system.core.mapper.SysAttachmentMapper;
 import me.north30.erp.system.core.security.LoginUser;
 import me.north30.erp.system.core.security.SecurityUtils;
-import me.north30.erp.system.core.service.ISysAttachmentService;
+import me.north30.erp.system.core.service.SysAttachmentService;
 import me.north30.erp.system.core.vo.AttachmentDeleteVO;
 import me.north30.erp.system.core.vo.AttachmentDownloadVO;
 import me.north30.erp.system.core.vo.AttachmentVO;
@@ -36,7 +36,7 @@ import java.util.UUID;
  */
 @Slf4j
 @Service
-public class SysAttachmentServiceImpl implements ISysAttachmentService {
+public class SysAttachmentServiceImpl implements SysAttachmentService {
 
     /** 单文件大小上限 20MB（接口文档 5.9.1） */
     private static final long MAX_FILE_SIZE = 20L * 1024 * 1024;

@@ -16,7 +16,7 @@ import me.north30.erp.system.core.entity.SysDictType;
 import me.north30.erp.system.core.enums.SystemManageErrorCode;
 import me.north30.erp.system.core.mapper.SysDictItemMapper;
 import me.north30.erp.system.core.mapper.SysDictTypeMapper;
-import me.north30.erp.system.core.service.ISysDictTypeService;
+import me.north30.erp.system.core.service.SysDictTypeService;
 import me.north30.erp.system.core.util.DateTimeFormatUtil;
 import me.north30.erp.system.core.vo.DictTypeVO;
 import me.north30.erp.system.core.vo.MutationVO;
@@ -34,7 +34,7 @@ import java.util.Map;
  */
 @Service
 @RequiredArgsConstructor
-public class SysDictTypeServiceImpl implements ISysDictTypeService {
+public class SysDictTypeServiceImpl implements SysDictTypeService {
 
     /** 默认启用状态 */
     private static final int STATUS_ENABLED = 1;

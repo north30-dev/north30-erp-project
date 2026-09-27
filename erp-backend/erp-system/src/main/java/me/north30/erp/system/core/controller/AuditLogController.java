@@ -4,7 +4,7 @@ import jakarta.validation.Valid;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.common.result.Result;
 import me.north30.erp.system.core.dto.AuditLogQueryDTO;
-import me.north30.erp.system.core.service.ISysLogQueryService;
+import me.north30.erp.system.core.service.SysLogQueryService;
 import me.north30.erp.system.core.vo.AuditLogVO;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,9 +20,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/system/audit-logs")
 public class AuditLogController {
 
-    private final ISysLogQueryService logQueryService;
+    private final SysLogQueryService logQueryService;
 
-    public AuditLogController(ISysLogQueryService logQueryService) {
+    public AuditLogController(SysLogQueryService logQueryService) {
         this.logQueryService = logQueryService;
     }
 

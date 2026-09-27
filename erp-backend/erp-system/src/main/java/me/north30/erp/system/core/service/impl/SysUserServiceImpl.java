@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import me.north30.erp.system.core.entity.SysUser;
 import me.north30.erp.system.core.mapper.SysUserMapper;
-import me.north30.erp.system.core.service.ISysUserService;
+import me.north30.erp.system.core.service.SysUserService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
  */
 @Service
 @RequiredArgsConstructor
-public class SysUserServiceImpl implements ISysUserService {
+public class SysUserServiceImpl implements SysUserService {
 
     private final SysUserMapper sysUserMapper;
 

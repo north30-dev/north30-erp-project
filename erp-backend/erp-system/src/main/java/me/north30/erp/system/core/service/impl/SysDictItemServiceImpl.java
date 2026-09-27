@@ -15,7 +15,7 @@ import me.north30.erp.system.core.entity.SysDictType;
 import me.north30.erp.system.core.enums.SystemManageErrorCode;
 import me.north30.erp.system.core.mapper.SysDictItemMapper;
 import me.north30.erp.system.core.mapper.SysDictTypeMapper;
-import me.north30.erp.system.core.service.ISysDictItemService;
+import me.north30.erp.system.core.service.SysDictItemService;
 import me.north30.erp.system.core.vo.DictItemVO;
 import me.north30.erp.system.core.vo.MutationVO;
 import org.springframework.stereotype.Service;
@@ -30,7 +30,7 @@ import java.util.List;
  */
 @Service
 @RequiredArgsConstructor
-public class SysDictItemServiceImpl implements ISysDictItemService {
+public class SysDictItemServiceImpl implements SysDictItemService {
 
     /** 默认语言（E-03 预留，本期仅 zh-CN） */
     private static final String DEFAULT_LANG = "zh-CN";

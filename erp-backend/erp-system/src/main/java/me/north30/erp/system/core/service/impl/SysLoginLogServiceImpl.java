@@ -3,7 +3,7 @@ package me.north30.erp.system.core.service.impl;
 import lombok.RequiredArgsConstructor;
 import me.north30.erp.system.core.entity.SysLoginLog;
 import me.north30.erp.system.core.mapper.SysLoginLogMapper;
-import me.north30.erp.system.core.service.ISysLoginLogService;
+import me.north30.erp.system.core.service.SysLoginLogService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 @RequiredArgsConstructor
-public class SysLoginLogServiceImpl implements ISysLoginLogService {
+public class SysLoginLogServiceImpl implements SysLoginLogService {
 
     private final SysLoginLogMapper sysLoginLogMapper;
 

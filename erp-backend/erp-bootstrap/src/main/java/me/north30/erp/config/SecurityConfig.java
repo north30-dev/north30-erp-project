@@ -1,7 +1,6 @@
 package me.north30.erp.config;
 
 import tools.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import me.north30.erp.common.exception.CommonErrorCode;

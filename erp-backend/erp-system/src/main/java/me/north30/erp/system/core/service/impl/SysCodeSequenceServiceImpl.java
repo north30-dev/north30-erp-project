@@ -16,7 +16,7 @@ import me.north30.erp.system.core.dto.CodeSequenceResetDTO;
 import me.north30.erp.system.core.entity.SysCodeSequence;
 import me.north30.erp.system.core.enums.SystemManageErrorCode;
 import me.north30.erp.system.core.mapper.SysCodeSequenceMapper;
-import me.north30.erp.system.core.service.ISysCodeSequenceService;
+import me.north30.erp.system.core.service.SysCodeSequenceService;
 import me.north30.erp.system.core.util.DateTimeFormatUtil;
 import me.north30.erp.system.core.vo.CodeSequenceResetVO;
 import me.north30.erp.system.core.vo.CodeSequenceVO;
@@ -34,7 +34,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class SysCodeSequenceServiceImpl implements ISysCodeSequenceService {
+public class SysCodeSequenceServiceImpl implements SysCodeSequenceService {
 
     private final SysCodeSequenceMapper sysCodeSequenceMapper;
 

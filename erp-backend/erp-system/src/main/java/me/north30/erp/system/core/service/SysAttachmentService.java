@@ -10,7 +10,7 @@ import java.util.List;
 /**
  * 附件服务（SYS-10：PDF/JPG/PNG/XLSX/DOCX，单文件 ≤20MB、单单据 ≤20 个，逻辑删除后不可下载）。
  */
-public interface ISysAttachmentService {
+public interface SysAttachmentService {
 
     /**
      * 附件上传（接口文档 5.9.1，权限点 system:attachment:upload）：写盘 + 落库。

@@ -5,7 +5,7 @@ import me.north30.erp.common.result.Result;
 import me.north30.erp.system.core.dto.DeptCreateDTO;
 import me.north30.erp.system.core.dto.DeptTreeQueryDTO;
 import me.north30.erp.system.core.dto.DeptUpdateDTO;
-import me.north30.erp.system.core.service.ISysDeptManageService;
+import me.north30.erp.system.core.service.SysDeptManageService;
 import me.north30.erp.system.core.vo.DeptMutationVO;
 import me.north30.erp.system.core.vo.DeptTreeVO;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,9 +27,9 @@ import java.util.List;
 @RequestMapping("/api/system/depts")
 public class SysDeptController {
 
-    private final ISysDeptManageService sysDeptManageService;
+    private final SysDeptManageService sysDeptManageService;
 
-    public SysDeptController(ISysDeptManageService sysDeptManageService) {
+    public SysDeptController(SysDeptManageService sysDeptManageService) {
         this.sysDeptManageService = sysDeptManageService;
     }
 

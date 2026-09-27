@@ -6,7 +6,7 @@ import me.north30.erp.common.result.Result;
 import me.north30.erp.system.core.dto.ConfigCreateDTO;
 import me.north30.erp.system.core.dto.ConfigQueryDTO;
 import me.north30.erp.system.core.dto.ConfigUpdateDTO;
-import me.north30.erp.system.core.service.ISysConfigService;
+import me.north30.erp.system.core.service.SysConfigService;
 import me.north30.erp.system.core.vo.ConfigUpdateVO;
 import me.north30.erp.system.core.vo.ConfigVO;
 import me.north30.erp.system.core.vo.MutationVO;
@@ -27,9 +27,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/system/configs")
 public class SysConfigController {
 
-    private final ISysConfigService sysConfigService;
+    private final SysConfigService sysConfigService;
 
-    public SysConfigController(ISysConfigService sysConfigService) {
+    public SysConfigController(SysConfigService sysConfigService) {
         this.sysConfigService = sysConfigService;
     }
 

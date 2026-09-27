@@ -1,7 +1,7 @@
 package me.north30.erp.system.core.controller;
 
 import me.north30.erp.common.result.Result;
-import me.north30.erp.system.core.service.ISysAttachmentService;
+import me.north30.erp.system.core.service.SysAttachmentService;
 import me.north30.erp.system.core.vo.AttachmentDeleteVO;
 import me.north30.erp.system.core.vo.AttachmentDownloadVO;
 import me.north30.erp.system.core.vo.AttachmentVO;
@@ -32,9 +32,9 @@ import java.util.List;
 @RequestMapping("/api/system/attachments")
 public class AttachmentController {
 
-    private final ISysAttachmentService attachmentService;
+    private final SysAttachmentService attachmentService;
 
-    public AttachmentController(ISysAttachmentService attachmentService) {
+    public AttachmentController(SysAttachmentService attachmentService) {
         this.attachmentService = attachmentService;
     }
 

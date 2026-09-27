@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import me.north30.erp.system.core.entity.SysUserRole;
 import me.north30.erp.system.core.mapper.SysUserRoleMapper;
-import me.north30.erp.system.core.service.ISysUserRoleService;
+import me.north30.erp.system.core.service.SysUserRoleService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,7 +15,7 @@ import java.util.List;
  */
 @Service
 @RequiredArgsConstructor
-public class SysUserRoleServiceImpl implements ISysUserRoleService {
+public class SysUserRoleServiceImpl implements SysUserRoleService {
 
     private final SysUserRoleMapper sysUserRoleMapper;
 

@@ -6,7 +6,7 @@ import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.system.core.enums.SystemManageErrorCode;
-import me.north30.erp.system.core.service.ISysImportTaskService;
+import me.north30.erp.system.core.service.SysImportTaskService;
 import me.north30.erp.system.core.vo.ImportResultVO;
 import me.north30.erp.system.core.vo.ImportTaskVO;
 import org.springframework.stereotype.Service;
@@ -19,7 +19,7 @@ import org.springframework.util.StringUtils;
  */
 @Slf4j
 @Service
-public class SysImportTaskServiceImpl implements ISysImportTaskService {
+public class SysImportTaskServiceImpl implements SysImportTaskService {
 
     @Override
     public PageResult<ImportTaskVO> pageTasks(Integer pageNum, Integer pageSize) {
