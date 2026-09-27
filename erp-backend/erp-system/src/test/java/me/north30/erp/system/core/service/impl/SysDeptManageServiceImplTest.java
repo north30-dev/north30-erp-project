@@ -3,10 +3,11 @@ package me.north30.erp.system.core.service.impl;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.system.core.dto.DeptCreateDTO;
 import me.north30.erp.system.core.dto.DeptUpdateDTO;
-import me.north30.erp.system.core.vo.DeptMutationVO;
 import me.north30.erp.system.core.entity.SysDept;
 import me.north30.erp.system.core.mapper.SysDeptMapper;
 import me.north30.erp.system.core.mapper.SysUserMapper;
+import me.north30.erp.system.core.vo.DeptMutationVO;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

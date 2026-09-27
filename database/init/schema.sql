@@ -569,7 +569,7 @@ CREATE TABLE base_bom (
     id                  BIGSERIAL       PRIMARY KEY,
     bom_code            VARCHAR(50)     NOT NULL,               -- BOM 编号（BM+父件编码去连字符+2位版本序号，如 BM010300012801）
     parent_material_id  BIGINT          NOT NULL,               -- 父件物料ID（material_type ∈ {2,3}）
-    version             VARCHAR(20)     NOT NULL,               -- BOM 版本号（V1.0 / V1.1 / V2.0）
+    bom_version         VARCHAR(20)     NOT NULL,               -- BOM 版本号（V1.0 / V1.1 / V2.0；避免与全局乐观锁 version 冲突）
     quantity            DECIMAL(20,6)   NOT NULL DEFAULT 1,     -- 父件基准数量（通常为 1）
     bom_level           INT             NOT NULL DEFAULT 1,     -- BOM 层级（自顶层成品算起，最大 10 层）
     status              SMALLINT        NOT NULL DEFAULT 0,     -- 状态 0-草稿 1-审核 2-生效 3-历史
@@ -2259,7 +2259,7 @@ CREATE UNIQUE INDEX uk_base_material_code_map ON base_material_code_map (old_cod
 CREATE INDEX idx_base_material_code_map_new ON base_material_code_map (new_material_id);
 CREATE UNIQUE INDEX uk_base_bom_code ON base_bom (bom_code) WHERE is_deleted = 0;
 CREATE INDEX idx_base_bom_parent ON base_bom (parent_material_id, status);
-CREATE UNIQUE INDEX uk_base_bom_version ON base_bom (parent_material_id, version) WHERE is_deleted = 0;
+CREATE UNIQUE INDEX uk_base_bom_version ON base_bom (parent_material_id, bom_version) WHERE is_deleted = 0;
 CREATE UNIQUE INDEX uk_base_bom_item ON base_bom_item (bom_id, child_material_id) WHERE is_deleted = 0;
 CREATE INDEX idx_base_bom_item_child ON base_bom_item (child_material_id);
 CREATE UNIQUE INDEX uk_base_customer_code ON base_customer (customer_code) WHERE is_deleted = 0;
