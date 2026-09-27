@@ -74,7 +74,7 @@
 
 | 组件 | 说明 |
 |------|------|
-| PostgreSQL 16 | Docker 容器 `erp-postgres`，端口 5432，用户/库 `erp`，密码 `erp@123456`，数据卷 `erp-postgres-data` |
+| PostgreSQL 18.6 | 本机安装（原 Docker 容器 `erp-postgres` 已停止），端口 5432，用户 `erp_user`，密码 `erp_password`，库 `erp_db` |
 | Redis 8 | 本机运行，密码 `root` |
 | JDK / Maven | Java 21 LTS / Maven 3.9+ |
 | admin 初始密码 | `Admin@123456`（AdminInitializer 幂等创建） |

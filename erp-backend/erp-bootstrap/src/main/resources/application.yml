@@ -1,22 +1,16 @@
-# ERP 后端基础配置（D1 骨架阶段）
+# ERP 后端公共配置（各环境差异见 application-{dev|test|prod}.yml）
 spring:
   application:
     name: erp-backend
+  profiles:
+    default: dev          # 本地启动默认使用 dev 环境，部署时用 --spring.profiles.active=prod 覆盖
   servlet:
     encoding:            # Boot 4 写法（旧写法 server.servlet.encoding 已废弃）
       charset: UTF-8
       force: true
-  datasource:
-    url: jdbc:postgresql://localhost:5432/erp
-    username: erp
-    password: erp@123456
-    driver-class-name: org.postgresql.Driver
-  data:
-    redis:
-      host: localhost
-      port: 6379
-      password: root
-      database: 0  # 缓存数据库索引（默认 0）
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
 
 server:
   port: 8080
