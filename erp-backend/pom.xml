@@ -56,6 +56,12 @@
                 <artifactId>mybatis-plus-annotation</artifactId>
                 <version>${mybatis-plus.version}</version>
             </dependency>
+            <!-- MP 扩展（IService/ServiceImpl）：erp-system 业务服务层使用，autoconfig starter 仅在 erp-bootstrap -->
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-extension</artifactId>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
             <!-- API 文档（Boot 4 下禁用 Knife4j，统一使用 springdoc-openapi 3.x） -->
             <dependency>
                 <groupId>org.springdoc</groupId>

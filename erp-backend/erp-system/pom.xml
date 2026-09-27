@@ -21,10 +21,30 @@
             <artifactId>erp-common</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- MP 扩展：Service 层 IService/ServiceImpl（版本由父工程 dependencyManagement 管控） -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-extension</artifactId>
+        </dependency>
+        <!-- Spring Security 核心接口：SecurityContextHolder / GrantedAuthority / PasswordEncoder -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-core</artifactId>
+        </dependency>
+        <!-- Redis：会话白名单、验证码、登录失败计数（StringRedisTemplate） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

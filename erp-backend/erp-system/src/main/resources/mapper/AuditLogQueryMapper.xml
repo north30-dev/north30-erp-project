@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="me.north30.erp.system.core.mapper.AuditLogQueryMapper">
+
+    <!-- 审计日志基础结果列（接口文档 5.8.1 出参全集，不含变更前后 JSON） -->
+    <sql id="Base_Column_List">
+        id, module, biz_type, biz_code, operate_type, operate_desc, operate_by, operate_time,
+        operate_ip, request_uri, request_method, result_status, error_code, error_message,
+        cost_time, trace_id
+    </sql>
+
+    <!-- 5.8.1 审计日志分页查询：单据号/操作人模糊匹配，操作时间左闭右开，操作时间倒序 -->
+    <select id="selectAuditLogPage" resultType="me.north30.erp.system.core.vo.AuditLogVO">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM sys_audit_log
+        <where>
+            is_deleted = 0
+            <if test="param.bizCode != null and param.bizCode != ''">
+                AND biz_code LIKE CONCAT('%', #{param.bizCode}, '%')
+            </if>
+            <if test="param.module != null and param.module != ''">
+                AND module = #{param.module}
+            </if>
+            <if test="param.bizType != null and param.bizType != ''">
+                AND biz_type = #{param.bizType}
+            </if>
+            <if test="param.operateType != null and param.operateType != ''">
+                AND operate_type = #{param.operateType}
+            </if>
+            <if test="param.operateBy != null and param.operateBy != ''">
+                AND operate_by LIKE CONCAT('%', #{param.operateBy}, '%')
+            </if>
+            <if test="param.resultStatus != null">
+                AND result_status = #{param.resultStatus}
+            </if>
+            <if test="param.timeStart != null">
+                AND operate_time &gt;= #{param.timeStart}
+            </if>
+            <if test="param.timeEnd != null">
+                AND operate_time &lt; #{param.timeEnd}
+            </if>
+        </where>
+        ORDER BY operate_time DESC, id DESC
+    </select>
+
+    <!-- 5.8.2 审计日志详情：基础列 + 变更前后 JSON -->
+    <select id="selectAuditLogById" resultType="me.north30.erp.system.core.vo.AuditLogVO">
+        SELECT
+        <include refid="Base_Column_List"/>,
+        before_json, after_json
+        FROM sys_audit_log
+        WHERE id = #{id} AND is_deleted = 0
+    </select>
+
+</mapper>

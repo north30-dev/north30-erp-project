@@ -11,11 +11,18 @@ spring:
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: root
+      database: 0
+      timeout: 3000ms
 
 server:
   port: 8080
 
-# MyBatis-Plus 配置（D1 骨架：逻辑删除 + 驼峰映射；分页/乐观锁插件见 MybatisPlusConfig）
+# MyBatis-Plus 配置（逻辑删除 + 驼峰映射；分页/乐观锁插件见 MybatisPlusConfig）
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
   global-config:
@@ -28,8 +35,12 @@ mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
 
-# 预留：D2 添加 JWT 配置（spring-boot-starter-oauth2-resource-server + Nimbus）
-# erp:
-#   jwt:
-#     secret: <待配置>
-#     ttl: <待配置>
+# JWT 配置（详细设计 2.5）：secret 生产环境必须通过环境变量 ERP_JWT_SECRET 覆盖，禁止入库入日志
+erp:
+  jwt:
+    secret: ${ERP_JWT_SECRET:north30-erp-dev-secret-0123456789abcdef0123456789abcdef-override-me}
+    access-ttl: 2h       # access token 有效期 120 分钟（expiresIn=7200 秒）
+    refresh-ttl: 7d      # refresh token 有效期 7 天（刷新不延长）
+    issuer: north30-erp
+  attachment:
+    store-path: ${ERP_ATTACHMENT_STORE_PATH:/tmp/erp-attachments}   # 附件本地存储根目录（SYS-10，生产环境用环境变量覆盖）
