@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="me.north30.erp.system.core.mapper.AuditLogQueryMapper">
+<mapper namespace="me.north30.erp.system.log.mapper.AuditLogQueryMapper">
 
     <!-- 审计日志基础结果列（接口文档 5.8.1 出参全集，不含变更前后 JSON） -->
     <sql id="Base_Column_List">
@@ -10,7 +10,7 @@
     </sql>
 
     <!-- 5.8.1 审计日志分页查询：单据号/操作人模糊匹配，操作时间左闭右开，操作时间倒序 -->
-    <select id="selectAuditLogPage" resultType="me.north30.erp.system.core.vo.AuditLogVO">
+    <select id="selectAuditLogPage" resultType="me.north30.erp.system.log.vo.AuditLogVO">
         SELECT
         <include refid="Base_Column_List"/>
         FROM sys_audit_log
@@ -45,7 +45,7 @@
     </select>
 
     <!-- 5.8.2 审计日志详情：基础列 + 变更前后 JSON -->
-    <select id="selectAuditLogById" resultType="me.north30.erp.system.core.vo.AuditLogVO">
+    <select id="selectAuditLogById" resultType="me.north30.erp.system.log.vo.AuditLogVO">
         SELECT
         <include refid="Base_Column_List"/>,
         before_json, after_json

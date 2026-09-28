@@ -45,7 +45,8 @@
 
 ## 5. 包结构与命名
 
-- 分层：`me.north30.erp.<模块>.core.{controller, service, mapper, entity, dto}`（business 下再分 purchase/sales/inventory/manufacturing/finance 业务域）。
+- 分层与业务域分包：`me.north30.erp.<模块>.<业务域>.{controller, service, service.impl, mapper, entity, dto, vo}`，第一级按业务域分包（不设 core 中间层）；模块内跨域公共部分放 `<模块>.common.{util, enums, vo}`，安全上下文放 `<模块>.security`。
+- 业务域划分：system 模块按 auth/user/role/menu/dept/dict/config/log/attachment/importtask/codesequence 分域；business 模块按 purchase/sales/inventory/manufacturing/finance 分域；base 模块按物料/BOM/工厂等基础数据域分包。
 - 命名：Entity 对应表名大驼峰（`PurOrder` ↔ `pur_order`）；DTO/VO 后缀 `DTO`/`VO`；实现类 `Impl` 后缀；枚举 `Enum` 后缀；工具类 `Util` 后缀。
 - 实体继承 `BaseEntity`（审计字段 id/create_by/create_time/update_by/update_time/version/is_deleted/remark 自动填充，勿重复定义）。
 - 表名前缀：`sys_`（系统）/ `base_`（基础数据）/ `pur_`（采购）/ `sal_`（销售）/ `inv_`（库存）/ `mf_`（生产）/ `fin_`（财务），单数形式。

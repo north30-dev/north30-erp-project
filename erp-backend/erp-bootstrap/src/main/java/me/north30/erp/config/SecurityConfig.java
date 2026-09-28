@@ -7,7 +7,7 @@ import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.jwt.JwtTokenProvider;
 import me.north30.erp.common.result.Result;
 import me.north30.erp.common.web.TraceIdFilter;
-import me.north30.erp.system.core.security.JwtLoginUserConverter;
+import me.north30.erp.system.security.JwtLoginUserConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
