@@ -1,6 +1,7 @@
 package me.north30.erp.system.core.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.result.Result;
 import me.north30.erp.system.core.dto.DeptCreateDTO;
 import me.north30.erp.system.core.dto.DeptTreeQueryDTO;
@@ -25,13 +26,10 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/system/depts")
+@RequiredArgsConstructor
 public class SysDeptController {
 
     private final SysDeptManageService sysDeptManageService;
-
-    public SysDeptController(SysDeptManageService sysDeptManageService) {
-        this.sysDeptManageService = sysDeptManageService;
-    }
 
     /**
      * 5.4.1 组织部门树查询。

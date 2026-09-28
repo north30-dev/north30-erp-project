@@ -1,6 +1,7 @@
 package me.north30.erp.system.core.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.common.result.Result;
 import me.north30.erp.system.core.dto.CodeSequenceQueryDTO;
@@ -20,13 +21,10 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/system/code-sequences")
+@RequiredArgsConstructor
 public class SysCodeSequenceController {
 
     private final SysCodeSequenceService sysCodeSequenceService;
-
-    public SysCodeSequenceController(SysCodeSequenceService sysCodeSequenceService) {
-        this.sysCodeSequenceService = sysCodeSequenceService;
-    }
 
     /**
      * 5.7.1 编号序列分页查询。

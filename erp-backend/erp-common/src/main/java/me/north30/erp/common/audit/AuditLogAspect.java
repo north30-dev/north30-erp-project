@@ -1,6 +1,7 @@
 package me.north30.erp.common.audit;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.security.CurrentUserProvider;
@@ -25,19 +26,12 @@ import java.time.LocalDateTime;
 @Slf4j
 @Aspect
 @Component
+@RequiredArgsConstructor
 public class AuditLogAspect {
 
     private final ObjectProvider<AuditLogStore> auditLogStoreProvider;
     private final ObjectProvider<CurrentUserProvider> currentUserProvider;
     private final ObjectMapper objectMapper;
-
-    public AuditLogAspect(ObjectProvider<AuditLogStore> auditLogStoreProvider,
-                          ObjectProvider<CurrentUserProvider> currentUserProvider,
-                          ObjectMapper objectMapper) {
-        this.auditLogStoreProvider = auditLogStoreProvider;
-        this.currentUserProvider = currentUserProvider;
-        this.objectMapper = objectMapper;
-    }
 
     /**
      * 环绕通知：方法执行结束后记录审计日志（成功/失败均记录）。

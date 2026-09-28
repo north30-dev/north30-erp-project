@@ -1,6 +1,7 @@
 package me.north30.erp.system.core.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.common.result.Result;
 import me.north30.erp.system.core.dto.AuditLogQueryDTO;
@@ -18,13 +19,10 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/system/audit-logs")
+@RequiredArgsConstructor 
 public class AuditLogController {
 
     private final SysLogQueryService logQueryService;
-
-    public AuditLogController(SysLogQueryService logQueryService) {
-        this.logQueryService = logQueryService;
-    }
 
     /**
      * 5.8.1 审计日志分页查询（权限：system:auditlog:list）。

@@ -1,6 +1,7 @@
 package me.north30.erp.system.core.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.common.result.Result;
 import me.north30.erp.system.core.dto.LoginLogQueryDTO;
@@ -16,13 +17,10 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/system/login-logs")
+@RequiredArgsConstructor
 public class LoginLogController {
 
     private final SysLogQueryService logQueryService;
-
-    public LoginLogController(SysLogQueryService logQueryService) {
-        this.logQueryService = logQueryService;
-    }
 
     /**
      * 5.8.3 登录日志分页查询（权限：system:loginlog:list）。

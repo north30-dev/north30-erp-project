@@ -1,6 +1,7 @@
 package me.north30.erp.system.core.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.audit.AuditLog;
 import me.north30.erp.common.audit.AuditModuleEnum;
 import me.north30.erp.common.audit.OperateTypeEnum;
@@ -31,13 +32,10 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/system/menus")
+@RequiredArgsConstructor
 public class SysMenuController {
 
     private final MenuManageService menuManageService;
-
-    public SysMenuController(MenuManageService menuManageService) {
-        this.menuManageService = menuManageService;
-    }
 
     /**
      * 5.3.1 菜单树查询（一次查全部再内存组树）。

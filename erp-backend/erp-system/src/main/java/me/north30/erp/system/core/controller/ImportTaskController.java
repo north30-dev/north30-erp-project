@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import lombok.RequiredArgsConstructor;
+
 /**
  * 批量导入接口（/api/system/imports，接口文档 5.10）。
  * <p>D2 仅查询能力：任务列表 + 结果查询；导入执行（POST）由后续模块按业务域落地。
@@ -19,13 +21,10 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/system/imports")
+@RequiredArgsConstructor
 public class ImportTaskController {
 
     private final SysImportTaskService importTaskService;
-
-    public ImportTaskController(SysImportTaskService importTaskService) {
-        this.importTaskService = importTaskService;
-    }
 
     /**
      * 导入任务分页查询（D2 无任务表，返回空分页）。

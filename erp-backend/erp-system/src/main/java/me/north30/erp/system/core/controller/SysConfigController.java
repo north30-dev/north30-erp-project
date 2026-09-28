@@ -1,6 +1,7 @@
 package me.north30.erp.system.core.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.common.result.Result;
 import me.north30.erp.system.core.dto.ConfigCreateDTO;
@@ -25,13 +26,10 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/system/configs")
+@RequiredArgsConstructor
 public class SysConfigController {
 
     private final SysConfigService sysConfigService;
-
-    public SysConfigController(SysConfigService sysConfigService) {
-        this.sysConfigService = sysConfigService;
-    }
 
     /**
      * 5.6.1 系统参数分页查询。

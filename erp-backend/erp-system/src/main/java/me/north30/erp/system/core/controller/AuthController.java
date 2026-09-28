@@ -1,6 +1,7 @@
 package me.north30.erp.system.core.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.result.Result;
 import me.north30.erp.system.core.dto.ChangePasswordDTO;
 import me.north30.erp.system.core.dto.LoginDTO;
@@ -29,13 +30,10 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/auth")
+@RequiredArgsConstructor
 public class AuthController {
 
     private final AuthService authService;
-
-    public AuthController(AuthService authService) {
-        this.authService = authService;
-    }
 
     /**
      * 4.1 获取图形验证码（免认证）。

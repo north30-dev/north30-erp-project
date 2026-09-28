@@ -1,6 +1,7 @@
 package me.north30.erp.system.core.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.common.result.Result;
 import me.north30.erp.system.core.dto.DictTypeCreateDTO;
@@ -24,13 +25,10 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/system/dict-types")
+@RequiredArgsConstructor
 public class SysDictTypeController {
 
     private final SysDictTypeService sysDictTypeService;
-
-    public SysDictTypeController(SysDictTypeService sysDictTypeService) {
-        this.sysDictTypeService = sysDictTypeService;
-    }
 
     /**
      * 5.5.1 字典类型分页查询。

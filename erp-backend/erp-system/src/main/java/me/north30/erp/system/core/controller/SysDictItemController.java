@@ -1,6 +1,7 @@
 package me.north30.erp.system.core.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.common.result.Result;
 import me.north30.erp.system.core.dto.DictItemCreateDTO;
@@ -24,13 +25,10 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/system/dict-items")
+@RequiredArgsConstructor
 public class SysDictItemController {
 
     private final SysDictItemService sysDictItemService;
-
-    public SysDictItemController(SysDictItemService sysDictItemService) {
-        this.sysDictItemService = sysDictItemService;
-    }
 
     /**
      * 5.5.5 字典项查询（按字典类型过滤）。

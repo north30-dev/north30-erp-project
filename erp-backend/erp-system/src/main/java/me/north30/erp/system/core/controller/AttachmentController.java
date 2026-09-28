@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import lombok.RequiredArgsConstructor;
+
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
@@ -30,13 +32,10 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/system/attachments")
+@RequiredArgsConstructor
 public class AttachmentController {
 
     private final SysAttachmentService attachmentService;
-
-    public AttachmentController(SysAttachmentService attachmentService) {
-        this.attachmentService = attachmentService;
-    }
 
     /**
      * 5.9.1 附件上传（权限：system:attachment:upload）。

@@ -1,6 +1,7 @@
 package me.north30.erp.system.core.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.common.result.Result;
 import me.north30.erp.system.core.dto.UserAssignRolesDTO;
@@ -41,16 +42,13 @@ import java.time.format.DateTimeFormatter;
  */
 @RestController
 @RequestMapping("/api/system/users")
+@RequiredArgsConstructor
 public class SysUserController {
 
     /** 导出文件名时间后缀格式 */
     private static final DateTimeFormatter FILENAME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
     private final UserManagementService userManagementService;
-
-    public SysUserController(UserManagementService userManagementService) {
-        this.userManagementService = userManagementService;
-    }
 
     /**
      * 5.1.1 用户分页查询（system:user:list）。

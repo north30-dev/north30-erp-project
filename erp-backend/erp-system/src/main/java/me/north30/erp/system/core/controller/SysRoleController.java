@@ -1,6 +1,7 @@
 package me.north30.erp.system.core.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.audit.AuditLog;
 import me.north30.erp.common.audit.AuditModuleEnum;
 import me.north30.erp.common.audit.OperateTypeEnum;
@@ -34,14 +35,10 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/system/roles")
+@RequiredArgsConstructor
 public class SysRoleController {
 
     private final RoleManageService roleManageService;
-
-    public SysRoleController(RoleManageService roleManageService) {
-        this.roleManageService = roleManageService;
-    }
-
     /**
      * 5.2.1 角色分页查询。
      */
