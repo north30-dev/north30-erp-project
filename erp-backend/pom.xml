@@ -34,11 +34,20 @@
         <!-- MyBatis-Plus 3.5.9+ 分页插件已拆分，需同时管控 jsqlparser 构件 -->
         <mybatis-plus.version>3.5.17</mybatis-plus.version>
         <springdoc-openapi.version>3.1.1</springdoc-openapi.version>
+        <hutool.version>5.8.47</hutool.version>
     </properties>
 
     <!-- 仅做版本管控，D1 不实际引入；依赖在子模块按需声明 -->
     <dependencyManagement>
         <dependencies>
+            <!-- Hutool：子模块按需引入单模块（如 hutool-captcha 图形验证码） -->
+            <dependency>
+                <groupId>cn.hutool</groupId>
+                <artifactId>hutool-bom</artifactId>
+                <version>${hutool.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <!-- D2 引入 MyBatis-Plus 时使用（Boot 4 专用 starter） -->
             <dependency>
                 <groupId>com.baomidou</groupId>
@@ -50,10 +59,16 @@
                 <artifactId>mybatis-plus-jsqlparser</artifactId>
                 <version>${mybatis-plus.version}</version>
             </dependency>
-            <!-- MP 注解构件：erp-common 的 BaseEntity 仅依赖注解，不引入 MP 核心 -->
+            <!-- MP 注解构件：erp-common 的 BaseEntity 仅依赖注解 -->
             <dependency>
                 <groupId>com.baomidou</groupId>
                 <artifactId>mybatis-plus-annotation</artifactId>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
+            <!-- MP 核心：erp-common 编译期解析注解默认值中的 org.apache.ibatis.type.JdbcType -->
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-core</artifactId>
                 <version>${mybatis-plus.version}</version>
             </dependency>
             <!-- MP 扩展（IService/ServiceImpl）：erp-system 业务服务层使用，autoconfig starter 仅在 erp-bootstrap -->

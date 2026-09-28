@@ -26,6 +26,11 @@
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-extension</artifactId>
         </dependency>
+        <!-- Hutool 图形验证码：LineCaptcha 生成（版本由父工程 hutool-bom 管控） -->
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-captcha</artifactId>
+        </dependency>
         <!-- Spring Security 核心接口：SecurityContextHolder / GrantedAuthority / PasswordEncoder -->
         <dependency>
             <groupId>org.springframework.security</groupId>

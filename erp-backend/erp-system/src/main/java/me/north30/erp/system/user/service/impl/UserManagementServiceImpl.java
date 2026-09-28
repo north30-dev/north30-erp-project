@@ -51,6 +51,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -390,7 +391,8 @@ public class UserManagementServiceImpl implements UserManagementService {
             .filter(Objects::nonNull)
             .collect(Collectors.toSet());
         if (deptIds.isEmpty()) {
-            return Map.of();
+            // 用 HashMap 而非 Map.of()：用户 dept_id 可为 null，不可变 Map.get(null) 会抛 NPE
+            return new HashMap<>();
         }
         return sysDeptMapper.selectBatchIds(deptIds).stream()
             .collect(Collectors.toMap(SysDept::getId, SysDept::getDeptName));

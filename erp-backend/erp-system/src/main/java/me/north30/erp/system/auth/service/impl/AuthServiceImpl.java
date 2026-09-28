@@ -72,14 +72,14 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public CaptchaVO createCaptcha() {
         String captchaKey = UUID.randomUUID().toString().replace("-", "");
-        String code = CaptchaUtil.randomCode();
+        CaptchaUtil.Captcha captcha = CaptchaUtil.create();
         try {
-            stringRedisTemplate.opsForValue().set(RedisKeyConstants.captchaKey(captchaKey), code,
+            stringRedisTemplate.opsForValue().set(RedisKeyConstants.captchaKey(captchaKey), captcha.code(),
                 TtlConstants.CAPTCHA_SECONDS, TimeUnit.SECONDS);
         } catch (RedisConnectionFailureException e) {
             log.warn("验证码写入 Redis 失败，已降级处理：{}", e.getMessage());
         }
-        return new CaptchaVO(captchaKey, CaptchaUtil.toDataUri(code), TtlConstants.CAPTCHA_SECONDS);
+        return new CaptchaVO(captchaKey, captcha.dataUri(), TtlConstants.CAPTCHA_SECONDS);
     }
 
     @Override

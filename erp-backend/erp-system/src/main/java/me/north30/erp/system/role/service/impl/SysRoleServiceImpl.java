@@ -38,7 +38,7 @@ public class SysRoleServiceImpl implements SysRoleService {
         if (ids == null || ids.isEmpty()) {
             return List.of();
         }
-        return sysRoleMapper.selectBatchIds(ids);
+        return sysRoleMapper.selectByIds(ids);
     }
 
     @Override

@@ -41,12 +41,48 @@ public class AdminInitializer implements ApplicationRunner {
     /** 超级管理员角色编码 */
     private static final String ADMIN_ROLE_CODE = "admin";
 
+    /** 菜单类型：目录 */
+    private static final int TYPE_DIR = 1;
+    /** 菜单类型：菜单 */
+    private static final int TYPE_MENU = 2;
+    /** 菜单类型：按钮 */
+    private static final int TYPE_BUTTON = 3;
+
     private final SysUserService sysUserService;
     private final SysRoleService sysRoleService;
     private final SysMenuService sysMenuService;
     private final SysUserRoleService sysUserRoleService;
     private final SysRoleMenuService sysRoleMenuService;
     private final PasswordEncoder passwordEncoder;
+
+    /**
+     * 菜单种子节点：声明式描述菜单树，由 {@link #ensureTree} 递归落库。
+     *
+     * @param name      菜单名称（幂等键）
+     * @param type      菜单类型 1 目录 / 2 菜单 / 3 按钮
+     * @param path      前端路由（按钮为 null）
+     * @param component 前端组件路径（目录/按钮为 null）
+     * @param perms     权限标识（无则为 null）
+     * @param icon      图标（按钮为 null）
+     * @param sort      排序号
+     * @param children  子节点
+     */
+    private record MenuSeed(String name, int type, String path, String component,
+                            String perms, String icon, int sort, List<MenuSeed> children) {
+
+        static MenuSeed dir(String name, String path, String icon, int sort, MenuSeed... children) {
+            return new MenuSeed(name, TYPE_DIR, path, null, null, icon, sort, List.of(children));
+        }
+
+        static MenuSeed menu(String name, String path, String component, String perms,
+                             String icon, int sort, MenuSeed... children) {
+            return new MenuSeed(name, TYPE_MENU, path, component, perms, icon, sort, List.of(children));
+        }
+
+        static MenuSeed button(String name, String perms, int sort) {
+            return new MenuSeed(name, TYPE_BUTTON, null, null, perms, null, sort, List.of());
+        }
+    }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -96,7 +132,8 @@ public class AdminInitializer implements ApplicationRunner {
 
         List<SysMenu> allMenus = new ArrayList<>();
         List<SysMenu> createdMenus = new ArrayList<>();
-        ensureMenus(allMenus, createdMenus);
+        ensureTree(0L, menuTree(), allMenus, createdMenus);
+
         List<SysRoleMenu> roleMenus = new ArrayList<>();
         List<SysMenu> toGrant = roleCreated ? allMenus : createdMenus;
         for (SysMenu menu : toGrant) {
@@ -113,73 +150,52 @@ public class AdminInitializer implements ApplicationRunner {
     }
 
     /**
-     * 幂等创建系统管理菜单树（目录 → 菜单 → 按钮），收集全部与本次新增的菜单。
+     * 系统管理菜单树定义（目录 → 菜单 → 按钮）。
      */
-    private void ensureMenus(List<SysMenu> allMenus, List<SysMenu> createdMenus) {
-        Long systemDirId = ensureMenu("系统管理", 0L, 1, "/system", null, null, "Setting", 1,
-                allMenus, createdMenus);
-
-        Long userId = ensureMenu("用户管理", systemDirId, 2, "/system/user", "system/user/index",
-                "system:user:list", "User", 1, allMenus, createdMenus);
-        ensureButton("用户新增", userId, "system:user:create", 1, allMenus, createdMenus);
-        ensureButton("用户修改", userId, "system:user:update", 2, allMenus, createdMenus);
-        ensureButton("用户删除", userId, "system:user:delete", 3, allMenus, createdMenus);
-
-        Long roleIdMenu = ensureMenu("角色管理", systemDirId, 2, "/system/role", "system/role/index",
-                "system:role:list", "Team", 2, allMenus, createdMenus);
-        ensureButton("角色新增", roleIdMenu, "system:role:create", 1, allMenus, createdMenus);
-        ensureButton("角色修改", roleIdMenu, "system:role:update", 2, allMenus, createdMenus);
-        ensureButton("角色删除", roleIdMenu, "system:role:delete", 3, allMenus, createdMenus);
-
-        Long menuId = ensureMenu("菜单管理", systemDirId, 2, "/system/menu", "system/menu/index",
-                "system:menu:list", "Menu", 3, allMenus, createdMenus);
-        ensureButton("菜单新增", menuId, "system:menu:create", 1, allMenus, createdMenus);
-        ensureButton("菜单修改", menuId, "system:menu:update", 2, allMenus, createdMenus);
-        ensureButton("菜单删除", menuId, "system:menu:delete", 3, allMenus, createdMenus);
-
-        ensureMenu("组织管理", systemDirId, 2, "/system/dept", "system/dept/index",
-                "system:dept:list", "Apartment", 4, allMenus, createdMenus);
-        ensureMenu("字典管理", systemDirId, 2, "/system/dict", "system/dict/index",
-                "system:dict:list", "Book", 5, allMenus, createdMenus);
-        ensureMenu("参数管理", systemDirId, 2, "/system/config", "system/config/index",
-                "system:config:list", "Tool", 6, allMenus, createdMenus);
-        ensureMenu("登录日志", systemDirId, 2, "/system/login-log", "system/loginLog/index",
-                "system:loginLog:list", "FileText", 7, allMenus, createdMenus);
+    private List<MenuSeed> menuTree() {
+        return List.of(
+            MenuSeed.dir("系统管理", "/system", "Setting", 1,
+                MenuSeed.menu("用户管理", "/system/user", "system/user/index", "system:user:list", "User", 2,
+                    MenuSeed.button("用户新增", "system:user:create", 1),
+                    MenuSeed.button("用户修改", "system:user:update", 2),
+                    MenuSeed.button("用户删除", "system:user:delete", 3)),
+                MenuSeed.menu("角色管理", "/system/role", "system/role/index", "system:role:list", "Team", 2,
+                    MenuSeed.button("角色新增", "system:role:create", 1),
+                    MenuSeed.button("角色修改", "system:role:update", 2),
+                    MenuSeed.button("角色删除", "system:role:delete", 3)),
+                MenuSeed.menu("菜单管理", "/system/menu", "system/menu/index", "system:menu:list", "Menu", 3,
+                    MenuSeed.button("菜单新增", "system:menu:create", 1),
+                    MenuSeed.button("菜单修改", "system:menu:update", 2),
+                    MenuSeed.button("菜单删除", "system:menu:delete", 3)),
+                MenuSeed.menu("组织管理", "/system/dept", "system/dept/index", "system:dept:list", "Apartment", 4),
+                MenuSeed.menu("字典管理", "/system/dict", "system/dict/index", "system:dict:list", "Book", 5),
+                MenuSeed.menu("参数管理", "/system/config", "system/config/index", "system:config:list", "Tool", 6),
+                MenuSeed.menu("登录日志", "/system/login-log", "system/loginLog/index", "system:loginLog:list", "FileText", 7)));
     }
 
     /**
-     * 按菜单名称幂等创建单个菜单，返回菜单 ID。
+     * 递归落库菜单树：按名称幂等，收集全部节点与本次新增节点。
      */
-    private Long ensureMenu(String menuName, Long parentId, Integer menuType, String path,
-                            String component, String perms, String icon, Integer menuSort,
-                            List<SysMenu> allMenus, List<SysMenu> createdMenus) {
-        SysMenu existing = sysMenuService.getByMenuName(menuName);
-        if (existing != null) {
-            allMenus.add(existing);
-            return existing.getId();
+    private void ensureTree(Long parentId, List<MenuSeed> seeds, List<SysMenu> allMenus, List<SysMenu> createdMenus) {
+        for (MenuSeed seed : seeds) {
+            SysMenu menu = sysMenuService.getByMenuName(seed.name());
+            if (menu == null) {
+                menu = new SysMenu();
+                menu.setMenuName(seed.name());
+                menu.setParentId(parentId);
+                menu.setMenuType(seed.type());
+                menu.setPath(seed.path());
+                menu.setComponent(seed.component());
+                menu.setPerms(seed.perms());
+                menu.setIcon(seed.icon());
+                menu.setMenuSort(seed.sort());
+                menu.setVisible(seed.type() == TYPE_BUTTON ? 0 : 1);
+                menu.setStatus(1);
+                sysMenuService.createMenu(menu);
+                createdMenus.add(menu);
+            }
+            allMenus.add(menu);
+            ensureTree(menu.getId(), seed.children(), allMenus, createdMenus);
         }
-        SysMenu menu = new SysMenu();
-        menu.setMenuName(menuName);
-        menu.setParentId(parentId);
-        menu.setMenuType(menuType);
-        menu.setPath(path);
-        menu.setComponent(component);
-        menu.setPerms(perms);
-        menu.setIcon(icon);
-        menu.setMenuSort(menuSort);
-        menu.setVisible(1);
-        menu.setStatus(1);
-        sysMenuService.createMenu(menu);
-        allMenus.add(menu);
-        createdMenus.add(menu);
-        return menu.getId();
-    }
-
-    /**
-     * 幂等创建按钮权限点（menuType=3，不可见）。
-     */
-    private void ensureButton(String menuName, Long parentId, String perms, Integer menuSort,
-                              List<SysMenu> allMenus, List<SysMenu> createdMenus) {
-        ensureMenu(menuName, parentId, 3, null, null, perms, null, menuSort, allMenus, createdMenus);
     }
 }
