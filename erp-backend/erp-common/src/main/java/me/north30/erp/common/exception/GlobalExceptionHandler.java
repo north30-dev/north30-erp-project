@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import jakarta.validation.ConstraintViolationException;
+
 /**
  * 全局异常处理器：HTTP 状态码承载错误类别（400/401/404/409/422/500），
  * 响应体 code 承载精确的业务码（10001-16999），前端在 axios 错误拦截器中统一处理非 2xx。
@@ -61,6 +63,16 @@ public class GlobalExceptionHandler {
         log.warn("资源不存在：{}", e.getResourcePath());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
             .body(Result.failure(HttpStatus.NOT_FOUND.value(), "请求的资源不存在"));
+    }
+
+    /**
+     * 约束校验异常：返回 HTTP 400。
+     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Result<Void>> handleConstraintViolationException(ConstraintViolationException e) {
+        log.warn("约束校验失败：{}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(Result.failure(CommonErrorCode.PARAM_ERROR.getCode(), e.getMessage()));
     }
 
     /**

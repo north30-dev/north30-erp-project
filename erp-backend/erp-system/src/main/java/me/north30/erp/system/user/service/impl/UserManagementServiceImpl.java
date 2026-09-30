@@ -100,6 +100,12 @@ public class UserManagementServiceImpl implements UserManagementService {
     private final PasswordEncoder passwordEncoder;
     private final UserConverter userConverter;
 
+    /**
+     * 分页查询用户列表。
+     * 
+     * @param query 查询参数
+     * @return PageResult<UserVO> 用户列表分页结果
+     */
     @Override
     @Transactional(readOnly = true)
     public PageResult<UserVO> page(UserQueryDTO query) {
@@ -110,6 +116,12 @@ public class UserManagementServiceImpl implements UserManagementService {
         return PageResult.of(page.getTotal(), page.getCurrent(), page.getSize(), toUserVOs(page.getRecords()));
     }
 
+    /**
+     * 查询用户详情。
+     * 
+     * @param id 用户 ID
+     * @return UserDetailVO 用户详情
+     */
     @Override
     @Transactional(readOnly = true)
     public UserDetailVO getDetail(Long id) {
@@ -123,17 +135,36 @@ public class UserManagementServiceImpl implements UserManagementService {
         Map<Long, String> roleCodeMap = loadRoleCodeMap(roleIds);
         List<String> roles = roleIds.stream().map(roleCodeMap::get).filter(Objects::nonNull).toList();
         SysDept dept = user.getDeptId() != null ? sysDeptMapper.selectById(user.getDeptId()) : null;
-        return new UserDetailVO(
-            user.getId(), user.getUserCode(), user.getUsername(), user.getRealName(),
-            maskPhone(user.getPhone()), user.getEmail(), user.getDeptId(),
-            dept != null ? dept.getDeptName() : null,
-            roles, roleIds, parseWarehouseIds(user.getWarehouseIds()),
-            user.getStatus(), user.getIsAdmin(), user.getGender(), user.getRemark(),
-            user.getLoginFailCount(),
-            formatTime(user.getLockUntil()), formatTime(user.getPasswordUpdateTime()),
-            formatTime(user.getLastLoginTime()), formatTime(user.getCreateTime()));
+        return UserDetailVO.builder()
+            .id(user.getId())
+            .userCode(user.getUserCode())
+            .username(user.getUsername())
+            .realName(user.getRealName())
+            .phone(maskPhone(user.getPhone()))
+            .email(user.getEmail())
+            .deptId(user.getDeptId())
+            .deptName(dept != null ? dept.getDeptName() : null)
+            .roles(roles)
+            .roleIds(roleIds)
+            .warehouseIds(parseWarehouseIds(user.getWarehouseIds()))
+            .status(user.getStatus())
+            .isAdmin(user.getIsAdmin())
+            .gender(user.getGender())
+            .remark(user.getRemark())
+            .loginFailCount(user.getLoginFailCount())
+            .lockUntil(formatTime(user.getLockUntil()))
+            .passwordUpdateTime(formatTime(user.getPasswordUpdateTime()))
+            .lastLoginTime(formatTime(user.getLastLoginTime()))
+            .createTime(formatTime(user.getCreateTime()))
+            .build();
     }
 
+    /**
+     * 创建用户。
+     * 
+     * @param dto 创建参数
+     * @return Long 创建的用户 ID
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.CREATE)
@@ -172,6 +203,13 @@ public class UserManagementServiceImpl implements UserManagementService {
         return user.getId();
     }
 
+    /**
+     * 更新用户。
+     * 
+     * @param id 用户 ID
+     * @param dto 更新参数
+     * @return String 更新时间
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
@@ -195,6 +233,12 @@ public class UserManagementServiceImpl implements UserManagementService {
         return formatTime(entity.getUpdateTime());
     }
 
+    /**
+     * 删除用户。
+     * 
+     * @param id 用户 ID
+     * @return UserDeleteVO 删除响应
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.DELETE)
@@ -216,6 +260,13 @@ public class UserManagementServiceImpl implements UserManagementService {
         return new UserDeleteVO(id, 1);
     }
 
+    /**
+     * 更新用户状态。
+     * 
+     * @param id 用户 ID
+     * @param dto 状态更新参数
+     * @return UserStatusVO 状态更新响应
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
@@ -245,6 +296,13 @@ public class UserManagementServiceImpl implements UserManagementService {
         return new UserStatusVO(dto.status(), sessionRevoked);
     }
 
+    /**
+     * 重置用户密码。
+     * 
+     * @param id 用户 ID
+     * @param dto 重置密码参数
+     * @return UserResetPasswordVO 重置密码响应
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
@@ -265,6 +323,13 @@ public class UserManagementServiceImpl implements UserManagementService {
         return new UserResetPasswordVO(initialPassword, Boolean.TRUE);
     }
 
+    /**
+     * 为用户分配角色。
+     * 
+     * @param id 用户 ID
+     * @param dto 角色分配参数
+     * @return UserAssignRolesVO 角色分配响应
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
@@ -279,6 +344,12 @@ public class UserManagementServiceImpl implements UserManagementService {
         return new UserAssignRolesVO(roleIds, PERMISSION_REFRESH_TIP);
     }
 
+    /**
+     * 导出用户列表为 CSV 文件。
+     * 
+     * @param query 查询参数
+     * @return byte[] CSV 文件内容
+     */
     @Override
     @Transactional(readOnly = true)
     public byte[] exportCsv(UserQueryDTO query) {
@@ -314,6 +385,9 @@ public class UserManagementServiceImpl implements UserManagementService {
 
     /**
      * 构建列表查询条件：username/realName 模糊、userCode 精确、status 精确、deptId 含下级组织。
+     * 
+     * @param query 查询参数
+     * @return LambdaQueryWrapper<SysUser> 查询条件包装器
      */
     private LambdaQueryWrapper<SysUser> buildQueryWrapper(UserQueryDTO query) {
         LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<SysUser>()
@@ -513,6 +587,9 @@ public class UserManagementServiceImpl implements UserManagementService {
         }
     }
 
+    /**
+     * 根据模式删除 Redis 键（Redis 不可用时降级 WARN）。
+     */
     private void deleteByPattern(String pattern) {
         Set<String> keys = stringRedisTemplate.keys(pattern);
         if (keys != null && !keys.isEmpty()) {
@@ -593,6 +670,9 @@ public class UserManagementServiceImpl implements UserManagementService {
         return value;
     }
 
+    /**
+     * 分页查询参数解析：默认第 1 页，每页 10 条（接口文档 1.4）。
+     */
     private int resolvePageNum(UserQueryDTO query) {
         if (query.pageNum() == null || query.pageNum() < 1) {
             return PageConstants.DEFAULT_PAGE_NUM;
@@ -610,6 +690,9 @@ public class UserManagementServiceImpl implements UserManagementService {
         return Math.min(query.pageSize(), PageConstants.MAX_PAGE_SIZE);
     }
 
+    /**
+     * 是否是管理员：根据 SysUser 表的 isAdmin 字段判断。
+     */
     private boolean isAdmin(SysUser user) {
         return user.getIsAdmin() != null && user.getIsAdmin() == 1;
     }
