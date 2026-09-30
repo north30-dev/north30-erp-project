@@ -48,6 +48,7 @@ public class UserAccessServiceImpl implements UserAccessService {
     private final SysRoleService sysRoleService;
     private final SysRoleMenuService sysRoleMenuService;
     private final SysMenuService sysMenuService;
+    private final MenuTreeUtil menuTreeUtil;
 
     @Override
     @Transactional(readOnly = true)
@@ -133,7 +134,7 @@ public class UserAccessServiceImpl implements UserAccessService {
                 .filter(menu -> menu.getMenuType() != null && menu.getMenuType() != 3)
                 .toList();
         }
-        return MenuTreeUtil.buildTree(menus.stream().map(MenuTreeUtil::toVO).toList());
+        return menuTreeUtil.buildTree(menus.stream().map(menuTreeUtil::toVO).toList());
     }
 
     @Override

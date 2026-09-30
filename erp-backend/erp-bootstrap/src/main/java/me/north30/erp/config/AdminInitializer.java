@@ -3,10 +3,11 @@ package me.north30.erp.config;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import me.north30.erp.system.menu.entity.SysMenu;
+import me.north30.erp.system.role.converter.RoleConverter;
 import me.north30.erp.system.role.entity.SysRole;
 import me.north30.erp.system.role.entity.SysRoleMenu;
+import me.north30.erp.system.user.converter.UserConverter;
 import me.north30.erp.system.user.entity.SysUser;
-import me.north30.erp.system.role.entity.SysUserRole;
 import me.north30.erp.system.menu.service.SysMenuService;
 import me.north30.erp.system.role.service.SysRoleMenuService;
 import me.north30.erp.system.role.service.SysRoleService;
@@ -54,6 +55,8 @@ public class AdminInitializer implements ApplicationRunner {
     private final SysUserRoleService sysUserRoleService;
     private final SysRoleMenuService sysRoleMenuService;
     private final PasswordEncoder passwordEncoder;
+    private final UserConverter userConverter;
+    private final RoleConverter roleConverter;
 
     /**
      * 菜单种子节点：声明式描述菜单树，由 {@link #ensureTree} 递归落库。
@@ -125,10 +128,7 @@ public class AdminInitializer implements ApplicationRunner {
         user.setPasswordUpdateTime(LocalDateTime.now());
         sysUserService.createUser(user);
 
-        SysUserRole userRole = new SysUserRole();
-        userRole.setUserId(user.getId());
-        userRole.setRoleId(roleId);
-        sysUserRoleService.createUserRole(userRole);
+        sysUserRoleService.createUserRole(userConverter.toUserRole(user.getId(), roleId));
 
         List<SysMenu> allMenus = new ArrayList<>();
         List<SysMenu> createdMenus = new ArrayList<>();
@@ -137,10 +137,7 @@ public class AdminInitializer implements ApplicationRunner {
         List<SysRoleMenu> roleMenus = new ArrayList<>();
         List<SysMenu> toGrant = roleCreated ? allMenus : createdMenus;
         for (SysMenu menu : toGrant) {
-            SysRoleMenu roleMenu = new SysRoleMenu();
-            roleMenu.setRoleId(roleId);
-            roleMenu.setMenuId(menu.getId());
-            roleMenus.add(roleMenu);
+            roleMenus.add(roleConverter.toRoleMenu(roleId, menu.getId()));
         }
         if (!roleMenus.isEmpty()) {
             sysRoleMenuService.createBatch(roleMenus);

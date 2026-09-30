@@ -6,6 +6,8 @@ import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.menu.mapper.SysMenuMapper;
+import me.north30.erp.system.role.converter.RoleConverter;
+import me.north30.erp.system.role.converter.RoleConverterImpl;
 import me.north30.erp.system.role.dto.RoleAssignMenuDTO;
 import me.north30.erp.system.role.dto.RoleCreateDTO;
 import me.north30.erp.system.role.dto.RoleDataScopeItemDTO;
@@ -31,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
+import org.mockito.Spy;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -65,6 +68,9 @@ class RoleManageServiceImplTest {
 
     @Mock
     private SysRoleDataScopeMapper sysRoleDataScopeMapper;
+
+    @Spy
+    private final RoleConverter roleConverter = new RoleConverterImpl();
 
     @InjectMocks
     private RoleManageServiceImpl service;

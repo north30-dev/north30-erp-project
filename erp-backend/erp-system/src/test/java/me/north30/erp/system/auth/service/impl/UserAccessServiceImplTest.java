@@ -1,7 +1,9 @@
 package me.north30.erp.system.auth.service.impl;
 
+import me.north30.erp.system.common.util.MenuTreeUtil;
 import me.north30.erp.system.auth.dto.UserSecurityData;
 import me.north30.erp.system.dept.service.SysDeptService;
+import me.north30.erp.system.menu.converter.MenuConverterImpl;
 import me.north30.erp.system.menu.service.SysMenuService;
 import me.north30.erp.system.menu.vo.MenuTreeVO;
 import me.north30.erp.system.role.service.SysRoleMenuService;
@@ -14,6 +16,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.Spy;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -63,6 +66,9 @@ class UserAccessServiceImplTest {
 
     @Mock
     private SysMenuService sysMenuService;
+
+    @Spy
+    private final MenuTreeUtil menuTreeUtil = new MenuTreeUtil(new MenuConverterImpl());
 
     @InjectMocks
     private UserAccessServiceImpl userAccessService;

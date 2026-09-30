@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
+import me.north30.erp.system.menu.converter.MenuConverter;
 import me.north30.erp.system.menu.dto.MenuCreateDTO;
 import me.north30.erp.system.menu.dto.MenuTreeQueryDTO;
 import me.north30.erp.system.menu.dto.MenuUpdateDTO;
@@ -49,6 +50,7 @@ public class MenuManageServiceImpl implements MenuManageService {
 
     private final SysMenuMapper sysMenuMapper;
     private final SysRoleMenuMapper sysRoleMenuMapper;
+    private final MenuConverter menuConverter;
 
     @Override
     @Transactional(readOnly = true)
@@ -58,7 +60,7 @@ public class MenuManageServiceImpl implements MenuManageService {
             .like(hasText(query.menuName()), SysMenu::getMenuName, query.menuName())
             .like(hasText(query.perms()), SysMenu::getPerms, query.perms())
             .eq(query.status() != null, SysMenu::getStatus, query.status()));
-        List<MenuNodeVO> nodes = menus.stream().map(this::toNode).toList();
+        List<MenuNodeVO> nodes = menus.stream().map(menuConverter::toNodeVO).toList();
         Map<Long, List<MenuNodeVO>> childrenMap = nodes.stream()
             .filter(node -> node.getParentId() != null && node.getParentId() != ROOT_PARENT_ID)
             .collect(Collectors.groupingBy(MenuNodeVO::getParentId));
@@ -91,18 +93,16 @@ public class MenuManageServiceImpl implements MenuManageService {
         }
         validateTypeFields(dto.menuType(), dto.path(), dto.component(), dto.perms());
         checkPermsUnique(dto.perms(), null);
-        SysMenu menu = new SysMenu();
-        menu.setMenuName(dto.menuName());
-        menu.setParentId(dto.parentId());
-        menu.setMenuType(dto.menuType());
-        menu.setPath(dto.path());
-        menu.setComponent(dto.component());
-        menu.setPerms(dto.perms());
-        menu.setIcon(dto.icon());
-        menu.setMenuSort(dto.menuSort() == null ? 0 : dto.menuSort());
-        menu.setVisible(dto.visible() == null ? 1 : dto.visible());
-        menu.setStatus(dto.status() == null ? 1 : dto.status());
-        menu.setRemark(dto.remark());
+        SysMenu menu = menuConverter.toEntity(dto);
+        if (menu.getMenuSort() == null) {
+            menu.setMenuSort(0);
+        }
+        if (menu.getVisible() == null) {
+            menu.setVisible(1);
+        }
+        if (menu.getStatus() == null) {
+            menu.setStatus(1);
+        }
         // 按钮不承载路由与组件信息
         if (menu.getMenuType() == TYPE_BUTTON) {
             menu.setPath(null);
@@ -118,39 +118,12 @@ public class MenuManageServiceImpl implements MenuManageService {
         SysMenu menu = requireMenu(id);
         if (dto.menuType() != null) {
             validateMenuType(dto.menuType());
-            menu.setMenuType(dto.menuType());
         }
         if (dto.parentId() != null) {
             validateParent(id, dto.parentId());
-            menu.setParentId(dto.parentId());
         }
-        if (dto.menuName() != null) {
-            menu.setMenuName(dto.menuName());
-        }
-        if (dto.path() != null) {
-            menu.setPath(dto.path());
-        }
-        if (dto.component() != null) {
-            menu.setComponent(dto.component());
-        }
-        if (dto.perms() != null) {
-            menu.setPerms(dto.perms());
-        }
-        if (dto.icon() != null) {
-            menu.setIcon(dto.icon());
-        }
-        if (dto.menuSort() != null) {
-            menu.setMenuSort(dto.menuSort());
-        }
-        if (dto.visible() != null) {
-            menu.setVisible(dto.visible());
-        }
-        if (dto.status() != null) {
-            menu.setStatus(dto.status());
-        }
-        if (dto.remark() != null) {
-            menu.setRemark(dto.remark());
-        }
+        // null 字段跳过（部分更新语义），按钮字段清空与乐观锁 version 由下方逻辑处理
+        menuConverter.updateEntity(dto, menu);
         validateTypeFields(menu.getMenuType(), menu.getPath(), menu.getComponent(), menu.getPerms());
         checkPermsUnique(menu.getPerms(), id);
         if (menu.getMenuType() == TYPE_BUTTON) {
@@ -192,22 +165,6 @@ public class MenuManageServiceImpl implements MenuManageService {
     // ------------------------------------------------------------------
     // 私有辅助方法
     // ------------------------------------------------------------------
-
-    private MenuNodeVO toNode(SysMenu menu) {
-        MenuNodeVO node = new MenuNodeVO();
-        node.setId(menu.getId());
-        node.setMenuName(menu.getMenuName());
-        node.setParentId(menu.getParentId());
-        node.setMenuType(menu.getMenuType());
-        node.setPath(menu.getPath());
-        node.setComponent(menu.getComponent());
-        node.setPerms(menu.getPerms());
-        node.setIcon(menu.getIcon());
-        node.setMenuSort(menu.getMenuSort());
-        node.setVisible(menu.getVisible());
-        node.setStatus(menu.getStatus());
-        return node;
-    }
 
     private static Comparator<MenuNodeVO> menuSortComparator() {
         return Comparator.comparing(MenuNodeVO::getMenuSort, Comparator.nullsLast(Comparator.naturalOrder()));

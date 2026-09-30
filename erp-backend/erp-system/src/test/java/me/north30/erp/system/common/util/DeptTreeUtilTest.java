@@ -1,6 +1,7 @@
 package me.north30.erp.system.common.util;
 
 import me.north30.erp.system.dept.DeptTestFactory;
+import me.north30.erp.system.dept.converter.DeptConverterImpl;
 import me.north30.erp.system.dept.entity.SysDept;
 import me.north30.erp.system.dept.vo.DeptTreeVO;
 
@@ -17,6 +18,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class DeptTreeUtilTest {
 
+    /** 被测实例：委托 MapStruct 生成实现（DeptConverterImpl）完成实体转换 */
+    private final DeptTreeUtil util = new DeptTreeUtil(new DeptConverterImpl());
+
     @Nested
     @DisplayName("buildTree：构建部门树")
     class BuildTreeTest {
@@ -25,14 +29,14 @@ class DeptTreeUtilTest {
         @DisplayName("输入 null 时返回空树")
         void shouldReturnEmpty_whenInputNull() {
             // When + Then
-            assertThat(DeptTreeUtil.buildTree(null)).isEmpty();
+            assertThat(util.buildTree(null)).isEmpty();
         }
 
         @Test
         @DisplayName("输入空列表时返回空树")
         void shouldReturnEmpty_whenInputEmpty() {
             // When + Then
-            assertThat(DeptTreeUtil.buildTree(List.of())).isEmpty();
+            assertThat(util.buildTree(List.of())).isEmpty();
         }
 
         @Test
@@ -45,7 +49,7 @@ class DeptTreeUtilTest {
             SysDept childDept = DeptTestFactory.dept(4L, "ORG004", "生产部", 1L, 4, 2, "0,1", 1);
 
             // When
-            List<DeptTreeVO> tree = DeptTreeUtil.buildTree(List.of(rootA, rootB, rootNoSort, childDept));
+            List<DeptTreeVO> tree = util.buildTree(List.of(rootA, rootB, rootNoSort, childDept));
 
             // Then
             assertThat(tree).extracting(DeptTreeVO::getId).containsExactly(2L, 1L, 3L);
@@ -63,7 +67,7 @@ class DeptTreeUtilTest {
             SysDept grandChild = DeptTestFactory.dept(6L, "ORG006", "下级组织", 5L, 5, 3, "0,1,99,5", 1);
 
             // When
-            List<DeptTreeVO> tree = DeptTreeUtil.buildTree(List.of(orphan, grandChild));
+            List<DeptTreeVO> tree = util.buildTree(List.of(orphan, grandChild));
 
             // Then
             assertThat(tree).extracting(DeptTreeVO::getId).containsExactly(5L);
@@ -80,7 +84,7 @@ class DeptTreeUtilTest {
             SysDept orphanLeaf = DeptTestFactory.dept(9L, "ORG009", "孤儿叶子", 99L, 4, 2, "0,1,99", 1);
 
             // When
-            List<DeptTreeVO> tree = DeptTreeUtil.buildTree(List.of(root, orphanLeaf));
+            List<DeptTreeVO> tree = util.buildTree(List.of(root, orphanLeaf));
 
             // Then
             assertThat(tree).extracting(DeptTreeVO::getId).containsExactly(1L);
@@ -100,7 +104,7 @@ class DeptTreeUtilTest {
             dept.setPhone("13800000000");
 
             // When
-            DeptTreeVO vo = DeptTreeUtil.toVO(dept);
+            DeptTreeVO vo = util.toVO(dept);
 
             // Then：字段一一对应
             assertThat(vo.getId()).isEqualTo(1L);

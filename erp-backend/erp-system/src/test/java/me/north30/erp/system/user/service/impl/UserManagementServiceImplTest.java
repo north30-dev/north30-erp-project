@@ -8,6 +8,8 @@ import me.north30.erp.common.result.PageResult;
 import me.north30.erp.system.dept.entity.SysDept;
 import me.north30.erp.system.dept.mapper.SysDeptMapper;
 import me.north30.erp.system.role.mapper.SysRoleMapper;
+import me.north30.erp.system.user.converter.UserConverter;
+import me.north30.erp.system.user.converter.UserConverterImpl;
 import me.north30.erp.system.user.dto.UserAssignRolesDTO;
 import me.north30.erp.system.user.dto.UserCreateDTO;
 import me.north30.erp.system.user.dto.UserQueryDTO;
@@ -30,6 +32,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
+import org.mockito.Spy;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.RedisConnectionFailureException;
@@ -77,6 +80,9 @@ class UserManagementServiceImplTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Spy
+    private final UserConverter userConverter = new UserConverterImpl();
 
     @InjectMocks
     private UserManagementServiceImpl service;

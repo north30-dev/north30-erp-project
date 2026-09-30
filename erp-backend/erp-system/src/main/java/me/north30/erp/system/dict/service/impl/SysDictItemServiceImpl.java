@@ -7,6 +7,7 @@ import me.north30.erp.common.constant.PageConstants;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
+import me.north30.erp.system.dict.converter.DictConverter;
 import me.north30.erp.system.dict.dto.DictItemCreateDTO;
 import me.north30.erp.system.dict.dto.DictItemQueryDTO;
 import me.north30.erp.system.dict.dto.DictItemUpdateDTO;
@@ -43,6 +44,7 @@ public class SysDictItemServiceImpl implements SysDictItemService {
 
     private final SysDictItemMapper sysDictItemMapper;
     private final SysDictTypeMapper sysDictTypeMapper;
+    private final DictConverter dictConverter;
 
     @Override
     @Transactional(readOnly = true)
@@ -60,7 +62,7 @@ public class SysDictItemServiceImpl implements SysDictItemService {
             .orderByAsc(SysDictItem::getItemSort)
             .orderByAsc(SysDictItem::getId);
         Page<SysDictItem> page = sysDictItemMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
-        List<DictItemVO> vos = page.getRecords().stream().map(this::toVO).toList();
+        List<DictItemVO> vos = page.getRecords().stream().map(dictConverter::toVO).toList();
         return PageResult.of(page.getTotal(), pageNum, pageSize, vos);
     }
 
@@ -80,17 +82,17 @@ public class SysDictItemServiceImpl implements SysDictItemService {
         if (exists != null && exists > 0) {
             throw new BusinessException(SystemManageErrorCode.DICT_ITEM_EXISTS, "字典项 " + dto.itemValue() + " 已存在");
         }
-        SysDictItem item = new SysDictItem();
-        item.setDictType(dto.dictType());
-        item.setItemLabel(dto.itemLabel());
-        item.setItemValue(dto.itemValue());
+        SysDictItem item = dictConverter.toEntity(dto);
         item.setLang(lang);
-        item.setItemSort(dto.itemSort() == null ? 0 : dto.itemSort());
-        item.setCssClass(dto.cssClass());
-        item.setIsDefault(dto.isDefault() == null ? 0 : dto.isDefault());
-        item.setExtJson(dto.extJson());
-        item.setStatus(dto.status() == null ? STATUS_ENABLED : dto.status());
-        item.setRemark(dto.remark());
+        if (item.getItemSort() == null) {
+            item.setItemSort(0);
+        }
+        if (item.getIsDefault() == null) {
+            item.setIsDefault(0);
+        }
+        if (item.getStatus() == null) {
+            item.setStatus(STATUS_ENABLED);
+        }
         sysDictItemMapper.insert(item);
         return new MutationVO(item.getId(), null, null);
     }
@@ -102,27 +104,8 @@ public class SysDictItemServiceImpl implements SysDictItemService {
         if (item == null) {
             throw new BusinessException(CommonErrorCode.NOT_FOUND, "字典项 " + id + " 不存在");
         }
-        if (dto.itemLabel() != null) {
-            item.setItemLabel(dto.itemLabel());
-        }
-        if (dto.itemSort() != null) {
-            item.setItemSort(dto.itemSort());
-        }
-        if (dto.cssClass() != null) {
-            item.setCssClass(dto.cssClass());
-        }
-        if (dto.isDefault() != null) {
-            item.setIsDefault(dto.isDefault());
-        }
-        if (dto.extJson() != null) {
-            item.setExtJson(dto.extJson());
-        }
-        if (dto.status() != null) {
-            item.setStatus(dto.status());
-        }
-        if (dto.remark() != null) {
-            item.setRemark(dto.remark());
-        }
+        // null 字段跳过（部分更新语义），乐观锁 version 由下方逻辑处理
+        dictConverter.updateEntity(dto, item);
         item.setVersion(dto.version());
         if (sysDictItemMapper.updateById(item) == 0) {
             throw new BusinessException(CommonErrorCode.OPTIMISTIC_LOCK_CONFLICT);
@@ -139,15 +122,6 @@ public class SysDictItemServiceImpl implements SysDictItemService {
         }
         sysDictItemMapper.deleteById(id);
         return new MutationVO(id, null, DELETED);
-    }
-
-    /**
-     * Entity → VO 转换（字典缓存后续阶段接入，cached 恒为 false）。
-     */
-    private DictItemVO toVO(SysDictItem item) {
-        return new DictItemVO(item.getId(), item.getDictType(), item.getItemLabel(), item.getItemValue(),
-            item.getLang(), item.getItemSort(), item.getCssClass(), item.getIsDefault(),
-            item.getExtJson(), item.getStatus(), item.getRemark(), Boolean.FALSE);
     }
 
     private long normalizePageNum(long pageNum) {

@@ -6,6 +6,8 @@ import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.system.common.enums.RoleMenuErrorCode;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.menu.MenuTestFactory;
+import me.north30.erp.system.menu.converter.MenuConverter;
+import me.north30.erp.system.menu.converter.MenuConverterImpl;
 import me.north30.erp.system.menu.dto.MenuCreateDTO;
 import me.north30.erp.system.menu.dto.MenuUpdateDTO;
 import me.north30.erp.system.menu.entity.SysMenu;
@@ -21,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
+import org.mockito.Spy;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -47,6 +50,9 @@ class MenuManageServiceImplTest {
 
     @Mock
     private SysRoleMenuMapper sysRoleMenuMapper;
+
+    @Spy
+    private final MenuConverter menuConverter = new MenuConverterImpl();
 
     @InjectMocks
     private MenuManageServiceImpl service;

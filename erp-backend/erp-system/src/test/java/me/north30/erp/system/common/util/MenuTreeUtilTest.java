@@ -1,6 +1,7 @@
 package me.north30.erp.system.common.util;
 
 import me.north30.erp.system.menu.MenuTestFactory;
+import me.north30.erp.system.menu.converter.MenuConverterImpl;
 import me.north30.erp.system.menu.entity.SysMenu;
 import me.north30.erp.system.menu.vo.MenuTreeVO;
 
@@ -17,6 +18,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class MenuTreeUtilTest {
 
+    /** 被测实例：委托 MapStruct 生成实现（MenuConverterImpl）完成实体转换 */
+    private final MenuTreeUtil util = new MenuTreeUtil(new MenuConverterImpl());
+
     @Nested
     @DisplayName("buildTree：构建菜单树")
     class BuildTreeTest {
@@ -25,14 +29,14 @@ class MenuTreeUtilTest {
         @DisplayName("输入 null 时返回空树")
         void shouldReturnEmpty_whenInputNull() {
             // When + Then
-            assertThat(MenuTreeUtil.buildTree(null)).isEmpty();
+            assertThat(util.buildTree(null)).isEmpty();
         }
 
         @Test
         @DisplayName("输入空列表时返回空树")
         void shouldReturnEmpty_whenInputEmpty() {
             // When + Then
-            assertThat(MenuTreeUtil.buildTree(List.of())).isEmpty();
+            assertThat(util.buildTree(List.of())).isEmpty();
         }
 
         @Test
@@ -47,7 +51,7 @@ class MenuTreeUtilTest {
             MenuTreeVO grandChild = MenuTestFactory.treeVO(6L, 4L, 1);
 
             // When
-            List<MenuTreeVO> tree = MenuTreeUtil.buildTree(
+            List<MenuTreeVO> tree = util.buildTree(
                 List.of(rootA, rootB, rootNoSort, childA1, childA2, grandChild));
 
             // Then：根节点 [sort1, sort2, null]，子节点正确挂载
@@ -69,7 +73,7 @@ class MenuTreeUtilTest {
             MenuTreeVO orphan = MenuTestFactory.treeVO(9L, 99L, 1);
 
             // When
-            List<MenuTreeVO> tree = MenuTreeUtil.buildTree(List.of(root, orphan));
+            List<MenuTreeVO> tree = util.buildTree(List.of(root, orphan));
 
             // Then：孤儿节点被丢弃，不出现在根列表中
             assertThat(tree).extracting(MenuTreeVO::getMenuId).containsExactly(1L);
@@ -87,7 +91,7 @@ class MenuTreeUtilTest {
             SysMenu menu = MenuTestFactory.pageMenu(1L, "用户管理", 2L, "system/user/index", "system:user:list", 3);
 
             // When
-            MenuTreeVO vo = MenuTreeUtil.toVO(menu);
+            MenuTreeVO vo = util.toVO(menu);
 
             // Then：字段一一对应（perms 不在树 VO 范围）
             assertThat(vo.getMenuId()).isEqualTo(1L);

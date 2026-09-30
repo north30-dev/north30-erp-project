@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.extern.slf4j.Slf4j;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
+import me.north30.erp.system.attachment.converter.AttachmentConverter;
 import me.north30.erp.system.attachment.entity.SysAttachment;
 import me.north30.erp.system.common.enums.SystemManageErrorCode;
 import me.north30.erp.system.attachment.mapper.SysAttachmentMapper;
@@ -58,16 +59,16 @@ public class SysAttachmentServiceImpl implements SysAttachmentService {
 
     private static final DateTimeFormatter MONTH_DIR_FORMATTER = DateTimeFormatter.ofPattern("yyyyMM");
 
-    private static final String DOWNLOAD_URL_TEMPLATE = "/api/system/attachments/%d/download";
-
     private final SysAttachmentMapper sysAttachmentMapper;
-
+    private final AttachmentConverter attachmentConverter;
     /** 附件存储根目录（绝对路径，server 端控制，不含用户可控路径） */
     private final Path storeRoot;
 
     public SysAttachmentServiceImpl(SysAttachmentMapper sysAttachmentMapper,
+                                    AttachmentConverter attachmentConverter,
                                     @Value("${erp.attachment.store-path:/tmp/erp-attachments}") String storePath) {
         this.sysAttachmentMapper = sysAttachmentMapper;
+        this.attachmentConverter = attachmentConverter;
         this.storeRoot = Paths.get(storePath).toAbsolutePath().normalize();
     }
 
@@ -107,7 +108,7 @@ public class SysAttachmentServiceImpl implements SysAttachmentService {
         attachment.setUploadBy(user != null ? user.username() : "system");
         attachment.setUploadTime(LocalDateTime.now());
         sysAttachmentMapper.insert(attachment);
-        return toVO(attachment);
+        return attachmentConverter.toVO(attachment);
     }
 
     @Override
@@ -120,7 +121,7 @@ public class SysAttachmentServiceImpl implements SysAttachmentService {
             .eq(SysAttachment::getBizType, bizType.trim())
             .eq(SysAttachment::getBizId, bizId)
             .orderByDesc(SysAttachment::getId));
-        return list.stream().map(this::toVO).toList();
+        return list.stream().map(attachmentConverter::toVO).toList();
     }
 
     @Override
@@ -223,10 +224,4 @@ public class SysAttachmentServiceImpl implements SysAttachmentService {
         return target;
     }
 
-    private AttachmentVO toVO(SysAttachment attachment) {
-        return new AttachmentVO(attachment.getId(), attachment.getFileName(), attachment.getFilePath(),
-            attachment.getFileType(), attachment.getFileSize(), attachment.getBizType(), attachment.getBizId(),
-            attachment.getBizCode(), attachment.getUploadBy(), attachment.getUploadTime(),
-            String.format(DOWNLOAD_URL_TEMPLATE, attachment.getId()));
-    }
 }

@@ -7,6 +7,8 @@ import me.north30.erp.common.result.PageResult;
 import me.north30.erp.system.common.enums.SystemManageErrorCode;
 import me.north30.erp.system.common.vo.MutationVO;
 import me.north30.erp.system.config.ConfigTestFactory;
+import me.north30.erp.system.config.converter.ConfigConverter;
+import me.north30.erp.system.config.converter.ConfigConverterImpl;
 import me.north30.erp.system.config.entity.SysConfig;
 import me.north30.erp.system.config.mapper.SysConfigMapper;
 import me.north30.erp.system.config.vo.ConfigUpdateVO;
@@ -20,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
+import org.mockito.Spy;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import tools.jackson.core.JacksonException;
@@ -48,6 +51,9 @@ class SysConfigServiceImplTest {
 
     @Mock
     private ObjectMapper objectMapper;
+
+    @Spy
+    private final ConfigConverter configConverter = new ConfigConverterImpl();
 
     @InjectMocks
     private SysConfigServiceImpl service;

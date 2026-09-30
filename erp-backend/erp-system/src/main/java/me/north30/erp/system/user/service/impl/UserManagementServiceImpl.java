@@ -19,6 +19,7 @@ import me.north30.erp.system.user.dto.UserCreateDTO;
 import me.north30.erp.system.user.dto.UserQueryDTO;
 import me.north30.erp.system.user.dto.UserResetPasswordDTO;
 import me.north30.erp.system.user.dto.UserStatusDTO;
+import me.north30.erp.system.user.converter.UserConverter;
 import me.north30.erp.system.user.dto.UserUpdateDTO;
 import me.north30.erp.system.dept.entity.SysDept;
 import me.north30.erp.system.role.entity.SysRole;
@@ -97,6 +98,7 @@ public class UserManagementServiceImpl implements UserManagementService {
     private final SysDeptMapper sysDeptMapper;
     private final StringRedisTemplate stringRedisTemplate;
     private final PasswordEncoder passwordEncoder;
+    private final UserConverter userConverter;
 
     @Override
     @Transactional(readOnly = true)
@@ -154,17 +156,15 @@ public class UserManagementServiceImpl implements UserManagementService {
         List<Long> roleIds = distinctRoleIds(dto.roleIds());
         validateRolesExist(roleIds);
         // 4. 落库：口令 BCrypt 加密，初始口令修改时间置为当前（90 天有效期基准）
-        SysUser user = new SysUser();
-        user.setUserCode(dto.userCode());
-        user.setUsername(dto.username());
+        SysUser user = userConverter.toEntity(dto);
         user.setPassword(passwordEncoder.encode(dto.password()));
-        user.setRealName(dto.realName());
-        user.setDeptId(dto.deptId());
         user.setWarehouseIds(joinWarehouseIds(dto.warehouseIds()));
-        user.setPhone(dto.phone());
-        user.setEmail(dto.email());
-        user.setGender(dto.gender() != null ? dto.gender() : 0);
-        user.setStatus(dto.status() != null ? dto.status() : 1);
+        if (user.getGender() == null) {
+            user.setGender(0);
+        }
+        if (user.getStatus() == null) {
+            user.setStatus(1);
+        }
         user.setIsAdmin(0);
         user.setPasswordUpdateTime(LocalDateTime.now());
         sysUserMapper.insert(user);
@@ -184,18 +184,10 @@ public class UserManagementServiceImpl implements UserManagementService {
         if (dto.deptId() != null) {
             requireDeptExists(dto.deptId());
         }
-        SysUser entity = new SysUser();
+        SysUser entity = userConverter.toEntity(dto);
         entity.setId(id);
-        entity.setRealName(dto.realName());
-        entity.setDeptId(dto.deptId());
         entity.setWarehouseIds(dto.warehouseIds() != null ? joinWarehouseIds(dto.warehouseIds()) : null);
-        entity.setPhone(dto.phone());
-        entity.setEmail(dto.email());
-        entity.setGender(dto.gender());
-        entity.setStatus(dto.status());
-        entity.setRemark(dto.remark());
         // 带乐观锁版本条件更新，冲突时更新行数为 0；显式设置更新时间（strictUpdateFill 不覆盖已设值）
-        entity.setVersion(dto.version());
         entity.setUpdateTime(LocalDateTime.now());
         if (sysUserMapper.updateById(entity) <= 0) {
             throw new BusinessException(CommonErrorCode.OPTIMISTIC_LOCK_CONFLICT);
@@ -481,10 +473,7 @@ public class UserManagementServiceImpl implements UserManagementService {
      */
     private void insertUserRoles(Long userId, List<Long> roleIds) {
         for (Long roleId : roleIds) {
-            SysUserRole userRole = new SysUserRole();
-            userRole.setUserId(userId);
-            userRole.setRoleId(roleId);
-            sysUserRoleMapper.insert(userRole);
+            sysUserRoleMapper.insert(userConverter.toUserRole(userId, roleId));
         }
     }
 

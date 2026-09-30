@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
+import me.north30.erp.system.dept.converter.DeptConverter;
 import me.north30.erp.system.dept.dto.DeptCreateDTO;
 import me.north30.erp.system.dept.dto.DeptTreeQueryDTO;
 import me.north30.erp.system.dept.dto.DeptUpdateDTO;
@@ -54,6 +55,8 @@ public class SysDeptManageServiceImpl implements SysDeptManageService {
 
     private final SysDeptMapper sysDeptMapper;
     private final SysUserMapper sysUserMapper;
+    private final DeptTreeUtil deptTreeUtil;
+    private final DeptConverter deptConverter;
 
     @Override
     @Transactional(readOnly = true)
@@ -64,7 +67,7 @@ public class SysDeptManageServiceImpl implements SysDeptManageService {
             .eq(query.getStatus() != null, SysDept::getStatus, query.getStatus())
             .orderByAsc(SysDept::getDeptSort)
             .orderByAsc(SysDept::getId);
-        return DeptTreeUtil.buildTree(sysDeptMapper.selectList(wrapper));
+        return deptTreeUtil.buildTree(sysDeptMapper.selectList(wrapper));
     }
 
     @Override
@@ -80,18 +83,15 @@ public class SysDeptManageServiceImpl implements SysDeptManageService {
         if (deptLevel > MAX_DEPT_LEVEL) {
             throw new BusinessException(SystemManageErrorCode.DEPT_LEVEL_EXCEED);
         }
-        SysDept dept = new SysDept();
-        dept.setDeptCode(dto.deptCode());
-        dept.setDeptName(dto.deptName());
-        dept.setParentId(dto.parentId());
-        dept.setDeptType(dto.deptType());
+        SysDept dept = deptConverter.toEntity(dto);
         dept.setDeptLevel(deptLevel);
         dept.setAncestors(buildAncestors(parent));
-        dept.setLeader(dto.leader());
-        dept.setPhone(dto.phone());
-        dept.setDeptSort(dto.deptSort() == null ? 0 : dto.deptSort());
-        dept.setStatus(dto.status() == null ? STATUS_ENABLED : dto.status());
-        dept.setRemark(dto.remark());
+        if (dept.getDeptSort() == null) {
+            dept.setDeptSort(0);
+        }
+        if (dept.getStatus() == null) {
+            dept.setStatus(STATUS_ENABLED);
+        }
         sysDeptMapper.insert(dept);
         return new DeptMutationVO(dept.getId(), dept.getAncestors(), dept.getDeptLevel(),
             DateTimeFormatUtil.format(dept.getUpdateTime()), null);

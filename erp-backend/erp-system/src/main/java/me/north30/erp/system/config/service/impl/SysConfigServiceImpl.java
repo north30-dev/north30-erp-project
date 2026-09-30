@@ -7,6 +7,7 @@ import me.north30.erp.common.constant.PageConstants;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
+import me.north30.erp.system.config.converter.ConfigConverter;
 import me.north30.erp.system.config.dto.ConfigCreateDTO;
 import me.north30.erp.system.config.dto.ConfigQueryDTO;
 import me.north30.erp.system.config.dto.ConfigUpdateDTO;
@@ -52,6 +53,7 @@ public class SysConfigServiceImpl implements SysConfigService {
 
     private final SysConfigMapper sysConfigMapper;
     private final ObjectMapper objectMapper;
+    private final ConfigConverter configConverter;
 
     @Override
     @Transactional(readOnly = true)
@@ -65,7 +67,7 @@ public class SysConfigServiceImpl implements SysConfigService {
             .eq(query.getStatus() != null, SysConfig::getStatus, query.getStatus())
             .orderByAsc(SysConfig::getId);
         Page<SysConfig> page = sysConfigMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
-        List<ConfigVO> vos = page.getRecords().stream().map(this::toVO).toList();
+        List<ConfigVO> vos = page.getRecords().stream().map(configConverter::toVO).toList();
         return PageResult.of(page.getTotal(), pageNum, pageSize, vos);
     }
 
@@ -78,15 +80,13 @@ public class SysConfigServiceImpl implements SysConfigService {
         if (exists != null && exists > 0) {
             throw new BusinessException(CommonErrorCode.DUPLICATE_KEY, "参数键 " + dto.configKey() + " 已存在，请检查后重试");
         }
-        SysConfig config = new SysConfig();
-        config.setConfigKey(dto.configKey());
-        config.setConfigName(dto.configName());
-        config.setConfigValue(dto.configValue());
-        config.setValueType(dto.valueType());
-        config.setConfigGroup(dto.configGroup());
-        config.setIsSystem(dto.isSystem() == null ? 0 : dto.isSystem());
-        config.setStatus(dto.status() == null ? STATUS_ENABLED : dto.status());
-        config.setRemark(dto.remark());
+        SysConfig config = configConverter.toEntity(dto);
+        if (config.getIsSystem() == null) {
+            config.setIsSystem(0);
+        }
+        if (config.getStatus() == null) {
+            config.setStatus(STATUS_ENABLED);
+        }
         sysConfigMapper.insert(config);
         return new MutationVO(config.getId(), null, null);
     }
@@ -167,15 +167,6 @@ public class SysConfigServiceImpl implements SysConfigService {
                 // 1-字符串：不做格式校验
             }
         }
-    }
-
-    /**
-     * Entity → VO 转换。
-     */
-    private ConfigVO toVO(SysConfig config) {
-        return new ConfigVO(config.getId(), config.getConfigKey(), config.getConfigName(), config.getConfigValue(),
-            config.getValueType(), config.getConfigGroup(), config.getIsSystem(), config.getStatus(),
-            config.getRemark());
     }
 
     private long normalizePageNum(long pageNum) {

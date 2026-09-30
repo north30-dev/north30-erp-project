@@ -8,6 +8,7 @@ import me.north30.erp.common.constant.PageConstants;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
+import me.north30.erp.system.dict.converter.DictConverter;
 import me.north30.erp.system.dict.dto.DictTypeCreateDTO;
 import me.north30.erp.system.dict.dto.DictTypeQueryDTO;
 import me.north30.erp.system.dict.dto.DictTypeUpdateDTO;
@@ -44,6 +45,7 @@ public class SysDictTypeServiceImpl implements SysDictTypeService {
 
     private final SysDictTypeMapper sysDictTypeMapper;
     private final SysDictItemMapper sysDictItemMapper;
+    private final DictConverter dictConverter;
 
     @Override
     @Transactional(readOnly = true)
@@ -58,7 +60,7 @@ public class SysDictTypeServiceImpl implements SysDictTypeService {
         Page<SysDictType> page = sysDictTypeMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
         Map<String, Long> itemCounts = countItemsByTypes(page.getRecords());
         List<DictTypeVO> vos = page.getRecords().stream()
-            .map(type -> toVO(type, itemCounts.getOrDefault(type.getDictType(), 0L)))
+            .map(type -> dictConverter.toVO(type, itemCounts.getOrDefault(type.getDictType(), 0L)))
             .toList();
         return PageResult.of(page.getTotal(), pageNum, pageSize, vos);
     }
@@ -71,11 +73,10 @@ public class SysDictTypeServiceImpl implements SysDictTypeService {
         if (exists != null && exists > 0) {
             throw new BusinessException(SystemManageErrorCode.DICT_TYPE_EXISTS, "字典类型 " + dto.dictType() + " 已存在");
         }
-        SysDictType dictType = new SysDictType();
-        dictType.setDictType(dto.dictType());
-        dictType.setDictName(dto.dictName());
-        dictType.setStatus(dto.status() == null ? STATUS_ENABLED : dto.status());
-        dictType.setRemark(dto.remark());
+        SysDictType dictType = dictConverter.toEntity(dto);
+        if (dictType.getStatus() == null) {
+            dictType.setStatus(STATUS_ENABLED);
+        }
         sysDictTypeMapper.insert(dictType);
         return new MutationVO(dictType.getId(), null, null);
     }
@@ -140,14 +141,6 @@ public class SysDictTypeServiceImpl implements SysDictTypeService {
             }
         }
         return counts;
-    }
-
-    /**
-     * Entity → VO 转换。
-     */
-    private DictTypeVO toVO(SysDictType type, long itemCount) {
-        return new DictTypeVO(type.getId(), type.getDictType(), type.getDictName(), type.getStatus(),
-            type.getRemark(), DateTimeFormatUtil.format(type.getCreateTime()), itemCount);
     }
 
     private long normalizePageNum(long pageNum) {

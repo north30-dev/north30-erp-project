@@ -7,6 +7,8 @@ import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.system.common.enums.SystemManageErrorCode;
 import me.north30.erp.system.common.vo.MutationVO;
 import me.north30.erp.system.dict.DictTestFactory;
+import me.north30.erp.system.dict.converter.DictConverter;
+import me.north30.erp.system.dict.converter.DictConverterImpl;
 import me.north30.erp.system.dict.entity.SysDictItem;
 import me.north30.erp.system.dict.entity.SysDictType;
 import me.north30.erp.system.dict.mapper.SysDictItemMapper;
@@ -21,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
+import org.mockito.Spy;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -47,6 +50,9 @@ class SysDictItemServiceImplTest {
 
     @Mock
     private SysDictTypeMapper sysDictTypeMapper;
+
+    @Spy
+    private final DictConverter dictConverter = new DictConverterImpl();
 
     @InjectMocks
     private SysDictItemServiceImpl service;

@@ -3,6 +3,7 @@ package me.north30.erp.system.attachment.service.impl;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.system.attachment.AttachmentTestFactory;
+import me.north30.erp.system.attachment.converter.AttachmentConverterImpl;
 import me.north30.erp.system.attachment.entity.SysAttachment;
 import me.north30.erp.system.attachment.mapper.SysAttachmentMapper;
 import me.north30.erp.system.attachment.vo.AttachmentDeleteVO;
@@ -73,7 +74,7 @@ class SysAttachmentServiceImplTest {
     @BeforeEach
     void setUp() {
         // @Value 配置参数无法由 Mockito 注入，手动构造（同 MP ServiceImpl 特例口径）
-        service = new SysAttachmentServiceImpl(sysAttachmentMapper, tempDir.toString());
+        service = new SysAttachmentServiceImpl(sysAttachmentMapper, new AttachmentConverterImpl(), tempDir.toString());
     }
 
     @AfterEach

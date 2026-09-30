@@ -15,6 +15,7 @@ import me.north30.erp.system.role.dto.RoleDataScopeSaveDTO;
 import me.north30.erp.system.role.dto.RolePageQueryDTO;
 import me.north30.erp.system.role.dto.RoleUpdateDTO;
 import me.north30.erp.system.menu.entity.SysMenu;
+import me.north30.erp.system.role.converter.RoleConverter;
 import me.north30.erp.system.role.entity.SysRole;
 import me.north30.erp.system.role.entity.SysRoleDataScope;
 import me.north30.erp.system.role.entity.SysRoleMenu;
@@ -65,6 +66,7 @@ public class RoleManageServiceImpl implements RoleManageService {
     private final SysRoleMenuMapper sysRoleMenuMapper;
     private final SysMenuMapper sysMenuMapper;
     private final SysRoleDataScopeMapper sysRoleDataScopeMapper;
+    private final RoleConverter roleConverter;
 
     @Override
     @Transactional(readOnly = true)
@@ -125,14 +127,15 @@ public class RoleManageServiceImpl implements RoleManageService {
         }
         Integer dataScope = dto.dataScope() == null ? 1 : dto.dataScope();
         validateDataScope(dataScope);
-        SysRole role = new SysRole();
-        role.setRoleCode(dto.roleCode());
-        role.setRoleName(dto.roleName());
-        role.setRoleSort(dto.roleSort() == null ? 0 : dto.roleSort());
+        SysRole role = roleConverter.toEntity(dto);
+        if (role.getRoleSort() == null) {
+            role.setRoleSort(0);
+        }
         role.setDataScope(dataScope);
         role.setIsBuiltin(0);
-        role.setStatus(dto.status() == null ? 1 : dto.status());
-        role.setRemark(dto.remark());
+        if (role.getStatus() == null) {
+            role.setStatus(1);
+        }
         sysRoleMapper.insert(role);
         return new RoleCreatedVO(role.getId());
     }
@@ -144,23 +147,9 @@ public class RoleManageServiceImpl implements RoleManageService {
         if (dto.dataScope() != null) {
             validateDataScope(dto.dataScope());
         }
-        if (dto.roleName() != null) {
-            role.setRoleName(dto.roleName());
-        }
-        if (dto.roleSort() != null) {
-            role.setRoleSort(dto.roleSort());
-        }
-        if (dto.dataScope() != null) {
-            role.setDataScope(dto.dataScope());
-        }
-        if (dto.status() != null) {
-            role.setStatus(dto.status());
-        }
-        if (dto.remark() != null) {
-            role.setRemark(dto.remark());
-        }
-        // role_code 不可修改：不映射该字段；乐观锁按客户端传入 version 校验
-        role.setVersion(dto.version());
+        // role_code 不可修改：转换器不映射该字段；null 字段跳过（部分更新语义），
+        // 乐观锁按客户端传入 version 校验
+        roleConverter.updateEntity(dto, role);
         int rows = sysRoleMapper.updateById(role);
         if (rows == 0) {
             throw new BusinessException(CommonErrorCode.OPTIMISTIC_LOCK_CONFLICT);
@@ -208,10 +197,7 @@ public class RoleManageServiceImpl implements RoleManageService {
         // 全删全插：先逻辑删除旧关联，再批量插入新授权
         sysRoleMenuMapper.delete(new LambdaQueryWrapper<SysRoleMenu>().eq(SysRoleMenu::getRoleId, id));
         for (Long menuId : menuIds) {
-            SysRoleMenu roleMenu = new SysRoleMenu();
-            roleMenu.setRoleId(id);
-            roleMenu.setMenuId(menuId);
-            sysRoleMenuMapper.insert(roleMenu);
+            sysRoleMenuMapper.insert(roleConverter.toRoleMenu(id, menuId));
         }
         int permCount = (int) menus.stream()
             .filter(menu -> menu.getPerms() != null && !menu.getPerms().isBlank())
@@ -237,11 +223,7 @@ public class RoleManageServiceImpl implements RoleManageService {
         sysRoleDataScopeMapper.delete(
             new LambdaQueryWrapper<SysRoleDataScope>().eq(SysRoleDataScope::getRoleId, id));
         for (RoleDataScopeItemDTO item : dto.scopes()) {
-            SysRoleDataScope scope = new SysRoleDataScope();
-            scope.setRoleId(id);
-            scope.setBizObject(item.bizObject());
-            scope.setFilterDimension(item.filterDimension());
-            scope.setScopeType(item.scopeType());
+            SysRoleDataScope scope = roleConverter.toRoleDataScope(id, item);
             scope.setDeptIds(joinIds(item.deptIds()));
             scope.setUserIds(joinIds(item.userIds()));
             scope.setFieldMask(item.fieldMask() == null ? 0 : item.fieldMask());

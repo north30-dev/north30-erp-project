@@ -203,6 +203,32 @@ BigDecimal total = BigDecimalUtil.multiply(price, quantity, 2);
 - 分布式环境下任务必须配置 **路由策略（分片广播/轮询）**，避免重复执行。
 - 批量数据处理任务必须分页查询 + 批量更新，严禁一次性加载全量数据到内存。
 
+### 2.12 对象转换规范（MapStruct，强制）
+
+- **MapStruct 是全项目唯一的对象转换方案**：DTO→Entity、Entity→VO、Entity→Entity 字段拷贝一律使用 MapStruct 编译期生成的转换器；**禁止**使用 Hutool `BeanUtil`、Spring `BeanUtils` 等任何反射拷贝工具。
+- 转换器命名与位置：各业务域下新建 `converter` 包，接口命名 `XxxConverter`（**禁止**命名为 `XxxMapper`，避免与 MyBatis 的 `org.apache.ibatis.annotations.Mapper` 混淆）。标准写法：
+
+```java
+@Mapper(componentModel = MappingConstants.ComponentModel.SPRING,
+        unmappedTargetPolicy = ReportingPolicy.ERROR)
+public interface UserConverter {
+
+    @BeanMapping(ignoreByDefault = true)
+    @Mapping(target = "username")
+    @Mapping(target = "realName")
+    SysUser toEntity(UserCreateDTO dto);
+}
+```
+
+- `unmappedTargetPolicy = ReportingPolicy.ERROR`：目标字段未显式声明映射即编译报错，杜绝静默丢字段；同名同型字段自动映射，不同名或需排除的字段用 `@Mapping` 显式声明。
+- `@BeanMapping(ignoreByDefault = true)` + 逐字段 `@Mapping(target = ...)` 组合：应对目标实体含大量 BaseEntity 审计字段（createBy/createTime/version 等）的场景，审计字段由 MyBatis-Plus 自动填充，禁止通过转换器赋值。
+- 部分更新语义（DTO 合并到已加载实体、null 字段跳过）：`@BeanMapping(ignoreByDefault = true, nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)` + `@MappingTarget` 参数；仅 2-3 个字段的局部更新（如 changeStatus、resetPassword）仍直接使用 `LambdaUpdateWrapper`，不必走转换器。
+- DTO/VO 为 record 时无需额外配置：record 目标由 MapStruct 自动走规范构造器注入（生成代码为 `new XxxVO(...)`），record 源走访问器读取；`source` 属性导航使用属性名（如 `source = "item.bizObject"`），不写访问器括号。
+- 适用边界：装配型 VO（DetailVO 等需查关联数据的场景）只由转换器处理主体字段，关联字段仍由 Service 查询后显式装配；金额等派生字段由 Service 计算后处理。
+- 依赖与编译配置：
+  - 版本由根 `pom.xml` 统一管控（`mapstruct.version`）；`erp-common` 引入 `mapstruct` 运行时注解包，业务模块引入 `mapstruct-processor`。
+  - `maven-compiler-plugin` 的 `annotationProcessorPaths` 顺序**必须**为：`lombok` → `lombok-mapstruct-binding` → `mapstruct-processor`。顺序错误会导致生成空实现（运行时字段全 null）且编译不报错，改动配置后必须抽查 `target/generated-sources` 下生成的 `XxxConverterImpl` 验证字段映射完整。
+- MapperScan 只扫描 `**.mapper` 包，转换器（converter 包）不会被 MyBatis 加载，二者无冲突。
 
 ## 三、数据库设计规范（PostgreSQL / MySQL）
 

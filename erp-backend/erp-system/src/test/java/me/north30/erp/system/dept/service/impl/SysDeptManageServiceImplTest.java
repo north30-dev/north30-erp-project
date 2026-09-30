@@ -3,7 +3,10 @@ package me.north30.erp.system.dept.service.impl;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.util.DeptTreeUtil;
 import me.north30.erp.system.dept.DeptTestFactory;
+import me.north30.erp.system.dept.converter.DeptConverter;
+import me.north30.erp.system.dept.converter.DeptConverterImpl;
 import me.north30.erp.system.dept.dto.DeptCreateDTO;
 import me.north30.erp.system.dept.dto.DeptUpdateDTO;
 import me.north30.erp.system.dept.entity.SysDept;
@@ -20,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
+import org.mockito.Spy;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -48,6 +52,12 @@ class SysDeptManageServiceImplTest {
 
     @Mock
     private SysUserMapper sysUserMapper;
+
+    @Spy
+    private final DeptTreeUtil deptTreeUtil = new DeptTreeUtil(new DeptConverterImpl());
+
+    @Spy
+    private final DeptConverter deptConverter = new DeptConverterImpl();
 
     @InjectMocks
     private SysDeptManageServiceImpl service;

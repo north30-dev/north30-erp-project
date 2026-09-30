@@ -11,13 +11,13 @@ import me.north30.erp.common.constant.PageConstants;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
+import me.north30.erp.system.codesequence.converter.CodeSequenceConverter;
 import me.north30.erp.system.codesequence.dto.CodeSequenceQueryDTO;
 import me.north30.erp.system.codesequence.dto.CodeSequenceResetDTO;
 import me.north30.erp.system.codesequence.entity.SysCodeSequence;
 import me.north30.erp.system.common.enums.SystemManageErrorCode;
 import me.north30.erp.system.codesequence.mapper.SysCodeSequenceMapper;
 import me.north30.erp.system.codesequence.service.SysCodeSequenceService;
-import me.north30.erp.system.common.util.DateTimeFormatUtil;
 import me.north30.erp.system.codesequence.vo.CodeSequenceResetVO;
 import me.north30.erp.system.codesequence.vo.CodeSequenceVO;
 import org.springframework.stereotype.Service;
@@ -37,6 +37,7 @@ import java.util.List;
 public class SysCodeSequenceServiceImpl implements SysCodeSequenceService {
 
     private final SysCodeSequenceMapper sysCodeSequenceMapper;
+    private final CodeSequenceConverter codeSequenceConverter;
 
     @Override
     @Transactional(readOnly = true)
@@ -81,15 +82,16 @@ public class SysCodeSequenceServiceImpl implements SysCodeSequenceService {
     }
 
     /**
-     * Entity → VO 转换：下一编号预览 = prefix + period + 补零（currentNo+1）。
+     * Entity → VO：主体字段走 CodeSequenceConverter；nextNo 为派生字段
+     * （prefix + period + 补零流水，依赖 seqLength 缺省值 3），由服务层计算装配。
      */
     private CodeSequenceVO toVO(SysCodeSequence sequence) {
         int seqLength = sequence.getSeqLength() == null ? 3 : sequence.getSeqLength();
         String nextNo = String.format("%0" + seqLength + "d", sequence.getCurrentNo() + 1);
-        return new CodeSequenceVO(sequence.getId(), sequence.getBizType(), sequence.getPrefix(),
-            sequence.getPeriod(), sequence.getCurrentNo(), sequence.getSeqLength(),
-            sequence.getPrefix() + sequence.getPeriod() + nextNo,
-            DateTimeFormatUtil.format(sequence.getUpdateTime()));
+        CodeSequenceVO base = codeSequenceConverter.toVO(sequence);
+        return new CodeSequenceVO(base.id(), base.bizType(), base.prefix(), base.period(),
+            base.currentNo(), base.seqLength(),
+            sequence.getPrefix() + sequence.getPeriod() + nextNo, base.updateTime());
     }
 
     private long normalizePageNum(long pageNum) {

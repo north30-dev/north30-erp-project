@@ -5,6 +5,8 @@ import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.system.codesequence.CodeSequenceTestFactory;
+import me.north30.erp.system.codesequence.converter.CodeSequenceConverter;
+import me.north30.erp.system.codesequence.converter.CodeSequenceConverterImpl;
 import me.north30.erp.system.codesequence.entity.SysCodeSequence;
 import me.north30.erp.system.codesequence.mapper.SysCodeSequenceMapper;
 import me.north30.erp.system.codesequence.vo.CodeSequenceResetVO;
@@ -19,6 +21,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
+import org.mockito.Spy;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -41,6 +44,9 @@ class SysCodeSequenceServiceImplTest {
 
     @Mock
     private SysCodeSequenceMapper sysCodeSequenceMapper;
+
+    @Spy
+    private final CodeSequenceConverter codeSequenceConverter = new CodeSequenceConverterImpl();
 
     @InjectMocks
     private SysCodeSequenceServiceImpl service;
