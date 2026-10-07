@@ -68,7 +68,7 @@ public class SysUserController {
     @GetMapping
     @PreAuthorize("hasAuthority('system:user:list')")
     @Operation(summary = "用户分页查询", description = "权限点 system:user:list")
-    public Result<PageResult<UserVO>> page(@ParameterObject UserQueryDTO query) {
+    public Result<PageResult<UserVO>> page(@ParameterObject @Valid UserQueryDTO query) {
         return Result.success(userManagementService.page(query));
     }
 
@@ -81,7 +81,7 @@ public class SysUserController {
         content = @Content(mediaType = "text/csv"))
     @GetMapping("/export")
     @PreAuthorize("hasAuthority('system:user:export')")
-    public ResponseEntity<byte[]> export(@ParameterObject UserQueryDTO query) {
+    public ResponseEntity<byte[]> export(@ParameterObject @Valid UserQueryDTO query) {
         byte[] csv = userManagementService.exportCsv(query);
         String filename = "用户列表_" + FILENAME_FORMATTER.format(LocalDateTime.now()) + ".csv";
         String encoded = URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");

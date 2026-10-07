@@ -6,6 +6,18 @@ import jakarta.validation.constraints.Size;
 
 /**
  * 新增菜单请求 DTO（接口文档 5.3.2，menuType 1-目录 2-菜单 3-按钮）。
+ *
+ * @param menuName  菜单名称
+ * @param parentId  父级菜单 ID（0 为顶级）
+ * @param menuType  菜单类型 1-目录 2-菜单 3-按钮
+ * @param path      路由地址
+ * @param component 前端组件路径
+ * @param perms     权限标识
+ * @param icon      图标
+ * @param menuSort  显示顺序
+ * @param visible   是否显示 0-隐藏 1-显示
+ * @param status    状态 0-停用 1-启用
+ * @param remark    备注
  */
 public record MenuCreateDTO(
 

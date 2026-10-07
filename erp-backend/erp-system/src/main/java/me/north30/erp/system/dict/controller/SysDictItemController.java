@@ -48,7 +48,7 @@ public class SysDictItemController {
     @GetMapping
     @PreAuthorize("hasAuthority('system:dict:list')")
     @Operation(summary = "字典项查询", description = "权限点 system:dict:list；字典类型编码 dictType 必填（缺失返回 10001 参数错误）")
-    public Result<PageResult<DictItemVO>> page(@ParameterObject DictItemQueryDTO query) {
+    public Result<PageResult<DictItemVO>> page(@ParameterObject @Valid DictItemQueryDTO query) {
         return Result.success(sysDictItemService.page(query));
     }
 

@@ -44,7 +44,7 @@ public class SysCodeSequenceController {
     @GetMapping
     @PreAuthorize("hasAuthority('system:sequence:list')")
     @Operation(summary = "编号序列分页查询", description = "权限点 system:sequence:list")
-    public Result<PageResult<CodeSequenceVO>> page(@ParameterObject CodeSequenceQueryDTO query) {
+    public Result<PageResult<CodeSequenceVO>> page(@ParameterObject @Valid CodeSequenceQueryDTO query) {
         return Result.success(sysCodeSequenceService.page(query));
     }
 

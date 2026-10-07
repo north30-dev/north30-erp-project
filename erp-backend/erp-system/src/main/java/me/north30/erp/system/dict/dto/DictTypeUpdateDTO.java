@@ -6,6 +6,11 @@ import jakarta.validation.constraints.Size;
 
 /**
  * 修改字典类型请求 DTO（接口文档 5.5.3，dict_type 不可修改）。
+ *
+ * @param dictName 字典类型名称
+ * @param status   状态 0-停用 1-启用
+ * @param remark   备注
+ * @param version  乐观锁版本号
  */
 public record DictTypeUpdateDTO(
 

@@ -5,6 +5,15 @@ import jakarta.validation.constraints.Size;
 
 /**
  * 修改字典项请求 DTO（接口文档 5.5.7，item_value 不可修改）。
+ *
+ * @param itemLabel 字典项标签
+ * @param itemSort  显示顺序
+ * @param cssClass  前端标签样式
+ * @param isDefault 是否默认选中 0-否 1-是
+ * @param extJson   扩展属性 JSON
+ * @param status    状态 0-停用 1-启用
+ * @param remark    备注
+ * @param version   乐观锁版本号
  */
 public record DictItemUpdateDTO(
 

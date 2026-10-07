@@ -48,7 +48,7 @@ public class SysDictTypeController {
     @GetMapping
     @PreAuthorize("hasAuthority('system:dict:list')")
     @Operation(summary = "字典类型分页查询", description = "权限点 system:dict:list")
-    public Result<PageResult<DictTypeVO>> page(@ParameterObject DictTypeQueryDTO query) {
+    public Result<PageResult<DictTypeVO>> page(@ParameterObject @Valid DictTypeQueryDTO query) {
         return Result.success(sysDictTypeService.page(query));
     }
 

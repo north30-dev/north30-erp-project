@@ -137,28 +137,8 @@ public class UserManagementServiceImpl implements UserManagementService {
         Map<Long, String> roleCodeMap = loadRoleCodeMap(roleIds);
         List<String> roles = roleIds.stream().map(roleCodeMap::get).filter(Objects::nonNull).toList();
         SysDept dept = user.getDeptId() != null ? sysDeptMapper.selectById(user.getDeptId()) : null;
-        return UserDetailVO.builder()
-            .id(user.getId())
-            .userCode(user.getUserCode())
-            .username(user.getUsername())
-            .realName(user.getRealName())
-            .phone(DesensitizeUtil.maskPhone(user.getPhone()))
-            .email(user.getEmail())
-            .deptId(user.getDeptId())
-            .deptName(dept != null ? dept.getDeptName() : null)
-            .roles(roles)
-            .roleIds(roleIds)
-            .warehouseIds(WarehouseIdCodecUtil.parse(user.getWarehouseIds()))
-            .status(user.getStatus())
-            .isAdmin(user.getIsAdmin())
-            .gender(user.getGender())
-            .remark(user.getRemark())
-            .loginFailCount(user.getLoginFailCount())
-            .lockUntil(formatTime(user.getLockUntil()))
-            .passwordUpdateTime(formatTime(user.getPasswordUpdateTime()))
-            .lastLoginTime(formatTime(user.getLastLoginTime()))
-            .createTime(formatTime(user.getCreateTime()))
-            .build();
+        return userConverter.toDetailVO(user, dept, roles, roleIds,
+            WarehouseIdCodecUtil.parse(user.getWarehouseIds()));
     }
 
     /**
@@ -441,13 +421,11 @@ public class UserManagementServiceImpl implements UserManagementService {
         Map<Long, String> deptNames = loadDeptNames(users);
         Map<Long, List<String>> roleCodes = loadRoleCodesByUserIds(
             users.stream().map(SysUser::getId).toList());
-        return users.stream().map(user -> new UserVO(
-            user.getId(), user.getUserCode(), user.getUsername(), user.getRealName(),
-            DesensitizeUtil.maskPhone(user.getPhone()), user.getEmail(), user.getDeptId(),
-            deptNames.get(user.getDeptId()),
-            roleCodes.getOrDefault(user.getId(), List.of()),
-            user.getStatus(), user.getIsAdmin(),
-            formatTime(user.getLastLoginTime()), formatTime(user.getCreateTime()))).toList();
+        return users.stream()
+            .map(user -> userConverter.toUserVO(user,
+                deptNames.get(user.getDeptId()),
+                roleCodes.getOrDefault(user.getId(), List.of())))
+            .toList();
     }
 
     /**

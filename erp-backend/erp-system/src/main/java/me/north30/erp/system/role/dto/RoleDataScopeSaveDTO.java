@@ -7,6 +7,8 @@ import java.util.List;
 
 /**
  * 配置角色数据范围（自定义）请求 DTO（接口文档 5.2.6，全量覆盖语义）。
+ *
+ * @param scopes 数据范围配置明细集合
  */
 public record RoleDataScopeSaveDTO(
 

@@ -5,6 +5,17 @@ import jakarta.validation.constraints.Size;
 
 /**
  * 新增字典项请求 DTO（接口文档 5.5.6，dict_type+item_value+lang 唯一）。
+ *
+ * @param dictType  字典类型编码
+ * @param itemLabel 字典项标签
+ * @param itemValue 字典项值（编码值，不随语言变化）
+ * @param lang      语言编码
+ * @param itemSort  显示顺序
+ * @param cssClass  前端标签样式
+ * @param isDefault 是否默认选中 0-否 1-是
+ * @param extJson   扩展属性 JSON
+ * @param status    状态 0-停用 1-启用
+ * @param remark    备注
  */
 public record DictItemCreateDTO(
 

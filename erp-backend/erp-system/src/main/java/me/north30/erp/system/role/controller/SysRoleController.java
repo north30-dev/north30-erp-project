@@ -57,7 +57,7 @@ public class SysRoleController {
     @GetMapping
     @PreAuthorize("hasAuthority('system:role:list')")
     @Operation(summary = "角色分页查询", description = "权限点 system:role:list；userCount 为派生字段（按页批量统计）")
-    public Result<PageResult<RoleVO>> page(@ParameterObject RolePageQueryDTO query) {
+    public Result<PageResult<RoleVO>> page(@ParameterObject @Valid RolePageQueryDTO query) {
         return Result.success(roleManageService.page(query));
     }
 

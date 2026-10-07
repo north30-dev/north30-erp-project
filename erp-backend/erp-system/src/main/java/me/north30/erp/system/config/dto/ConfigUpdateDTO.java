@@ -6,6 +6,12 @@ import jakarta.validation.constraints.Size;
 
 /**
  * 修改系统参数请求 DTO（接口文档 5.6.3，config_key 不可修改，按 valueType 校验新值）。
+ *
+ * @param configValue 参数值
+ * @param configName  参数名称
+ * @param status      状态 0-停用 1-启用
+ * @param remark      备注
+ * @param version     乐观锁版本号
  */
 public record ConfigUpdateDTO(
 

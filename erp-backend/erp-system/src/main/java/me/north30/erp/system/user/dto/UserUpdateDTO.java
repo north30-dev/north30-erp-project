@@ -11,6 +11,16 @@ import java.util.List;
 /**
  * 修改用户请求 DTO（接口文档 5.1.4，入参同 5.1.3 但不修改 username/userCode/password/roleIds）。
  * <p>带 version 乐观锁条件更新，冲突返回数据冲突错误。</p>
+ *
+ * @param realName     真实姓名（≤50 字符）
+ * @param deptId       所属部门 ID
+ * @param warehouseIds 授权仓库 ID 集合
+ * @param phone        联系电话（≤30 字符）
+ * @param email        邮箱（≤100 字符）
+ * @param gender       性别（0-未知 1-男 2-女）
+ * @param status       状态（0-停用 1-启用）
+ * @param remark       备注（≤500 字符）
+ * @param version      乐观锁版本号
  */
 public record UserUpdateDTO(
 

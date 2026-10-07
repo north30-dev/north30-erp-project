@@ -6,6 +6,16 @@ import jakarta.validation.constraints.Size;
 
 /**
  * 新增组织部门请求 DTO（接口文档 5.4.2）。
+ *
+ * @param deptCode  组织编码
+ * @param deptName  组织名称
+ * @param parentId  上级组织 ID（0 为顶级）
+ * @param deptType  组织类型 1-集团 2-生产基地 3-销售分公司 4-部门 5-车间
+ * @param leader    负责人
+ * @param phone     联系电话
+ * @param deptSort  显示顺序
+ * @param status    状态 0-停用 1-启用
+ * @param remark    备注
  */
 public record DeptCreateDTO(
 

@@ -5,6 +5,13 @@ import jakarta.validation.constraints.Size;
 
 /**
  * 新增角色请求 DTO（接口文档 5.2.2）。
+ *
+ * @param roleCode  角色编码（≤50 字符）
+ * @param roleName  角色名称（≤100 字符）
+ * @param roleSort  排序号
+ * @param dataScope 数据范围
+ * @param status    状态
+ * @param remark    备注（≤500 字符）
  */
 public record RoleCreateDTO(
 

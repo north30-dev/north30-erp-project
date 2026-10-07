@@ -48,6 +48,8 @@
 - 分层与业务域分包：`me.north30.erp.<模块>.<业务域>.{controller, service, service.impl, mapper, entity, dto, vo}`，第一级按业务域分包（不设 core 中间层）；模块内跨域公共部分放 `<模块>.common.{util, enums, vo}`，安全上下文放 `<模块>.security`。
 - 业务域划分：system 模块按 auth/user/role/menu/dept/dict/config/log/attachment/importtask/codesequence 分域；business 模块按 purchase/sales/inventory/manufacturing/finance 分域；base 模块按物料/BOM/工厂等基础数据域分包。
 - 命名：Entity 对应表名大驼峰（`PurOrder` ↔ `pur_order`）；DTO/VO 后缀 `DTO`/`VO`；实现类 `Impl` 后缀；枚举 `Enum` 后缀；工具类 `Util` 后缀。
+- DTO/VO 一律 record（含 GET 查询对象），树形结构 children 用自底向上递归构造；record 类 Javadoc 必须 `@param` 逐字段注释。
+- GET 查询对象分页参数统一 `@Min(1)`/`@Max(200)` + Controller `@Valid` 入口校验（400）；Service normalize 仅做缺省兜底与防御（超限 422）。
 - 实体继承 `BaseEntity`（审计字段 id/create_by/create_time/update_by/update_time/version/is_deleted/remark 自动填充，勿重复定义）。
 - 表名前缀：`sys_`（系统）/ `base_`（基础数据）/ `pur_`（采购）/ `sal_`（销售）/ `inv_`（库存）/ `mf_`（生产）/ `fin_`（财务），单数形式。
 - API 前缀统一 `/api`，RESTful 风格，动词场景走 POST（如 `/api/purchase/orders/{id}/approve`）。

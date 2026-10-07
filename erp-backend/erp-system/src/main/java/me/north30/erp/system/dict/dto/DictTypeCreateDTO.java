@@ -6,6 +6,11 @@ import jakarta.validation.constraints.Size;
 
 /**
  * 新增字典类型请求 DTO（接口文档 5.5.2）。
+ *
+ * @param dictType 字典类型编码（唯一，字母开头）
+ * @param dictName 字典类型名称
+ * @param status   状态 0-停用 1-启用
+ * @param remark   备注
  */
 public record DictTypeCreateDTO(
 

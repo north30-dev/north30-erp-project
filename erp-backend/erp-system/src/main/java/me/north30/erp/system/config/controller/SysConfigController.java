@@ -49,7 +49,7 @@ public class SysConfigController {
     @GetMapping
     @PreAuthorize("hasAuthority('system:config:list')")
     @Operation(summary = "系统参数分页查询", description = "权限点 system:config:list")
-    public Result<PageResult<ConfigVO>> page(@ParameterObject ConfigQueryDTO query) {
+    public Result<PageResult<ConfigVO>> page(@ParameterObject @Valid ConfigQueryDTO query) {
         return Result.success(sysConfigService.page(query));
     }
 

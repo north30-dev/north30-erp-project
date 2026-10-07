@@ -12,6 +12,19 @@ import java.util.List;
 /**
  * 新增用户请求 DTO（接口文档 5.1.3）。
  * <p>密码字段仅入站传输（WRITE_ONLY），不回显、不出现在响应与审计日志中（S-06）。</p>
+ *
+ * @param userCode     用户编号（≤50 字符）
+ * @param username     用户名（≤50 字符）
+ * @param password     初始密码（≤64 字符）
+ * @param realName     真实姓名（≤50 字符）
+ * @param deptId       所属部门 ID
+ * @param warehouseIds 授权仓库 ID 集合
+ * @param phone        联系电话（≤30 字符）
+ * @param email        邮箱（≤100 字符）
+ * @param gender       性别（0-未知 1-男 2-女）
+ * @param status       状态（0-停用 1-启用）
+ * @param roleIds      角色 ID 集合
+ * @param remark       备注（≤500 字符）
  */
 public record UserCreateDTO(
 

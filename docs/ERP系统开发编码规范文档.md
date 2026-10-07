@@ -73,7 +73,7 @@ me.north30.erp.[模块]              # erp-system / erp-base / erp-business（er
 | **Service** | 核心业务逻辑、事务管理、流程编排 | ❌ 禁止直接操作数据库SQL ❌ 禁止SQL拼接 |
 | **Mapper** | 仅CRUD及简单关联查询 | ❌ 禁止在XML中硬编码业务常量（应使用枚举） |
 | **Entity** | 纯数据映射，贫血模型 | ❌ 禁止携带业务方法 ❌ 禁止关联其他Entity |
-| **DTO/VO** | 接口数据契约，**一律使用 record**（含 GET 查询对象，依赖 Spring 6.1+ 构造器绑定） | ❌ 禁止DTO中引用Entity ❌ 禁止携带数据库注解 ❌ 禁止 DTO/VO 使用 class（含树形/递归结构：children 装配采用自底向上递归构造新 record 实例） |
+| **DTO/VO** | 接口数据契约，**一律使用 record**（含 GET 查询对象，依赖 Spring 6.1+ 构造器绑定） | ❌ 禁止DTO中引用Entity ❌ 禁止携带数据库注解 ❌ 禁止 DTO/VO 使用 class（含树形/递归结构：children 装配采用自底向上递归构造新 record 实例） ❌ record 类 Javadoc 必须用 `@param` 逐字段注释（禁止字段内联注释承载契约说明） ❌ GET 查询对象分页参数必须 `@Min(1)`/`@Max(200)` + Controller 入参 `@Valid` 入口校验（返回 400）；Service normalize 仅做缺省兜底与防御（超限抛业务异常返回 422） |
 
 **特别规范**：
 - Controller 层接收请求后，**必须在入口处将 DTO 转换为 Entity/BO（业务对象）**，返回时再将 Entity 转换为 VO/DTO，**严禁直接使用 Entity 进行数据序列化返回给前端**，防止序列化时暴露敏感字段（如密码密文、乐观锁版本号）或因 `@JsonIgnore` 配置不当导致逻辑混乱。

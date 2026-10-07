@@ -6,6 +6,9 @@ import jakarta.validation.constraints.NotNull;
 
 /**
  * 启用/停用用户请求 DTO（接口文档 5.1.6，状态机守卫 + 乐观锁）。
+ *
+ * @param status  状态（0-停用 1-启用）
+ * @param version 乐观锁版本号
  */
 public record UserStatusDTO(
 
