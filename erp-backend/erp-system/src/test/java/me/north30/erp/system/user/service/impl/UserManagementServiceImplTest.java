@@ -105,10 +105,10 @@ class UserManagementServiceImplTest {
                 page.setTotal(1);
                 return page;
             });
-            when(sysDeptMapper.selectBatchIds(any())).thenReturn(List.of(UserTestFactory.sysDept()));
+            when(sysDeptMapper.selectByIds(any())).thenReturn(List.of(UserTestFactory.sysDept()));
             when(sysUserRoleMapper.selectList(any()))
                 .thenReturn(List.of(UserTestFactory.sysUserRole(10L, 20L)));
-            when(sysRoleMapper.selectBatchIds(any())).thenReturn(List.of(UserTestFactory.sysRole(20L, "keeper")));
+            when(sysRoleMapper.selectByIds(any())).thenReturn(List.of(UserTestFactory.sysRole(20L, "keeper")));
             UserQueryDTO query = new UserQueryDTO(null, null, null, null, null, null, null);
 
             // When
@@ -207,8 +207,8 @@ class UserManagementServiceImplTest {
             // Then
             assertThat(result.list()).hasSize(1);
             // 组织及下级一次全量查询后内存过滤：无循环查库（仅 1 次 selectList）
-            verify(sysDeptMapper, never()).selectBatchIds(any());
-            verify(sysRoleMapper, never()).selectBatchIds(any());
+            verify(sysDeptMapper, never()).selectByIds(any());
+            verify(sysRoleMapper, never()).selectByIds(any());
             verify(sysDeptMapper, times(1)).selectList(any());
             verify(sysUserMapper).selectPage(ArgumentMatchers.<Page<SysUser>>any(), argThat(wrapper -> {
                 LambdaQueryWrapper<SysUser> condition = (LambdaQueryWrapper<SysUser>) wrapper;
@@ -253,7 +253,7 @@ class UserManagementServiceImplTest {
                 UserTestFactory.sysUserRole(10L, 21L),
                 UserTestFactory.sysUserRole(10L, null),
                 UserTestFactory.sysUserRole(10L, 20L)));
-            when(sysRoleMapper.selectBatchIds(any())).thenReturn(List.of(
+            when(sysRoleMapper.selectByIds(any())).thenReturn(List.of(
                 UserTestFactory.sysRole(20L, "admin"),
                 UserTestFactory.sysRole(21L, "operator")));
             when(sysDeptMapper.selectById(3L)).thenReturn(UserTestFactory.sysDept());
@@ -888,9 +888,9 @@ class UserManagementServiceImplTest {
             second.setIsAdmin(1);
             second.setLastLoginTime(null);
             when(sysUserMapper.selectList(any())).thenReturn(List.of(UserTestFactory.sysUser(), second));
-            when(sysDeptMapper.selectBatchIds(any())).thenReturn(List.of(UserTestFactory.sysDept()));
+            when(sysDeptMapper.selectByIds(any())).thenReturn(List.of(UserTestFactory.sysDept()));
             when(sysUserRoleMapper.selectList(any())).thenReturn(List.of(UserTestFactory.sysUserRole(10L, 5L)));
-            when(sysRoleMapper.selectBatchIds(any())).thenReturn(List.of(UserTestFactory.sysRole(5L, "keeper")));
+            when(sysRoleMapper.selectByIds(any())).thenReturn(List.of(UserTestFactory.sysRole(5L, "keeper")));
             UserQueryDTO query = new UserQueryDTO(null, null, null, null, null, null, null);
 
             // When

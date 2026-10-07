@@ -31,6 +31,11 @@
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
         </dependency>
+        <!-- API 文档：springdoc 3.x（Knife4j 不兼容 Boot 4，禁用） -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        </dependency>
         <!-- MP 3.5.9+ 分页插件已拆分，必须额外引入 jsqlparser -->
         <dependency>
             <groupId>com.baomidou</groupId>

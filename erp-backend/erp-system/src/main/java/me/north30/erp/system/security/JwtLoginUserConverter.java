@@ -15,6 +15,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.stereotype.Component;
 
+import lombok.RequiredArgsConstructor;
+
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -23,16 +25,11 @@ import java.util.Set;
  * 并实时装载角色与权限点为 GrantedAuthority（角色加 ROLE_ 前缀，权限点原样）。
  */
 @Component
+@RequiredArgsConstructor
 public class JwtLoginUserConverter implements Converter<Jwt, AbstractAuthenticationToken> {
 
     private final StringRedisTemplate stringRedisTemplate;
     private final UserAccessService userAccessService;
-
-    public JwtLoginUserConverter(StringRedisTemplate stringRedisTemplate,
-                                 UserAccessService userAccessService) {
-        this.stringRedisTemplate = stringRedisTemplate;
-        this.userAccessService = userAccessService;
-    }
 
     @Override
     public AbstractAuthenticationToken convert(Jwt jwt) {

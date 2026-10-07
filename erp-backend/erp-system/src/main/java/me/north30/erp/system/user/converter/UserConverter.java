@@ -3,6 +3,7 @@ package me.north30.erp.system.user.converter;
 import me.north30.erp.system.user.dto.UserCreateDTO;
 import me.north30.erp.system.user.dto.UserUpdateDTO;
 import me.north30.erp.system.user.entity.SysUser;
+import me.north30.erp.system.user.vo.UserDetailVO;
 import me.north30.erp.system.role.entity.SysUserRole;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
@@ -58,4 +59,20 @@ public interface UserConverter {
     @Mapping(target = "userId")
     @Mapping(target = "roleId")
     SysUserRole toUserRole(Long userId, Long roleId);
+
+    /**
+     * 实体 → 详情 VO。
+     */
+    @BeanMapping(ignoreByDefault = true)
+    @Mapping(target = "userCode")
+    @Mapping(target = "username")
+    @Mapping(target = "realName")
+    @Mapping(target = "deptId")
+    @Mapping(target = "phone")
+    @Mapping(target = "email")
+    @Mapping(target = "gender")
+    @Mapping(target = "status")
+    @Mapping(target = "remark")
+    @Mapping(target = "isAdmin")
+    UserDetailVO toDetailVO(SysUser user);
 }

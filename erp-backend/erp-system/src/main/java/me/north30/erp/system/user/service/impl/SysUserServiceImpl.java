@@ -19,30 +19,61 @@ public class SysUserServiceImpl implements SysUserService {
 
     private final SysUserMapper sysUserMapper;
 
+    /**
+     * 根据用户名查询用户。
+     * 
+     * @param username 用户名。
+     * @return 用户实体。
+     */
     @Override
     @Transactional(readOnly = true)
     public SysUser getByUsername(String username) {
         return sysUserMapper.selectOne(new LambdaQueryWrapper<SysUser>().eq(SysUser::getUsername, username));
     }
 
+    /**
+     * 根据 ID 查询用户。
+     * 
+     * @param id 用户 ID。
+     * @return 用户实体。
+     */
     @Override
     @Transactional(readOnly = true)
     public SysUser getById(Long id) {
         return sysUserMapper.selectById(id);
     }
 
+    /**
+     * 新增用户。
+     * 
+     * @param user 用户实体。
+     * @return 是否新增成功。
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean createUser(SysUser user) {
         return sysUserMapper.insert(user) > 0;
     }
 
+    /**
+     * 更新用户。
+     * 
+     * @param user 用户实体。
+     * @return 是否更新成功。
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean updateUser(SysUser user) {
         return sysUserMapper.updateById(user) > 0;
     }
 
+    /**
+     * 更新用户最后登录信息。
+     * 
+     * @param userId 用户 ID。
+     * @param loginIp 登录 IP。
+     * @param loginTime 登录时间。
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateLastLogin(Long userId, String loginIp, LocalDateTime loginTime) {

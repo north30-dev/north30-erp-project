@@ -460,7 +460,7 @@ public class UserManagementServiceImpl implements UserManagementService {
             // 用 HashMap 而非 Map.of()：用户 dept_id 可为 null，不可变 Map.get(null) 会抛 NPE
             return new HashMap<>();
         }
-        return sysDeptMapper.selectBatchIds(deptIds).stream()
+        return sysDeptMapper.selectByIds(deptIds).stream()
             .collect(Collectors.toMap(SysDept::getId, SysDept::getDeptName));
     }
 
@@ -494,7 +494,7 @@ public class UserManagementServiceImpl implements UserManagementService {
         if (roleIds.isEmpty()) {
             return Map.of();
         }
-        return sysRoleMapper.selectBatchIds(roleIds).stream()
+        return sysRoleMapper.selectByIds(roleIds).stream()
             .collect(Collectors.toMap(SysRole::getId, SysRole::getRoleCode));
     }
 

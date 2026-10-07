@@ -22,6 +22,13 @@ spring:
 server:
   port: 8080
 
+# springdoc API 文档（/swagger-ui.html，生产环境关闭，见 application-prod.yml）
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+
 # MyBatis-Plus 配置（逻辑删除 + 驼峰映射；分页/乐观锁插件见 MybatisPlusConfig）
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
