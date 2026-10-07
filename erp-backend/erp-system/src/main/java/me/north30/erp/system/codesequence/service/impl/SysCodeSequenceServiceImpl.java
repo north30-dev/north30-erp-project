@@ -42,15 +42,15 @@ public class SysCodeSequenceServiceImpl implements SysCodeSequenceService {
     @Override
     @Transactional(readOnly = true)
     public PageResult<CodeSequenceVO> page(CodeSequenceQueryDTO query) {
-        long pageNum = normalizePageNum(query.getPageNum());
-        long pageSize = normalizePageSize(query.getPageSize());
+        long pageNum = normalizePageNum(query.pageNum());
+        long pageSize = normalizePageSize(query.pageSize());
         LambdaQueryWrapper<SysCodeSequence> wrapper = new LambdaQueryWrapper<SysCodeSequence>()
-            .eq(StringUtils.hasText(query.getBizType()), SysCodeSequence::getBizType, query.getBizType())
-            .eq(StringUtils.hasText(query.getPeriod()), SysCodeSequence::getPeriod, query.getPeriod())
+            .eq(StringUtils.hasText(query.bizType()), SysCodeSequence::getBizType, query.bizType())
+            .eq(StringUtils.hasText(query.period()), SysCodeSequence::getPeriod, query.period())
             .orderByAsc(SysCodeSequence::getBizType)
             .orderByDesc(SysCodeSequence::getPeriod);
         Page<SysCodeSequence> page = sysCodeSequenceMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
-        List<CodeSequenceVO> vos = page.getRecords().stream().map(this::toVO).toList();
+        List<CodeSequenceVO> vos = page.getRecords().stream().map(codeSequenceConverter::toVO).toList();
         return PageResult.of(page.getTotal(), pageNum, pageSize, vos);
     }
 
@@ -81,25 +81,12 @@ public class SysCodeSequenceServiceImpl implements SysCodeSequenceService {
         return new CodeSequenceResetVO(sequence.getBizType(), sequence.getPeriod(), sequence.getCurrentNo());
     }
 
-    /**
-     * Entity → VO：主体字段走 CodeSequenceConverter；nextNo 为派生字段
-     * （prefix + period + 补零流水，依赖 seqLength 缺省值 3），由服务层计算装配。
-     */
-    private CodeSequenceVO toVO(SysCodeSequence sequence) {
-        int seqLength = sequence.getSeqLength() == null ? 3 : sequence.getSeqLength();
-        String nextNo = String.format("%0" + seqLength + "d", sequence.getCurrentNo() + 1);
-        CodeSequenceVO base = codeSequenceConverter.toVO(sequence);
-        return new CodeSequenceVO(base.id(), base.bizType(), base.prefix(), base.period(),
-            base.currentNo(), base.seqLength(),
-            sequence.getPrefix() + sequence.getPeriod() + nextNo, base.updateTime());
+    private long normalizePageNum(Integer pageNum) {
+        return pageNum == null || pageNum <= 0 ? PageConstants.DEFAULT_PAGE_NUM : pageNum;
     }
 
-    private long normalizePageNum(long pageNum) {
-        return pageNum <= 0 ? PageConstants.DEFAULT_PAGE_NUM : pageNum;
-    }
-
-    private long normalizePageSize(long pageSize) {
-        if (pageSize <= 0) {
+    private long normalizePageSize(Integer pageSize) {
+        if (pageSize == null || pageSize <= 0) {
             return PageConstants.DEFAULT_PAGE_SIZE;
         }
         if (pageSize > PageConstants.MAX_PAGE_SIZE) {

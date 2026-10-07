@@ -62,9 +62,9 @@ public class SysDeptManageServiceImpl implements SysDeptManageService {
     @Transactional(readOnly = true)
     public List<DeptTreeVO> listTree(DeptTreeQueryDTO query) {
         LambdaQueryWrapper<SysDept> wrapper = new LambdaQueryWrapper<SysDept>()
-            .like(StringUtils.hasText(query.getDeptName()), SysDept::getDeptName, query.getDeptName())
-            .eq(query.getDeptType() != null, SysDept::getDeptType, query.getDeptType())
-            .eq(query.getStatus() != null, SysDept::getStatus, query.getStatus())
+            .like(StringUtils.hasText(query.deptName()), SysDept::getDeptName, query.deptName())
+            .eq(query.deptType() != null, SysDept::getDeptType, query.deptType())
+            .eq(query.status() != null, SysDept::getStatus, query.status())
             .orderByAsc(SysDept::getDeptSort)
             .orderByAsc(SysDept::getId);
         return deptTreeUtil.buildTree(sysDeptMapper.selectList(wrapper));

@@ -52,11 +52,11 @@ class DeptTreeUtilTest {
             List<DeptTreeVO> tree = util.buildTree(List.of(rootA, rootB, rootNoSort, childDept));
 
             // Then
-            assertThat(tree).extracting(DeptTreeVO::getId).containsExactly(2L, 1L, 3L);
-            assertThat(tree.get(1).getChildren())
-                .extracting(DeptTreeVO::getId)
+            assertThat(tree).extracting(DeptTreeVO::id).containsExactly(2L, 1L, 3L);
+            assertThat(tree.get(1).children())
+                .extracting(DeptTreeVO::id)
                 .containsExactly(4L);
-            assertThat(tree.get(0).getChildren()).isNull();
+            assertThat(tree.get(0).children()).isNull();
         }
 
         @Test
@@ -70,9 +70,9 @@ class DeptTreeUtilTest {
             List<DeptTreeVO> tree = util.buildTree(List.of(orphan, grandChild));
 
             // Then
-            assertThat(tree).extracting(DeptTreeVO::getId).containsExactly(5L);
-            assertThat(tree.get(0).getChildren())
-                .extracting(DeptTreeVO::getId)
+            assertThat(tree).extracting(DeptTreeVO::id).containsExactly(5L);
+            assertThat(tree.get(0).children())
+                .extracting(DeptTreeVO::id)
                 .containsExactly(6L);
         }
 
@@ -87,7 +87,7 @@ class DeptTreeUtilTest {
             List<DeptTreeVO> tree = util.buildTree(List.of(root, orphanLeaf));
 
             // Then
-            assertThat(tree).extracting(DeptTreeVO::getId).containsExactly(1L);
+            assertThat(tree).extracting(DeptTreeVO::id).containsExactly(1L);
         }
     }
 
@@ -107,17 +107,17 @@ class DeptTreeUtilTest {
             DeptTreeVO vo = util.toVO(dept);
 
             // Then：字段一一对应
-            assertThat(vo.getId()).isEqualTo(1L);
-            assertThat(vo.getDeptCode()).isEqualTo("ORG001");
-            assertThat(vo.getDeptName()).isEqualTo("总部");
-            assertThat(vo.getParentId()).isZero();
-            assertThat(vo.getDeptType()).isEqualTo(1);
-            assertThat(vo.getDeptLevel()).isEqualTo(1);
-            assertThat(vo.getAncestors()).isEqualTo("0");
-            assertThat(vo.getLeader()).isEqualTo("张三");
-            assertThat(vo.getPhone()).isEqualTo("13800000000");
-            assertThat(vo.getDeptSort()).isEqualTo(2);
-            assertThat(vo.getStatus()).isEqualTo(1);
+            assertThat(vo.id()).isEqualTo(1L);
+            assertThat(vo.deptCode()).isEqualTo("ORG001");
+            assertThat(vo.deptName()).isEqualTo("总部");
+            assertThat(vo.parentId()).isZero();
+            assertThat(vo.deptType()).isEqualTo(1);
+            assertThat(vo.deptLevel()).isEqualTo(1);
+            assertThat(vo.ancestors()).isEqualTo("0");
+            assertThat(vo.leader()).isEqualTo("张三");
+            assertThat(vo.phone()).isEqualTo("13800000000");
+            assertThat(vo.deptSort()).isEqualTo(2);
+            assertThat(vo.status()).isEqualTo(1);
         }
     }
 }

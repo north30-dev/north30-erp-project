@@ -58,23 +58,13 @@ public final class DeptTestFactory {
      * 组织树查询参数（字段可按需 set）。
      */
     public static DeptTreeQueryDTO treeQueryDTO() {
-        return new DeptTreeQueryDTO();
+        return new DeptTreeQueryDTO(null, null, null);
     }
 
     /**
      * 组织树节点 VO（DeptTreeUtil 测试用）。
      */
     public static DeptTreeVO treeVO(Long id, Long parentId, Integer deptSort) {
-        DeptTreeVO vo = new DeptTreeVO();
-        vo.setId(id);
-        vo.setDeptCode("ORG" + id);
-        vo.setDeptName("组织" + id);
-        vo.setParentId(parentId);
-        vo.setDeptType(1);
-        vo.setDeptLevel(1);
-        vo.setAncestors("0");
-        vo.setDeptSort(deptSort);
-        vo.setStatus(1);
-        return vo;
+        return new DeptTreeVO(id, "ORG" + id, "组织" + id, parentId, 1, 1, "0", null, null, deptSort, 1, null);
     }
 }

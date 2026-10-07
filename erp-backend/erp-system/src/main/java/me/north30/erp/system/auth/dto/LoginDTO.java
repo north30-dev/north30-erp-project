@@ -5,6 +5,11 @@ import jakarta.validation.constraints.Size;
 
 /**
  * 登录请求 DTO（接口文档 4.2）。
+ * 
+ * @param username 用户名（登录名）
+ * @param password 密码（明文）
+ * @param captcha 验证码（登录名 + 验证码）
+ * @param captchaKey 验证码标识（登录名）
  */
 public record LoginDTO(
 

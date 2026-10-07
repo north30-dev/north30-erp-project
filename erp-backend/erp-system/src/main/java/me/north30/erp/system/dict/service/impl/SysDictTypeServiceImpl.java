@@ -50,12 +50,12 @@ public class SysDictTypeServiceImpl implements SysDictTypeService {
     @Override
     @Transactional(readOnly = true)
     public PageResult<DictTypeVO> page(DictTypeQueryDTO query) {
-        long pageNum = normalizePageNum(query.getPageNum());
-        long pageSize = normalizePageSize(query.getPageSize());
+        long pageNum = normalizePageNum(query.pageNum());
+        long pageSize = normalizePageSize(query.pageSize());
         LambdaQueryWrapper<SysDictType> wrapper = new LambdaQueryWrapper<SysDictType>()
-            .like(StringUtils.hasText(query.getDictType()), SysDictType::getDictType, query.getDictType())
-            .like(StringUtils.hasText(query.getDictName()), SysDictType::getDictName, query.getDictName())
-            .eq(query.getStatus() != null, SysDictType::getStatus, query.getStatus())
+            .like(StringUtils.hasText(query.dictType()), SysDictType::getDictType, query.dictType())
+            .like(StringUtils.hasText(query.dictName()), SysDictType::getDictName, query.dictName())
+            .eq(query.status() != null, SysDictType::getStatus, query.status())
             .orderByAsc(SysDictType::getId);
         Page<SysDictType> page = sysDictTypeMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
         Map<String, Long> itemCounts = countItemsByTypes(page.getRecords());
@@ -143,12 +143,12 @@ public class SysDictTypeServiceImpl implements SysDictTypeService {
         return counts;
     }
 
-    private long normalizePageNum(long pageNum) {
-        return pageNum <= 0 ? PageConstants.DEFAULT_PAGE_NUM : pageNum;
+    private long normalizePageNum(Integer pageNum) {
+        return pageNum == null || pageNum <= 0 ? PageConstants.DEFAULT_PAGE_NUM : pageNum;
     }
 
-    private long normalizePageSize(long pageSize) {
-        if (pageSize <= 0) {
+    private long normalizePageSize(Integer pageSize) {
+        if (pageSize == null || pageSize <= 0) {
             return PageConstants.DEFAULT_PAGE_SIZE;
         }
         if (pageSize > PageConstants.MAX_PAGE_SIZE) {

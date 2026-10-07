@@ -58,13 +58,13 @@ public class SysConfigServiceImpl implements SysConfigService {
     @Override
     @Transactional(readOnly = true)
     public PageResult<ConfigVO> page(ConfigQueryDTO query) {
-        long pageNum = normalizePageNum(query.getPageNum());
-        long pageSize = normalizePageSize(query.getPageSize());
+        long pageNum = normalizePageNum(query.pageNum());
+        long pageSize = normalizePageSize(query.pageSize());
         LambdaQueryWrapper<SysConfig> wrapper = new LambdaQueryWrapper<SysConfig>()
-            .like(StringUtils.hasText(query.getConfigKey()), SysConfig::getConfigKey, query.getConfigKey())
-            .like(StringUtils.hasText(query.getConfigName()), SysConfig::getConfigName, query.getConfigName())
-            .eq(StringUtils.hasText(query.getConfigGroup()), SysConfig::getConfigGroup, query.getConfigGroup())
-            .eq(query.getStatus() != null, SysConfig::getStatus, query.getStatus())
+            .like(StringUtils.hasText(query.configKey()), SysConfig::getConfigKey, query.configKey())
+            .like(StringUtils.hasText(query.configName()), SysConfig::getConfigName, query.configName())
+            .eq(StringUtils.hasText(query.configGroup()), SysConfig::getConfigGroup, query.configGroup())
+            .eq(query.status() != null, SysConfig::getStatus, query.status())
             .orderByAsc(SysConfig::getId);
         Page<SysConfig> page = sysConfigMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
         List<ConfigVO> vos = page.getRecords().stream().map(configConverter::toVO).toList();
@@ -169,12 +169,12 @@ public class SysConfigServiceImpl implements SysConfigService {
         }
     }
 
-    private long normalizePageNum(long pageNum) {
-        return pageNum <= 0 ? PageConstants.DEFAULT_PAGE_NUM : pageNum;
+    private long normalizePageNum(Integer pageNum) {
+        return pageNum == null || pageNum <= 0 ? PageConstants.DEFAULT_PAGE_NUM : pageNum;
     }
 
-    private long normalizePageSize(long pageSize) {
-        if (pageSize <= 0) {
+    private long normalizePageSize(Integer pageSize) {
+        if (pageSize == null || pageSize <= 0) {
             return PageConstants.DEFAULT_PAGE_SIZE;
         }
         if (pageSize > PageConstants.MAX_PAGE_SIZE) {

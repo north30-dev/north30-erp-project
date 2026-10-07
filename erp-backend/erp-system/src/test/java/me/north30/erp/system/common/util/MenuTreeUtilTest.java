@@ -55,14 +55,14 @@ class MenuTreeUtilTest {
                 List.of(rootA, rootB, rootNoSort, childA1, childA2, grandChild));
 
             // Then：根节点 [sort1, sort2, null]，子节点正确挂载
-            assertThat(tree).extracting(MenuTreeVO::getMenuId).containsExactly(2L, 1L, 3L);
-            assertThat(tree.get(1).getChildren())
-                .extracting(MenuTreeVO::getMenuId)
+            assertThat(tree).extracting(MenuTreeVO::menuId).containsExactly(2L, 1L, 3L);
+            assertThat(tree.get(1).children())
+                .extracting(MenuTreeVO::menuId)
                 .containsExactly(4L, 5L);
-            assertThat(tree.get(1).getChildren().get(0).getChildren())
-                .extracting(MenuTreeVO::getMenuId)
+            assertThat(tree.get(1).children().get(0).children())
+                .extracting(MenuTreeVO::menuId)
                 .containsExactly(6L);
-            assertThat(tree.get(0).getChildren()).isNull();
+            assertThat(tree.get(0).children()).isNull();
         }
 
         @Test
@@ -76,7 +76,7 @@ class MenuTreeUtilTest {
             List<MenuTreeVO> tree = util.buildTree(List.of(root, orphan));
 
             // Then：孤儿节点被丢弃，不出现在根列表中
-            assertThat(tree).extracting(MenuTreeVO::getMenuId).containsExactly(1L);
+            assertThat(tree).extracting(MenuTreeVO::menuId).containsExactly(1L);
         }
     }
 
@@ -94,14 +94,14 @@ class MenuTreeUtilTest {
             MenuTreeVO vo = util.toVO(menu);
 
             // Then：字段一一对应（perms 不在树 VO 范围）
-            assertThat(vo.getMenuId()).isEqualTo(1L);
-            assertThat(vo.getMenuName()).isEqualTo("用户管理");
-            assertThat(vo.getMenuType()).isEqualTo(2);
-            assertThat(vo.getParentId()).isEqualTo(2L);
-            assertThat(vo.getPath()).isEqualTo("/用户管理");
-            assertThat(vo.getComponent()).isEqualTo("system/user/index");
-            assertThat(vo.getMenuSort()).isEqualTo(3);
-            assertThat(vo.getVisible()).isEqualTo(1);
+            assertThat(vo.menuId()).isEqualTo(1L);
+            assertThat(vo.menuName()).isEqualTo("用户管理");
+            assertThat(vo.menuType()).isEqualTo(2);
+            assertThat(vo.parentId()).isEqualTo(2L);
+            assertThat(vo.path()).isEqualTo("/用户管理");
+            assertThat(vo.component()).isEqualTo("system/user/index");
+            assertThat(vo.menuSort()).isEqualTo(3);
+            assertThat(vo.visible()).isEqualTo(1);
         }
     }
 }

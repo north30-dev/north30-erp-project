@@ -101,11 +101,11 @@ class SysDeptManageServiceImplTest {
             List<DeptTreeVO> tree = service.listTree(DeptTestFactory.treeQueryDTO());
 
             // Then：根节点按 deptSort 升序，子节点正确挂载
-            assertThat(tree).extracting(DeptTreeVO::getId).containsExactly(2L, 1L);
-            assertThat(tree.get(1).getChildren())
-                .extracting(DeptTreeVO::getId)
+            assertThat(tree).extracting(DeptTreeVO::id).containsExactly(2L, 1L);
+            assertThat(tree.get(1).children())
+                .extracting(DeptTreeVO::id)
                 .containsExactly(3L);
-            assertThat(tree.get(0).getChildren()).isNull();
+            assertThat(tree.get(0).children()).isNull();
         }
 
         @Test
@@ -120,9 +120,9 @@ class SysDeptManageServiceImplTest {
             List<DeptTreeVO> tree = service.listTree(DeptTestFactory.treeQueryDTO());
 
             // Then
-            assertThat(tree).extracting(DeptTreeVO::getId).containsExactly(5L);
-            assertThat(tree.get(0).getChildren())
-                .extracting(DeptTreeVO::getId)
+            assertThat(tree).extracting(DeptTreeVO::id).containsExactly(5L);
+            assertThat(tree.get(0).children())
+                .extracting(DeptTreeVO::id)
                 .containsExactly(6L);
         }
     }

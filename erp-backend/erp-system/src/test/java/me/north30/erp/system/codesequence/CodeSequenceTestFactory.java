@@ -37,12 +37,7 @@ public final class CodeSequenceTestFactory {
     /**
      * 编号序列分页查询参数。
      */
-    public static CodeSequenceQueryDTO queryDTO(String bizType, String period, long pageNum, long pageSize) {
-        CodeSequenceQueryDTO query = new CodeSequenceQueryDTO();
-        query.setBizType(bizType);
-        query.setPeriod(period);
-        query.setPageNum(pageNum);
-        query.setPageSize(pageSize);
-        return query;
+    public static CodeSequenceQueryDTO queryDTO(String bizType, String period, Integer pageNum, Integer pageSize) {
+        return new CodeSequenceQueryDTO(bizType, period, pageNum, pageSize);
     }
 }

@@ -52,14 +52,7 @@ public final class ConfigTestFactory {
      * 系统参数分页查询参数。
      */
     public static ConfigQueryDTO queryDTO(String configKey, String configName, String configGroup,
-                                          Integer status, long pageNum, long pageSize) {
-        ConfigQueryDTO query = new ConfigQueryDTO();
-        query.setConfigKey(configKey);
-        query.setConfigName(configName);
-        query.setConfigGroup(configGroup);
-        query.setStatus(status);
-        query.setPageNum(pageNum);
-        query.setPageSize(pageSize);
-        return query;
+                                          Integer status, Integer pageNum, Integer pageSize) {
+        return new ConfigQueryDTO(configKey, configName, configGroup, status, pageNum, pageSize);
     }
 }

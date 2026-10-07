@@ -1,6 +1,5 @@
 package me.north30.erp.system.auth.service.impl;
 
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import me.north30.erp.common.constant.RedisKeyConstants;
@@ -10,6 +9,9 @@ import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.exception.SystemErrorCode;
 import me.north30.erp.common.jwt.IssuedToken;
 import me.north30.erp.common.jwt.JwtTokenProvider;
+import me.north30.erp.common.util.DesensitizeUtil;
+import me.north30.erp.common.util.WarehouseIdCodecUtil;
+import me.north30.erp.common.web.RequestContextUtil;
 import me.north30.erp.system.auth.dto.ChangePasswordDTO;
 import me.north30.erp.system.auth.dto.LoginDTO;
 import me.north30.erp.system.auth.dto.RefreshTokenDTO;
@@ -38,12 +40,9 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -138,7 +137,7 @@ public class AuthServiceImpl implements AuthService {
         // 7. 写登录日志 + 更新最后登录信息（各写操作独立事务）
         recordLoginLog(user.getId(), user.getUsername(), LoginTypeEnum.LOGIN, true, null);
         LocalDateTime now = LocalDateTime.now();
-        userAccessService.updateLastLogin(user.getId(), resolveClientIp(), now);
+        userAccessService.updateLastLogin(user.getId(), RequestContextUtil.resolveClientIp(), now);
         // 8. 事务提交后写 Redis 会话白名单（登出/停用即时失效的关键）
         try {
             stringRedisTemplate.opsForValue().set(RedisKeyConstants.sessionKey(user.getId(), access.jti()),
@@ -236,9 +235,9 @@ public class AuthServiceImpl implements AuthService {
             user.getRealName(),
             user.getDeptId(),
             userAccessService.getDeptName(user.getDeptId()),
-            maskPhone(user.getPhone()),
+            DesensitizeUtil.maskPhone(user.getPhone()),
             user.getEmail(),
-            parseWarehouseIds(user.getWarehouseIds()),
+            WarehouseIdCodecUtil.parse(user.getWarehouseIds()),
             roleCodes,
             dataScope,
             user.getLastLoginTime() != null ? user.getLastLoginTime().format(DATETIME_FORMATTER) : null,
@@ -356,8 +355,8 @@ public class AuthServiceImpl implements AuthService {
             loginLog.setUsername(username);
             loginLog.setLoginType(loginType.getCode());
             loginLog.setLoginTime(LocalDateTime.now());
-            loginLog.setLoginIp(resolveClientIp());
-            loginLog.setUserAgent(resolveUserAgent());
+            loginLog.setLoginIp(RequestContextUtil.resolveClientIp());
+            loginLog.setUserAgent(RequestContextUtil.resolveUserAgent());
             loginLog.setResultStatus(success ? 1 : 0);
             loginLog.setFailReason(failReason);
             sysLoginLogService.record(loginLog);
@@ -384,64 +383,6 @@ public class AuthServiceImpl implements AuthService {
         if (keys != null && !keys.isEmpty()) {
             stringRedisTemplate.delete(keys);
         }
-    }
-
-    /**
-     * 可访问仓库 ID 集合解析（逗号分隔字符串 → Long 集合）。
-     */
-    private List<Long> parseWarehouseIds(String warehouseIds) {
-        if (warehouseIds == null || warehouseIds.isBlank()) {
-            return null;
-        }
-        List<Long> result = new ArrayList<>();
-        for (String id : warehouseIds.split(",")) {
-            String trimmed = id.trim();
-            if (!trimmed.isEmpty()) {
-                result.add(Long.valueOf(trimmed));
-            }
-        }
-        return result;
-    }
-
-    /**
-     * 手机号掩码：保留前 3 后 4（S-06）。
-     */
-    private String maskPhone(String phone) {
-        if (phone == null || phone.length() < 8) {
-            return phone;
-        }
-        return phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4);
-    }
-
-    /**
-     * 解析客户端 IP：优先 X-Forwarded-For 第一段（含反向代理场景）。
-     */
-    private String resolveClientIp() {
-        HttpServletRequest request = currentRequest();
-        if (request == null) {
-            return "";
-        }
-        String forwardedFor = request.getHeader("X-Forwarded-For");
-        if (forwardedFor != null && !forwardedFor.isBlank()) {
-            return forwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
-    }
-
-    private String resolveUserAgent() {
-        HttpServletRequest request = currentRequest();
-        if (request == null) {
-            return null;
-        }
-        String userAgent = request.getHeader("User-Agent");
-        return userAgent != null && userAgent.length() > 500 ? userAgent.substring(0, 500) : userAgent;
-    }
-
-    private HttpServletRequest currentRequest() {
-        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
-            return attributes.getRequest();
-        }
-        return null;
     }
 
     private boolean isAdmin(SysUser user) {

@@ -6,6 +6,10 @@ import jakarta.validation.constraints.Size;
 /**
  * 修改本人密码请求 DTO（接口文档 4.8）。
  * <p>密码字段仅传输层使用，禁止入日志。</p>
+ * 
+ * @param oldPassword 原密码（明文）
+ * @param newPassword 新密码（明文）
+ * @param confirmPassword 确认新密码（明文）
  */
 public record ChangePasswordDTO(
 

@@ -88,15 +88,15 @@ class MenuManageServiceImplTest {
             List<MenuNodeVO> tree = service.tree(MenuTestFactory.treeQueryDTO(null, null, null));
 
             // Then：根节点按 sort 升序，子节点挂载正确
-            assertThat(tree).extracting(MenuNodeVO::getId).containsExactly(2L, 1L);
-            assertThat(tree.get(1).getChildren())
-                .extracting(MenuNodeVO::getId)
+            assertThat(tree).extracting(MenuNodeVO::id).containsExactly(2L, 1L);
+            assertThat(tree.get(1).children())
+                .extracting(MenuNodeVO::id)
                 .containsExactly(4L, 3L);
-            assertThat(tree.get(1).getChildren().get(1).getChildren())
-                .extracting(MenuNodeVO::getId)
+            assertThat(tree.get(1).children().get(1).children())
+                .extracting(MenuNodeVO::id)
                 .containsExactly(5L);
             // 无子节点的目录 children 保持 null
-            assertThat(tree.get(0).getChildren()).isNull();
+            assertThat(tree.get(0).children()).isNull();
         }
 
         @Test   

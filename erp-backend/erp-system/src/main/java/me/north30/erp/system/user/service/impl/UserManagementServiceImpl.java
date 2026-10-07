@@ -14,6 +14,8 @@ import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.exception.SystemErrorCode;
 import me.north30.erp.common.result.PageResult;
+import me.north30.erp.common.util.DesensitizeUtil;
+import me.north30.erp.common.util.WarehouseIdCodecUtil;
 import me.north30.erp.system.user.dto.UserAssignRolesDTO;
 import me.north30.erp.system.user.dto.UserCreateDTO;
 import me.north30.erp.system.user.dto.UserQueryDTO;
@@ -140,13 +142,13 @@ public class UserManagementServiceImpl implements UserManagementService {
             .userCode(user.getUserCode())
             .username(user.getUsername())
             .realName(user.getRealName())
-            .phone(maskPhone(user.getPhone()))
+            .phone(DesensitizeUtil.maskPhone(user.getPhone()))
             .email(user.getEmail())
             .deptId(user.getDeptId())
             .deptName(dept != null ? dept.getDeptName() : null)
             .roles(roles)
             .roleIds(roleIds)
-            .warehouseIds(parseWarehouseIds(user.getWarehouseIds()))
+            .warehouseIds(WarehouseIdCodecUtil.parse(user.getWarehouseIds()))
             .status(user.getStatus())
             .isAdmin(user.getIsAdmin())
             .gender(user.getGender())
@@ -189,7 +191,7 @@ public class UserManagementServiceImpl implements UserManagementService {
         // 4. 落库：口令 BCrypt 加密，初始口令修改时间置为当前（90 天有效期基准）
         SysUser user = userConverter.toEntity(dto);
         user.setPassword(passwordEncoder.encode(dto.password()));
-        user.setWarehouseIds(joinWarehouseIds(dto.warehouseIds()));
+        user.setWarehouseIds(WarehouseIdCodecUtil.join(dto.warehouseIds()));
         if (user.getGender() == null) {
             user.setGender(0);
         }
@@ -224,7 +226,7 @@ public class UserManagementServiceImpl implements UserManagementService {
         }
         SysUser entity = userConverter.toEntity(dto);
         entity.setId(id);
-        entity.setWarehouseIds(dto.warehouseIds() != null ? joinWarehouseIds(dto.warehouseIds()) : null);
+        entity.setWarehouseIds(dto.warehouseIds() != null ? WarehouseIdCodecUtil.join(dto.warehouseIds()) : null);
         // 带乐观锁版本条件更新，冲突时更新行数为 0；显式设置更新时间（strictUpdateFill 不覆盖已设值）
         entity.setUpdateTime(LocalDateTime.now());
         if (sysUserMapper.updateById(entity) <= 0) {
@@ -366,7 +368,7 @@ public class UserManagementServiceImpl implements UserManagementService {
                 .append(escape(user.getUserCode())).append(',')
                 .append(escape(user.getUsername())).append(',')
                 .append(escape(user.getRealName())).append(',')
-                .append(escape(maskPhone(user.getPhone()))).append(',')
+                .append(escape(DesensitizeUtil.maskPhone(user.getPhone()))).append(',')
                 .append(escape(user.getEmail())).append(',')
                 .append(escape(deptNames.get(user.getDeptId()))).append(',')
                 .append(escape(String.join(";", roleCodes.getOrDefault(user.getId(), List.of())))).append(',')
@@ -441,7 +443,7 @@ public class UserManagementServiceImpl implements UserManagementService {
             users.stream().map(SysUser::getId).toList());
         return users.stream().map(user -> new UserVO(
             user.getId(), user.getUserCode(), user.getUsername(), user.getRealName(),
-            maskPhone(user.getPhone()), user.getEmail(), user.getDeptId(),
+            DesensitizeUtil.maskPhone(user.getPhone()), user.getEmail(), user.getDeptId(),
             deptNames.get(user.getDeptId()),
             roleCodes.getOrDefault(user.getId(), List.of()),
             user.getStatus(), user.getIsAdmin(),
@@ -552,30 +554,6 @@ public class UserManagementServiceImpl implements UserManagementService {
     }
 
     /**
-     * 可访问仓库 ID 集合序列化（逗号串）：null 不变、空集合存空串（显式清空语义）。
-     */
-    private String joinWarehouseIds(List<Long> warehouseIds) {
-        if (warehouseIds == null) {
-            return null;
-        }
-        return warehouseIds.stream().filter(Objects::nonNull).map(String::valueOf).collect(Collectors.joining(","));
-    }
-
-    /**
-     * 可访问仓库 ID 集合解析（逗号串 → Long 集合）。
-     */
-    private List<Long> parseWarehouseIds(String warehouseIds) {
-        if (warehouseIds == null || warehouseIds.isBlank()) {
-            return null;
-        }
-        return Arrays.stream(warehouseIds.split(","))
-            .map(String::trim)
-            .filter(part -> !part.isEmpty())
-            .map(Long::valueOf)
-            .toList();
-    }
-
-    /**
      * 停用后使该用户全部会话失效：删除 access 会话与 refresh 标记（Redis 不可用时降级 WARN）。
      */
     private void revokeUserSessions(Long userId) {
@@ -641,16 +619,6 @@ public class UserManagementServiceImpl implements UserManagementService {
             chars[j] = tmp;
         }
         return new String(chars);
-    }
-
-    /**
-     * 手机号掩码：保留前 3 后 4（S-06，与 4.5 当前用户信息一致）。
-     */
-    private String maskPhone(String phone) {
-        if (phone == null || phone.length() < 8) {
-            return phone;
-        }
-        return phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4);
     }
 
     private String formatTime(LocalDateTime time) {

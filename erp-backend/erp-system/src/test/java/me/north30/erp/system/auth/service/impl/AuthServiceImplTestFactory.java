@@ -189,10 +189,6 @@ public final class AuthServiceImplTestFactory {
      * 菜单树节点 VO（菜单树委托返回值用）。
      */
     public static MenuTreeVO menuTreeVO(Long menuId) {
-        MenuTreeVO vo = new MenuTreeVO();
-        vo.setMenuId(menuId);
-        vo.setMenuName("系统管理");
-        vo.setParentId(0L);
-        return vo;
+        return new MenuTreeVO(menuId, "系统管理", null, 0L, null, null, null, null, null, null);
     }
 }

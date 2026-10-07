@@ -63,7 +63,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // 免认证白名单（显式列举，禁通配）
                 .requestMatchers("/api/auth/captcha", "/api/auth/login", "/api/auth/refresh",
-                    "/v3/api-docs/**", "/swagger-ui/**", "/actuator/health").permitAll()
+                    "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/favicon.ico",
+                    "/actuator/health").permitAll()
                 // 其余全部需要认证
                 .anyRequest().authenticated())
             .oauth2ResourceServer(oauth2 -> oauth2

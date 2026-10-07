@@ -7,6 +7,11 @@ import jakarta.validation.constraints.Size;
 
 /**
  * 重置编号流水请求 DTO（接口文档 5.7.2，仅允许向下重置至未使用区间）。
+ * 
+ * @param bizType 业务类型（如：订单、发票等）
+ * @param period 日期周期（如：202308）
+ * @param currentNo 目标流水号
+ * @param reason 重置原因
  */
 public record CodeSequenceResetDTO(
 

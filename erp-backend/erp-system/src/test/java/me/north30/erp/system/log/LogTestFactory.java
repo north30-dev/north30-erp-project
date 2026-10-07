@@ -61,17 +61,8 @@ public final class LogTestFactory {
      * 构建审计日志 VO（含变更前后 JSON，用于详情 diff 测试）。
      */
     public static AuditLogVO auditLogVO(Long id, String beforeJson, String afterJson) {
-        AuditLogVO vo = new AuditLogVO();
-        vo.setId(id);
-        vo.setModule("PURCHASE");
-        vo.setBizType("PURCHASE_ORDER");
-        vo.setBizCode("PO202609001");
-        vo.setOperateType("UPDATE");
-        vo.setOperateBy("admin");
-        vo.setResultStatus(1);
-        vo.setBeforeJson(beforeJson);
-        vo.setAfterJson(afterJson);
-        return vo;
+        return new AuditLogVO(id, "PURCHASE", "PURCHASE_ORDER", "PO202609001", "UPDATE", null, "admin",
+            null, null, null, null, 1, null, null, null, null, beforeJson, afterJson, null);
     }
 
     /**
@@ -81,18 +72,8 @@ public final class LogTestFactory {
                                                     String module, String bizType, String operateType,
                                                     String operateBy, Integer resultStatus,
                                                     String startTime, String endTime) {
-        AuditLogQueryDTO query = new AuditLogQueryDTO();
-        query.setPageNum(pageNum);
-        query.setPageSize(pageSize);
-        query.setBizCode(bizCode);
-        query.setModule(module);
-        query.setBizType(bizType);
-        query.setOperateType(operateType);
-        query.setOperateBy(operateBy);
-        query.setResultStatus(resultStatus);
-        query.setStartTime(startTime);
-        query.setEndTime(endTime);
-        return query;
+        return new AuditLogQueryDTO(pageNum, pageSize, bizCode, module, bizType, operateType,
+            operateBy, startTime, endTime, resultStatus);
     }
 
     /**
@@ -120,14 +101,6 @@ public final class LogTestFactory {
     public static LoginLogQueryDTO loginLogQueryDTO(Integer pageNum, Integer pageSize, String username,
                                                     Integer loginType, Integer resultStatus,
                                                     String startTime, String endTime) {
-        LoginLogQueryDTO query = new LoginLogQueryDTO();
-        query.setPageNum(pageNum);
-        query.setPageSize(pageSize);
-        query.setUsername(username);
-        query.setLoginType(loginType);
-        query.setResultStatus(resultStatus);
-        query.setStartTime(startTime);
-        query.setEndTime(endTime);
-        return query;
+        return new LoginLogQueryDTO(pageNum, pageSize, username, loginType, resultStatus, startTime, endTime);
     }
 }

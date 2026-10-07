@@ -49,16 +49,16 @@ public class SysDictItemServiceImpl implements SysDictItemService {
     @Override
     @Transactional(readOnly = true)
     public PageResult<DictItemVO> page(DictItemQueryDTO query) {
-        if (!StringUtils.hasText(query.getDictType())) {
+        if (!StringUtils.hasText(query.dictType())) {
             throw new BusinessException(CommonErrorCode.PARAM_ERROR, "字典类型编码不能为空");
         }
-        long pageNum = normalizePageNum(query.getPageNum());
-        long pageSize = normalizePageSize(query.getPageSize());
-        String lang = StringUtils.hasText(query.getLang()) ? query.getLang() : DEFAULT_LANG;
+        long pageNum = normalizePageNum(query.pageNum());
+        long pageSize = normalizePageSize(query.pageSize());
+        String lang = StringUtils.hasText(query.lang()) ? query.lang() : DEFAULT_LANG;
         LambdaQueryWrapper<SysDictItem> wrapper = new LambdaQueryWrapper<SysDictItem>()
-            .eq(SysDictItem::getDictType, query.getDictType())
+            .eq(SysDictItem::getDictType, query.dictType())
             .eq(SysDictItem::getLang, lang)
-            .eq(query.getStatus() != null, SysDictItem::getStatus, query.getStatus())
+            .eq(query.status() != null, SysDictItem::getStatus, query.status())
             .orderByAsc(SysDictItem::getItemSort)
             .orderByAsc(SysDictItem::getId);
         Page<SysDictItem> page = sysDictItemMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
@@ -124,12 +124,12 @@ public class SysDictItemServiceImpl implements SysDictItemService {
         return new MutationVO(id, null, DELETED);
     }
 
-    private long normalizePageNum(long pageNum) {
-        return pageNum <= 0 ? PageConstants.DEFAULT_PAGE_NUM : pageNum;
+    private long normalizePageNum(Integer pageNum) {
+        return pageNum == null || pageNum <= 0 ? PageConstants.DEFAULT_PAGE_NUM : pageNum;
     }
 
-    private long normalizePageSize(long pageSize) {
-        if (pageSize <= 0) {
+    private long normalizePageSize(Integer pageSize) {
+        if (pageSize == null || pageSize <= 0) {
             return PageConstants.DEFAULT_PAGE_SIZE;
         }
         if (pageSize > PageConstants.MAX_PAGE_SIZE) {

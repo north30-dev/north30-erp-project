@@ -331,9 +331,9 @@ class UserAccessServiceImplTest {
             List<MenuTreeVO> tree = userAccessService.listMenuTree(USER_ID, true);
             // Then
             assertThat(tree).hasSize(1);
-            assertThat(tree.get(0).getMenuId()).isEqualTo(1L);
-            assertThat(tree.get(0).getChildren()).hasSize(1);
-            assertThat(tree.get(0).getChildren().get(0).getMenuId()).isEqualTo(2L);
+            assertThat(tree.get(0).menuId()).isEqualTo(1L);
+            assertThat(tree.get(0).children()).hasSize(1);
+            assertThat(tree.get(0).children().get(0).menuId()).isEqualTo(2L);
             verifyNoInteractions(sysUserRoleService, sysRoleMenuService);
         }
 
@@ -351,9 +351,9 @@ class UserAccessServiceImplTest {
             List<MenuTreeVO> tree = userAccessService.listMenuTree(USER_ID, false);
             // Then
             assertThat(tree).hasSize(1);
-            assertThat(tree.get(0).getMenuId()).isEqualTo(1L);
-            assertThat(tree.get(0).getChildren())
-                .extracting(MenuTreeVO::getMenuId)
+            assertThat(tree.get(0).menuId()).isEqualTo(1L);
+            assertThat(tree.get(0).children())
+                .extracting(MenuTreeVO::menuId)
                 .containsExactly(2L);
             verify(sysRoleService, never()).listByIds(anyCollection());
         }
@@ -372,8 +372,8 @@ class UserAccessServiceImplTest {
             List<MenuTreeVO> tree = userAccessService.listMenuTree(USER_ID, false);
             // Then
             assertThat(tree).hasSize(1);
-            assertThat(tree.get(0).getMenuId()).isEqualTo(1L);
-            assertThat(tree.get(0).getChildren()).isNull();
+            assertThat(tree.get(0).menuId()).isEqualTo(1L);
+            assertThat(tree.get(0).children()).isNull();
         }
 
         @Test

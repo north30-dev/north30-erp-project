@@ -62,18 +62,12 @@ public class MenuManageServiceImpl implements MenuManageService {
             .eq(query.status() != null, SysMenu::getStatus, query.status()));
         List<MenuNodeVO> nodes = menus.stream().map(menuConverter::toNodeVO).toList();
         Map<Long, List<MenuNodeVO>> childrenMap = nodes.stream()
-            .filter(node -> node.getParentId() != null && node.getParentId() != ROOT_PARENT_ID)
-            .collect(Collectors.groupingBy(MenuNodeVO::getParentId));
-        for (MenuNodeVO node : nodes) {
-            List<MenuNodeVO> children = childrenMap.get(node.getId());
-            if (children != null) {
-                children.sort(menuSortComparator());
-                node.setChildren(children);
-            }
-        }
+            .filter(node -> node.parentId() != null && node.parentId() != ROOT_PARENT_ID)
+            .collect(Collectors.groupingBy(MenuNodeVO::parentId));
         return nodes.stream()
-            .filter(node -> node.getParentId() == null || node.getParentId() == ROOT_PARENT_ID)
+            .filter(node -> node.parentId() == null || node.parentId() == ROOT_PARENT_ID)
             .sorted(menuSortComparator())
+            .map(node -> attachChildren(node, childrenMap))
             .collect(Collectors.toList());
     }
 
@@ -167,7 +161,23 @@ public class MenuManageServiceImpl implements MenuManageService {
     // ------------------------------------------------------------------
 
     private static Comparator<MenuNodeVO> menuSortComparator() {
-        return Comparator.comparing(MenuNodeVO::getMenuSort, Comparator.nullsLast(Comparator.naturalOrder()));
+        return Comparator.comparing(MenuNodeVO::menuSort, Comparator.nullsLast(Comparator.naturalOrder()));
+    }
+
+    /**
+     * 自底向上递归装配子树（MenuNodeVO 为不可变 record，需逐层新建节点）。
+     */
+    private static MenuNodeVO attachChildren(MenuNodeVO node, Map<Long, List<MenuNodeVO>> childrenMap) {
+        List<MenuNodeVO> children = childrenMap.get(node.id());
+        if (children == null) {
+            return node;
+        }
+        List<MenuNodeVO> attached = children.stream()
+            .sorted(menuSortComparator())
+            .map(child -> attachChildren(child, childrenMap))
+            .collect(Collectors.toList());
+        return new MenuNodeVO(node.id(), node.menuName(), node.parentId(), node.menuType(), node.path(),
+            node.component(), node.perms(), node.icon(), node.menuSort(), node.visible(), node.status(), attached);
     }
 
     private SysMenu requireMenu(Long id) {

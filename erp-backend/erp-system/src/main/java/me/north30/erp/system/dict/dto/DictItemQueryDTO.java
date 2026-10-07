@@ -1,25 +1,14 @@
 package me.north30.erp.system.dict.dto;
 
-import lombok.Data;
-
 /**
  * 字典项分页查询参数（接口文档 5.5.5，按字典类型过滤）。
+ * <p>lang 缺省 zh-CN、pageNum/pageSize 缺省值由服务层处理。</p>
  */
-@Data
-public class DictItemQueryDTO {
-
-    /** 字典类型编码（必填） */
-    private String dictType;
-
-    /** 语言，默认 zh-CN（E-03 预留） */
-    private String lang;
-
-    /** 状态 0-停用 1-启用 */
-    private Integer status;
-
-    /** 页码（从 1 开始） */
-    private long pageNum = 1;
-
-    /** 每页条数（上限 200） */
-    private long pageSize = 20;
+public record DictItemQueryDTO(
+    String dictType,
+    String lang,
+    Integer status,
+    Integer pageNum,
+    Integer pageSize
+) {
 }

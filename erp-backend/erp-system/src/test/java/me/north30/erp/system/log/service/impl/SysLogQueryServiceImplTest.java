@@ -6,6 +6,7 @@ import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.system.common.enums.SystemManageErrorCode;
 import me.north30.erp.system.log.LogTestFactory;
+import me.north30.erp.system.log.converter.LoginLogConverter;
 import me.north30.erp.system.log.dto.AuditLogQueryParam;
 import me.north30.erp.system.log.entity.SysLoginLog;
 import me.north30.erp.system.log.mapper.AuditLogQueryMapper;
@@ -45,6 +46,9 @@ class SysLogQueryServiceImplTest {
 
     @Mock
     private SysLoginLogMapper sysLoginLogMapper;
+
+    @Mock
+    private LoginLogConverter loginLogConverter;
 
     @InjectMocks
     private SysLogQueryServiceImpl service;
@@ -173,9 +177,11 @@ class SysLogQueryServiceImplTest {
             // When
             AuditLogVO detail = service.getAuditLogDetail(1L);
 
-            // Then：diffFields 按字典序输出变更字段
-            assertThat(detail).isSameAs(vo);
-            assertThat(detail.getDiffFields()).containsExactly("extra", "name", "note");
+            // Then：diffFields 按字典序输出变更字段（record 不可变，派生新实例）
+            assertThat(detail).usingRecursiveComparison()
+                .ignoringFields("diffFields")
+                .isEqualTo(vo);
+            assertThat(detail.diffFields()).containsExactly("extra", "name", "note");
         }
 
         @Test   
@@ -189,7 +195,7 @@ class SysLogQueryServiceImplTest {
             AuditLogVO detail = service.getAuditLogDetail(1L);
 
             // Then：diffFields 为空列表
-            assertThat(detail.getDiffFields()).isEmpty();
+            assertThat(detail.diffFields()).isEmpty();
         }
 
         @Test   
@@ -203,7 +209,7 @@ class SysLogQueryServiceImplTest {
             AuditLogVO detail = service.getAuditLogDetail(1L);
 
             // Then：按"before 缺失"计算差异
-            assertThat(detail.getDiffFields()).containsExactly("a");
+            assertThat(detail.diffFields()).containsExactly("a");
         }
 
         @Test   
@@ -217,7 +223,7 @@ class SysLogQueryServiceImplTest {
             AuditLogVO detail = service.getAuditLogDetail(1L);
 
             // Then
-            assertThat(detail.getDiffFields()).containsExactly("a");
+            assertThat(detail.diffFields()).containsExactly("a");
         }
 
         @Test   
@@ -233,7 +239,7 @@ class SysLogQueryServiceImplTest {
             AuditLogVO detail = service.getAuditLogDetail(1L);
 
             // Then：仅 a（值改为 null）视为变更字段
-            assertThat(detail.getDiffFields()).containsExactly("a");
+            assertThat(detail.diffFields()).containsExactly("a");
         }
 
         @Test   
@@ -265,6 +271,10 @@ class SysLogQueryServiceImplTest {
             page.setTotal(1);
             page.setRecords(List.of(loginLog));
             given(sysLoginLogMapper.selectPage(any(), any())).willReturn(page);
+            given(loginLogConverter.toVO(loginLog)).willReturn(new LoginLogVO(
+                loginLog.getId(), loginLog.getUserId(), loginLog.getUsername(), loginLog.getLoginType(),
+                loginLog.getLoginTime(), loginLog.getLoginIp(), loginLog.getUserAgent(),
+                loginLog.getResultStatus(), loginLog.getFailReason()));
             var query = LogTestFactory.loginLogQueryDTO(1, 20, "admin", 1, 1, null, null);
 
             // When

@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 
 /**
  * 菜单树构建工具：一次查出菜单后内存组树（禁止循环内查库）。
+ * <p>MenuTreeVO 为不可变 record，组树采用自底向上递归构造，同级按 menuSort 升序排列。</p>
  * <p>Entity → VO 转换委托 {@link MenuConverter}（MapStruct 唯一转换方案）。</p>
  */
 @Component
@@ -22,6 +23,9 @@ public class MenuTreeUtil {
 
     /** 顶级菜单父 ID */
     private static final long ROOT_PARENT_ID = 0L;
+
+    private static final Comparator<MenuTreeVO> MENU_SORT_COMPARATOR =
+        Comparator.comparing(MenuTreeVO::menuSort, Comparator.nullsLast(Comparator.naturalOrder()));
 
     private final MenuConverter menuConverter;
 
@@ -36,21 +40,29 @@ public class MenuTreeUtil {
             return new ArrayList<>();
         }
         Map<Long, List<MenuTreeVO>> childrenMap = menus.stream()
-            .filter(menu -> menu.getParentId() != null && menu.getParentId() != ROOT_PARENT_ID)
-            .collect(Collectors.groupingBy(MenuTreeVO::getParentId));
-        for (MenuTreeVO menu : menus) {
-            List<MenuTreeVO> children = childrenMap.get(menu.getMenuId());
-            if (children != null) {
-                children.sort(Comparator.comparing(MenuTreeVO::getMenuSort,
-                    Comparator.nullsLast(Comparator.naturalOrder())));
-                menu.setChildren(children);
-            }
-        }
+            .filter(menu -> menu.parentId() != null && menu.parentId() != ROOT_PARENT_ID)
+            .collect(Collectors.groupingBy(MenuTreeVO::parentId));
         return menus.stream()
-            .filter(menu -> menu.getParentId() == null || menu.getParentId() == ROOT_PARENT_ID)
-            .sorted(Comparator.comparing(MenuTreeVO::getMenuSort,
-                Comparator.nullsLast(Comparator.naturalOrder())))
+            .filter(menu -> menu.parentId() == null || menu.parentId() == ROOT_PARENT_ID)
+            .sorted(MENU_SORT_COMPARATOR)
+            .map(menu -> attachChildren(menu, childrenMap))
             .collect(Collectors.toList());
+    }
+
+    /**
+     * 自底向上递归装配子树（record 不可变，需逐层新建节点）。
+     */
+    private static MenuTreeVO attachChildren(MenuTreeVO menu, Map<Long, List<MenuTreeVO>> childrenMap) {
+        List<MenuTreeVO> children = childrenMap.get(menu.menuId());
+        if (children == null) {
+            return menu;
+        }
+        List<MenuTreeVO> attached = children.stream()
+            .sorted(MENU_SORT_COMPARATOR)
+            .map(child -> attachChildren(child, childrenMap))
+            .collect(Collectors.toList());
+        return new MenuTreeVO(menu.menuId(), menu.menuName(), menu.menuType(), menu.parentId(),
+            menu.path(), menu.component(), menu.icon(), menu.menuSort(), menu.visible(), attached);
     }
 
     /**

@@ -110,14 +110,7 @@ public final class MenuTestFactory {
      * 菜单树节点 VO（MenuTreeUtil 测试用）。
      */
     public static MenuTreeVO treeVO(Long menuId, Long parentId, Integer menuSort) {
-        MenuTreeVO vo = new MenuTreeVO();
-        vo.setMenuId(menuId);
-        vo.setMenuName("菜单" + menuId);
-        vo.setMenuType(TYPE_MENU);
-        vo.setParentId(parentId);
-        vo.setPath("/menu" + menuId);
-        vo.setMenuSort(menuSort);
-        vo.setVisible(1);
-        return vo;
+        return new MenuTreeVO(menuId, "菜单" + menuId, TYPE_MENU, parentId, "/menu" + menuId,
+            null, null, menuSort, 1, null);
     }
 }

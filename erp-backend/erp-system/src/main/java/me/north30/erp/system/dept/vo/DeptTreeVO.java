@@ -1,50 +1,49 @@
 package me.north30.erp.system.dept.vo;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.Data;
 
 import java.util.List;
 
 /**
  * 组织部门树响应 VO（接口文档 5.4.1，children 递归）。
  */
-@Data
-public class DeptTreeVO {
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public record DeptTreeVO(
 
     /** 组织 ID（sys_dept.id） */
-    private Long id;
+    Long id,
 
     /** 组织编码（如 ORG001） */
-    private String deptCode;
+    String deptCode,
 
     /** 组织名称 */
-    private String deptName;
+    String deptName,
 
     /** 上级组织 ID（0 为顶级） */
-    private Long parentId;
+    Long parentId,
 
     /** 类型 1-集团 2-生产基地 3-销售分公司 4-部门 5-车间 */
-    private Integer deptType;
+    Integer deptType,
 
     /** 层级（1 为顶级，上限 5 级） */
-    private Integer deptLevel;
+    Integer deptLevel,
 
     /** 祖级路径（如 0,1,5） */
-    private String ancestors;
+    String ancestors,
 
     /** 负责人 */
-    private String leader;
+    String leader,
 
     /** 联系电话 */
-    private String phone;
+    String phone,
 
     /** 显示顺序 */
-    private Integer deptSort;
+    Integer deptSort,
 
     /** 状态 0-停用 1-启用 */
-    private Integer status;
+    Integer status,
 
-    /** 下级组织（递归结构） */
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private List<DeptTreeVO> children;
+    /** 下级组织（递归结构，无子节点时为 null） */
+    List<DeptTreeVO> children
+) {
 }

@@ -5,13 +5,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.security.CurrentUserProvider;
+import me.north30.erp.common.web.RequestContextUtil;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
@@ -54,8 +53,8 @@ public class AuditLogAspect {
      */
     private void recordAuditLog(ProceedingJoinPoint joinPoint, AuditLog auditLog, long cost,
                                 boolean success, Throwable ex, Object result) {
-        HttpServletRequest request = currentRequest();
-        String ip = resolveClientIp(request);
+        HttpServletRequest request = RequestContextUtil.currentRequest();
+        String ip = RequestContextUtil.resolveClientIp(request);
         String uri = request != null ? request.getRequestURI() : "";
         String operator = resolveOperator();
         String method = joinPoint.getSignature().toShortString();
@@ -128,29 +127,5 @@ public class AuditLogAspect {
             log.warn("审计日志对象序列化失败，已跳过该字段：{}", e.getMessage());
             return null;
         }
-    }
-
-    /**
-     * 从 RequestContextHolder 获取当前请求（异步/非 Web 场景可能为空）。
-     */
-    private HttpServletRequest currentRequest() {
-        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
-            return attributes.getRequest();
-        }
-        return null;
-    }
-
-    /**
-     * 解析客户端 IP：优先取反向代理透传的 X-Forwarded-For 第一段，取不到用 getRemoteAddr()。
-     */
-    private String resolveClientIp(HttpServletRequest request) {
-        if (request == null) {
-            return "";
-        }
-        String forwardedFor = request.getHeader("X-Forwarded-For");
-        if (forwardedFor != null && !forwardedFor.isBlank()) {
-            return forwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
     }
 }

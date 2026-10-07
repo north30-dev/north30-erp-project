@@ -64,14 +64,8 @@ public final class DictTestFactory {
      * 字典类型分页查询参数。
      */
     public static DictTypeQueryDTO typeQueryDTO(String dictType, String dictName, Integer status,
-                                                long pageNum, long pageSize) {
-        DictTypeQueryDTO query = new DictTypeQueryDTO();
-        query.setDictType(dictType);
-        query.setDictName(dictName);
-        query.setStatus(status);
-        query.setPageNum(pageNum);
-        query.setPageSize(pageSize);
-        return query;
+                                                Integer pageNum, Integer pageSize) {
+        return new DictTypeQueryDTO(dictType, dictName, status, pageNum, pageSize);
     }
 
     /**
@@ -93,13 +87,7 @@ public final class DictTestFactory {
      * 字典项分页查询参数。
      */
     public static DictItemQueryDTO itemQueryDTO(String dictType, String lang, Integer status,
-                                                long pageNum, long pageSize) {
-        DictItemQueryDTO query = new DictItemQueryDTO();
-        query.setDictType(dictType);
-        query.setLang(lang);
-        query.setStatus(status);
-        query.setPageNum(pageNum);
-        query.setPageSize(pageSize);
-        return query;
+                                                Integer pageNum, Integer pageSize) {
+        return new DictItemQueryDTO(dictType, lang, status, pageNum, pageSize);
     }
 }

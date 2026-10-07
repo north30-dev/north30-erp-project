@@ -13,6 +13,7 @@ import me.north30.erp.system.log.dto.AuditLogQueryParam;
 import me.north30.erp.system.log.dto.LoginLogQueryDTO;
 import me.north30.erp.system.log.entity.SysLoginLog;
 import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.log.converter.LoginLogConverter;
 import me.north30.erp.system.log.mapper.AuditLogQueryMapper;
 import me.north30.erp.system.log.mapper.SysLoginLogMapper;
 import me.north30.erp.system.log.service.SysLogQueryService;
@@ -49,12 +50,13 @@ public class SysLogQueryServiceImpl implements SysLogQueryService {
 
     private final AuditLogQueryMapper auditLogQueryMapper;
     private final SysLoginLogMapper sysLoginLogMapper;
+    private final LoginLogConverter loginLogConverter;
 
     @Override
     @Transactional(readOnly = true)
     public PageResult<AuditLogVO> pageAuditLogs(AuditLogQueryDTO query) {
-        long pageNum = normalizePageNum(query.getPageNum());
-        long pageSize = normalizePageSize(query.getPageSize());
+        long pageNum = normalizePageNum(query.pageNum());
+        long pageSize = normalizePageSize(query.pageSize());
         Page<AuditLogVO> page = new Page<>(pageNum, pageSize);
         auditLogQueryMapper.selectAuditLogPage(page, buildAuditLogQueryParam(query));
         return PageResult.of(page.getTotal(), pageNum, pageSize, page.getRecords());
@@ -67,27 +69,26 @@ public class SysLogQueryServiceImpl implements SysLogQueryService {
         if (detail == null) {
             throw new BusinessException(SystemManageErrorCode.AUDIT_LOG_NOT_FOUND);
         }
-        detail.setDiffFields(resolveDiffFields(detail.getBeforeJson(), detail.getAfterJson()));
-        return detail;
+        return detail.withDiffFields(resolveDiffFields(detail.beforeJson(), detail.afterJson()));
     }
 
     @Override
     @Transactional(readOnly = true)
     public PageResult<LoginLogVO> pageLoginLogs(LoginLogQueryDTO query) {
-        long pageNum = normalizePageNum(query.getPageNum());
-        long pageSize = normalizePageSize(query.getPageSize());
+        long pageNum = normalizePageNum(query.pageNum());
+        long pageSize = normalizePageSize(query.pageSize());
         LambdaQueryWrapper<SysLoginLog> wrapper = new LambdaQueryWrapper<SysLoginLog>()
-            .like(StringUtils.hasText(query.getUsername()), SysLoginLog::getUsername, query.getUsername())
-            .eq(query.getLoginType() != null, SysLoginLog::getLoginType, query.getLoginType())
-            .eq(query.getResultStatus() != null, SysLoginLog::getResultStatus, query.getResultStatus())
+            .like(StringUtils.hasText(query.username()), SysLoginLog::getUsername, query.username())
+            .eq(query.loginType() != null, SysLoginLog::getLoginType, query.loginType())
+            .eq(query.resultStatus() != null, SysLoginLog::getResultStatus, query.resultStatus())
             .orderByDesc(SysLoginLog::getLoginTime)
             .orderByDesc(SysLoginLog::getId);
-        LocalDateTime timeStart = parseTime(query.getStartTime(), false);
-        LocalDateTime timeEnd = parseTime(query.getEndTime(), true);
+        LocalDateTime timeStart = parseTime(query.startTime(), false);
+        LocalDateTime timeEnd = parseTime(query.endTime(), true);
         wrapper.ge(timeStart != null, SysLoginLog::getLoginTime, timeStart)
             .lt(timeEnd != null, SysLoginLog::getLoginTime, timeEnd);
         Page<SysLoginLog> page = sysLoginLogMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
-        List<LoginLogVO> list = page.getRecords().stream().map(this::toLoginLogVO).toList();
+        List<LoginLogVO> list = page.getRecords().stream().map(loginLogConverter::toVO).toList();
         return PageResult.of(page.getTotal(), pageNum, pageSize, list);
     }
 
@@ -96,14 +97,14 @@ public class SysLogQueryServiceImpl implements SysLogQueryService {
      */
     private AuditLogQueryParam buildAuditLogQueryParam(AuditLogQueryDTO query) {
         AuditLogQueryParam param = new AuditLogQueryParam();
-        param.setBizCode(query.getBizCode());
-        param.setModule(query.getModule());
-        param.setBizType(query.getBizType());
-        param.setOperateType(query.getOperateType());
-        param.setOperateBy(query.getOperateBy());
-        param.setResultStatus(query.getResultStatus());
-        param.setTimeStart(parseTime(query.getStartTime(), false));
-        param.setTimeEnd(parseTime(query.getEndTime(), true));
+        param.setBizCode(query.bizCode());
+        param.setModule(query.module());
+        param.setBizType(query.bizType());
+        param.setOperateType(query.operateType());
+        param.setOperateBy(query.operateBy());
+        param.setResultStatus(query.resultStatus());
+        param.setTimeStart(parseTime(query.startTime(), false));
+        param.setTimeEnd(parseTime(query.endTime(), true));
         return param;
     }
 
@@ -176,12 +177,6 @@ public class SysLogQueryServiceImpl implements SysLogQueryService {
             log.warn("审计日志变更 JSON 解析失败，diffFields 跳过：{}", e.getMessage());
             return null;
         }
-    }
-
-    private LoginLogVO toLoginLogVO(SysLoginLog entity) {
-        return new LoginLogVO(entity.getId(), entity.getUserId(), entity.getUsername(), entity.getLoginType(),
-            entity.getLoginTime(), entity.getLoginIp(), entity.getUserAgent(), entity.getResultStatus(),
-            entity.getFailReason());
     }
 
     private long normalizePageNum(Integer pageNum) {

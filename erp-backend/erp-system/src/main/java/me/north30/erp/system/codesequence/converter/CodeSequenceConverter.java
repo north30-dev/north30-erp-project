@@ -16,10 +16,23 @@ import org.mapstruct.ReportingPolicy;
 public interface CodeSequenceConverter {
 
     /**
-     * 序列实体 → VO。
-     * <p>nextCodePreview 为派生字段（prefix + period + 补零流水，依赖 seqLength 缺省值），由 Service 计算后显式装配。</p>
+     * 序列实体 → VO（含下一编号预览）。
+     * <p>nextCodePreview 为派生字段（prefix + period + 补零流水，依赖 seqLength 缺省值 3），
+     * 在此统一计算，服务层不再手工装配。</p>
+     */
+    default CodeSequenceVO toVO(SysCodeSequence sequence) {
+        CodeSequenceVO base = toBaseVO(sequence);
+        int seqLength = sequence.getSeqLength() == null ? 3 : sequence.getSeqLength();
+        String nextNo = String.format("%0" + seqLength + "d", sequence.getCurrentNo() + 1);
+        return new CodeSequenceVO(base.id(), base.bizType(), base.prefix(), base.period(),
+            base.currentNo(), base.seqLength(), sequence.getPrefix() + sequence.getPeriod() + nextNo,
+            base.updateTime());
+    }
+
+    /**
+     * 序列实体 → VO 主体（MapStruct 生成，nextCodePreview 由 default toVO 补齐）。
      */
     @Mapping(target = "nextCodePreview", ignore = true)
     @Mapping(target = "updateTime", dateFormat = "yyyy-MM-dd HH:mm:ss")
-    CodeSequenceVO toVO(SysCodeSequence sequence);
+    CodeSequenceVO toBaseVO(SysCodeSequence sequence);
 }

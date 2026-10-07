@@ -625,7 +625,7 @@ class AuthServiceImplTest {
             List<MenuTreeVO> menus = authService.currentUserMenus();
             // Then
             assertThat(menus).hasSize(1);
-            assertThat(menus.get(0).getMenuId()).isEqualTo(1L);
+            assertThat(menus.get(0).menuId()).isEqualTo(1L);
         }
 
         @Test
