@@ -8,7 +8,7 @@ import me.north30.erp.system.user.dto.UserResetPasswordDTO;
 import me.north30.erp.system.user.dto.UserStatusDTO;
 import me.north30.erp.system.user.dto.UserUpdateDTO;
 import me.north30.erp.system.user.vo.UserAssignRolesVO;
-import me.north30.erp.system.user.vo.UserDeleteVO;
+import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.user.vo.UserDetailVO;
 import me.north30.erp.system.user.vo.UserResetPasswordVO;
 import me.north30.erp.system.user.vo.UserStatusVO;
@@ -53,7 +53,7 @@ public interface UserManagementService {
      * @param id 用户 ID
      * @return 删除结果 VO
      */
-    UserDeleteVO delete(Long id);
+    DeleteResultVO delete(Long id);
 
     /**
      * 启用/停用用户（5.1.6，停用时使该用户全部在线会话失效）。

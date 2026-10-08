@@ -17,7 +17,7 @@ import me.north30.erp.system.user.dto.UserStatusDTO;
 import me.north30.erp.system.user.dto.UserUpdateDTO;
 import me.north30.erp.system.user.service.UserManagementService;
 import me.north30.erp.system.user.vo.UserAssignRolesVO;
-import me.north30.erp.system.user.vo.UserDeleteVO;
+import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.user.vo.UserDetailVO;
 import me.north30.erp.system.user.vo.UserResetPasswordVO;
 import me.north30.erp.system.user.vo.UserStatusVO;
@@ -136,7 +136,7 @@ public class SysUserController {
     @ApiResponse(responseCode = "422", description = "业务校验失败（18011 不允许删除管理员/18005 用户不存在）",
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
-    public Result<UserDeleteVO> delete(@PathVariable Long id) {
+    public Result<DeleteResultVO> delete(@PathVariable Long id) {
         return Result.success(userManagementService.delete(id));
     }
 

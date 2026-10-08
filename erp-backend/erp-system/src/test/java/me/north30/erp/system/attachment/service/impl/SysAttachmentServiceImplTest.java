@@ -8,10 +8,10 @@ import me.north30.erp.system.attachment.entity.SysAttachment;
 import me.north30.erp.system.attachment.mapper.SysAttachmentMapper;
 import me.north30.erp.system.attachment.service.SysAttachmentService;
 import me.north30.erp.system.attachment.strategy.FileStorageStrategy;
-import me.north30.erp.system.attachment.vo.AttachmentDeleteVO;
 import me.north30.erp.system.attachment.vo.AttachmentDownloadVO;
 import me.north30.erp.system.attachment.vo.AttachmentVO;
 import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.security.LoginUser;
 import me.north30.erp.system.support.MpTableInfoInit;
 import org.junit.jupiter.api.AfterEach;
@@ -407,7 +407,7 @@ class SysAttachmentServiceImplTest {
             given(sysAttachmentMapper.deleteById(5L)).willReturn(1);
 
             // When
-            AttachmentDeleteVO vo = service.delete(5L);
+            DeleteResultVO vo = service.delete(5L);
 
             // Then
             assertThat(vo.id()).isEqualTo(5L);

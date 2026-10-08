@@ -11,10 +11,10 @@ import me.north30.erp.system.attachment.entity.SysAttachment;
 import me.north30.erp.system.attachment.mapper.SysAttachmentMapper;
 import me.north30.erp.system.attachment.service.SysAttachmentService;
 import me.north30.erp.system.attachment.strategy.FileStorageStrategy;
-import me.north30.erp.system.attachment.vo.AttachmentDeleteVO;
 import me.north30.erp.system.attachment.vo.AttachmentDownloadVO;
 import me.north30.erp.system.attachment.vo.AttachmentVO;
 import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.security.LoginUser;
 import me.north30.erp.system.security.SecurityUtils;
 import org.springframework.core.io.FileSystemResource;
@@ -109,7 +109,7 @@ public class SysAttachmentServiceImpl implements SysAttachmentService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public AttachmentDeleteVO delete(Long id) {
+    public DeleteResultVO delete(Long id) {
         SysAttachment attachment = requireAttachment(id);
         LoginUser user = SecurityUtils.requireCurrentUser();
         // 横向数据守卫：仅上传人可删除（接口文档 5.9.4 错误码 10202）
@@ -117,7 +117,7 @@ public class SysAttachmentServiceImpl implements SysAttachmentService {
             throw new BusinessException(SystemManageErrorCode.DATA_SCOPE_DENIED, "仅上传人可删除该附件");
         }
         sysAttachmentMapper.deleteById(id);
-        return new AttachmentDeleteVO(id, 1);
+        return new DeleteResultVO(id, 1);
     }
 
     @Override

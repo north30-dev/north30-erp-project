@@ -14,6 +14,7 @@ import me.north30.erp.common.util.DateTimeFormatUtil;
 import me.north30.erp.common.util.WarehouseIdCodecUtil;
 import me.north30.erp.system.common.enums.SystemManageErrorCode;
 import me.north30.erp.system.common.enums.UserErrorCode;
+import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.dept.entity.SysDept;
 import me.north30.erp.system.dept.mapper.SysDeptMapper;
 import me.north30.erp.system.user.converter.UserConverter;
@@ -33,7 +34,6 @@ import me.north30.erp.system.user.strategy.UserQueryStrategy;
 import me.north30.erp.system.user.strategy.UserRoleStrategy;
 import me.north30.erp.system.user.strategy.UserSessionRevokeStrategy;
 import me.north30.erp.system.user.vo.UserAssignRolesVO;
-import me.north30.erp.system.user.vo.UserDeleteVO;
 import me.north30.erp.system.user.vo.UserDetailVO;
 import me.north30.erp.system.user.vo.UserResetPasswordVO;
 import me.north30.erp.system.user.vo.UserStatusVO;
@@ -178,12 +178,12 @@ public class UserManagementServiceImpl implements UserManagementService {
      * 删除用户。
      *
      * @param id 用户 ID
-     * @return UserDeleteVO 删除响应
+     * @return DeleteResultVO 删除响应
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
     @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.DELETE)
-    public UserDeleteVO delete(Long id) {
+    public DeleteResultVO delete(Long id) {
         SysUser user = sysUserService.requireUser(id);
         // 内置管理员不可删除（18012）
         if (user.isAdmin()) {
@@ -196,7 +196,7 @@ public class UserManagementServiceImpl implements UserManagementService {
         }
         // @TableLogic 逻辑删除，禁止物理 DELETE
         sysUserMapper.deleteById(id);
-        return new UserDeleteVO(id, 1);
+        return new DeleteResultVO(id, 1);
     }
 
     /**

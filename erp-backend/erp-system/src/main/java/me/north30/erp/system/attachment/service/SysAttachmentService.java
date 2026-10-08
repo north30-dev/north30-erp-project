@@ -1,7 +1,7 @@
 package me.north30.erp.system.attachment.service;
 
 import me.north30.erp.system.attachment.entity.SysAttachment;
-import me.north30.erp.system.attachment.vo.AttachmentDeleteVO;
+import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.attachment.vo.AttachmentDownloadVO;
 import me.north30.erp.system.attachment.vo.AttachmentVO;
 import org.springframework.web.multipart.MultipartFile;
@@ -31,7 +31,7 @@ public interface SysAttachmentService {
     /**
      * 附件删除（接口文档 5.9.4，权限点 system:attachment:delete）：逻辑删除，仅上传人可删。
      */
-    AttachmentDeleteVO delete(Long id);
+    DeleteResultVO delete(Long id);
 
     /**
      * 加载有效附件：不存在或已逻辑删除抛 ATTACHMENT_NOT_FOUND。

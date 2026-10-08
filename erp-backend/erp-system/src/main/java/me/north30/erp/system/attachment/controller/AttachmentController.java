@@ -8,9 +8,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import me.north30.erp.common.result.Result;
 import me.north30.erp.system.attachment.service.SysAttachmentService;
-import me.north30.erp.system.attachment.vo.AttachmentDeleteVO;
 import me.north30.erp.system.attachment.vo.AttachmentDownloadVO;
 import me.north30.erp.system.attachment.vo.AttachmentVO;
+import me.north30.erp.system.common.vo.DeleteResultVO;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -113,7 +113,7 @@ public class AttachmentController {
     @ApiResponse(responseCode = "422", description = "业务校验失败（18038 附件不存在/10202 无权操作该数据，仅上传人可删除）",
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
-    public Result<AttachmentDeleteVO> delete(@PathVariable Long id) {
+    public Result<DeleteResultVO> delete(@PathVariable Long id) {
         return Result.success(attachmentService.delete(id));
     }
 }

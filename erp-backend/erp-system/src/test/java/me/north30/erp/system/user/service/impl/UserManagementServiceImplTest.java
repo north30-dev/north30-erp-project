@@ -28,7 +28,7 @@ import me.north30.erp.system.user.strategy.UserQueryStrategy;
 import me.north30.erp.system.user.strategy.UserRoleStrategy;
 import me.north30.erp.system.user.strategy.UserSessionRevokeStrategy;
 import me.north30.erp.system.user.vo.UserAssignRolesVO;
-import me.north30.erp.system.user.vo.UserDeleteVO;
+import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.user.vo.UserDetailVO;
 import me.north30.erp.system.user.vo.UserResetPasswordVO;
 import me.north30.erp.system.user.vo.UserStatusVO;
@@ -548,7 +548,7 @@ class UserManagementServiceImplTest {
             when(sysUserRoleMapper.selectCount(any())).thenReturn(0L);
 
             // When
-            UserDeleteVO vo = service.delete(10L);
+            DeleteResultVO vo = service.delete(10L);
 
             // Then
             assertThat(vo.id()).isEqualTo(10L);
@@ -591,7 +591,7 @@ class UserManagementServiceImplTest {
             when(sysUserRoleMapper.selectCount(any())).thenReturn(null);
 
             // When
-            UserDeleteVO vo = service.delete(10L);
+            DeleteResultVO vo = service.delete(10L);
 
             // Then
             assertThat(vo.id()).isEqualTo(10L);
