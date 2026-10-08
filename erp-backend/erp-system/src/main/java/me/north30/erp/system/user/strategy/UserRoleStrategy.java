@@ -29,6 +29,8 @@ public class UserRoleStrategy {
 
     /**
      * 校验角色集合全部存在，否则抛 18014（一次 IN 计数，非循环查库）。
+     *
+     * @param roleIds 角色 ID 集合
      */
     public void requireAllExist(List<Long> roleIds) {
         if (roleIds.isEmpty()) {
@@ -43,6 +45,9 @@ public class UserRoleStrategy {
 
     /**
      * 写入用户-角色关联（单用户角色数个位数，逐条插入即可，无需批量基建）。
+     *
+     * @param userId 用户 ID
+     * @param roleIds 角色 ID 集合
      */
     public void insertForUser(Long userId, List<Long> roleIds) {
         for (Long roleId : roleIds) {
@@ -53,6 +58,9 @@ public class UserRoleStrategy {
     /**
      * 全删全插（全量覆盖语义）：sys_user_role 带 @TableLogic，delete 为逻辑删除，
      * 唯一索引 uk_sys_user_role 仅约束 is_deleted=0 行，重插不冲突。
+     *
+     * @param userId 用户 ID
+     * @param roleIds 角色 ID 集合
      */
     public void replaceAllForUser(Long userId, List<Long> roleIds) {
         sysUserRoleMapper.delete(new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getUserId, userId));
@@ -61,6 +69,9 @@ public class UserRoleStrategy {
 
     /**
      * 统计用户已分配角色数（删除引用守卫用）。
+     *
+     * @param userId 用户 ID
+     * @return 角色数
      */
     public long countByUserId(Long userId) {
         Long count = sysUserRoleMapper.selectCount(
@@ -70,6 +81,9 @@ public class UserRoleStrategy {
 
     /**
      * 查询用户已分配角色 ID 列表（去空去重）。
+     *
+     * @param userId 用户 ID
+     * @return 角色 ID 集合
      */
     public List<Long> listRoleIdsByUserId(Long userId) {
         return sysUserRoleMapper.selectList(

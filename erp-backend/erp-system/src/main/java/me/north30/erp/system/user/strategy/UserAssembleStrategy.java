@@ -63,6 +63,9 @@ public class UserAssembleStrategy {
 
     /**
      * 按角色 ID 集合批量加载角色编码映射（getDetail 详情装配用）。
+     *
+     * @param roleIds 角色 ID 集合
+     * @return 角色 ID 映射角色编码的映射
      */
     public Map<Long, String> loadRoleCodeMap(Collection<Long> roleIds) {
         if (roleIds == null || roleIds.isEmpty()) {
@@ -105,6 +108,9 @@ public class UserAssembleStrategy {
 
     /**
      * 批量加载组织名称（一次 IN 查询，避免循环查库）。
+     *
+     * @param users 用户实体列表
+     * @return 组织 ID 映射组织名称的映射
      */
     private Map<Long, String> loadDeptNames(List<SysUser> users) {
         Set<Long> deptIds = users.stream()
@@ -121,6 +127,9 @@ public class UserAssembleStrategy {
 
     /**
      * 批量加载用户角色编码映射（user_role + role 各一次 IN 查询，避免循环查库）。
+     *
+     * @param userIds 用户 ID 集合
+     * @return 用户 ID 映射角色编码列表的映射
      */
     private Map<Long, List<String>> loadRoleCodesByUserIds(List<Long> userIds) {
         if (userIds.isEmpty()) {
@@ -144,6 +153,9 @@ public class UserAssembleStrategy {
 
     /**
      * CSV 字段转义：包含逗号/引号/换行时加双引号包裹并转义内部引号。
+     *
+     * @param value 字段值
+     * @return 转义后的字段值
      */
     private String escape(String value) {
         if (value == null) {

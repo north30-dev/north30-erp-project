@@ -4,8 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.result.PageResult;
+import me.north30.erp.system.common.enums.RoleMenuErrorCode;
 import me.north30.erp.system.common.vo.DeleteResultVO;
-import me.north30.erp.system.menu.mapper.SysMenuMapper;
+import me.north30.erp.system.menu.service.SysMenuService;
 import me.north30.erp.system.role.converter.RoleConverter;
 import me.north30.erp.system.role.converter.RoleConverterImpl;
 import me.north30.erp.system.role.dto.RoleAssignMenuDTO;
@@ -20,21 +21,25 @@ import me.north30.erp.system.role.entity.SysRoleMenu;
 import me.north30.erp.system.role.mapper.SysRoleDataScopeMapper;
 import me.north30.erp.system.role.mapper.SysRoleMapper;
 import me.north30.erp.system.role.mapper.SysRoleMenuMapper;
-import me.north30.erp.system.role.mapper.SysUserRoleMapper;
+import me.north30.erp.system.role.service.SysRoleService;
+import me.north30.erp.system.role.service.SysUserRoleService;
+import me.north30.erp.system.role.strategy.RoleAssembleStrategy;
+import me.north30.erp.system.role.strategy.RoleGrantStrategy;
+import me.north30.erp.system.role.strategy.RoleQueryStrategy;
 import me.north30.erp.system.role.vo.RoleCreatedVO;
 import me.north30.erp.system.role.vo.RoleDataScopeVO;
 import me.north30.erp.system.role.vo.RoleMenuAssignedVO;
 import me.north30.erp.system.role.vo.RoleUpdatedVO;
 import me.north30.erp.system.role.vo.RoleVO;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentMatchers;
-import org.mockito.InjectMocks;
-import org.mockito.Spy;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
@@ -49,7 +54,9 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * {@link RoleManageServiceImpl} 纯 Mockito 单元测试：不连 DB，五个 Mapper 全部 mock。
+ * {@link RoleManageServiceImpl} 纯 Mockito 单元测试：不连 DB。
+ * <p>Mapper 依赖中同域授权表（roleMenu/dataScope）经 {@link RoleGrantStrategy} 保留 Mapper mock；
+ * 跨域依赖（角色存在性、用户-角色、菜单）按小 DDD 收敛后 mock 对应 Service。</p>
  */
 @ExtendWith(MockitoExtension.class)
 class RoleManageServiceImplTest {
@@ -58,13 +65,16 @@ class RoleManageServiceImplTest {
     private SysRoleMapper sysRoleMapper;
 
     @Mock
-    private SysUserRoleMapper sysUserRoleMapper;
+    private SysRoleService sysRoleService;
+
+    @Mock
+    private SysUserRoleService sysUserRoleService;
+
+    @Mock
+    private SysMenuService sysMenuService;
 
     @Mock
     private SysRoleMenuMapper sysRoleMenuMapper;
-
-    @Mock
-    private SysMenuMapper sysMenuMapper;
 
     @Mock
     private SysRoleDataScopeMapper sysRoleDataScopeMapper;
@@ -72,13 +82,21 @@ class RoleManageServiceImplTest {
     @Spy
     private final RoleConverter roleConverter = new RoleConverterImpl();
 
-    @InjectMocks
     private RoleManageServiceImpl service;
 
     @BeforeAll
     static void setUpTableInfo() {
         // 初始化 MP 表信息缓存，保证 Lambda 条件在纯单测环境可解析
         RoleTestFactory.initTableInfo();
+    }
+
+    @BeforeEach
+    void setUp() {
+        RoleGrantStrategy roleGrantStrategy =
+            new RoleGrantStrategy(sysRoleMenuMapper, sysRoleDataScopeMapper, roleConverter);
+        service = new RoleManageServiceImpl(sysRoleMapper, sysRoleService, sysUserRoleService,
+            sysMenuService, sysRoleDataScopeMapper, new RoleQueryStrategy(), roleGrantStrategy,
+            new RoleAssembleStrategy(), roleConverter);
     }
 
     @Nested
@@ -97,7 +115,7 @@ class RoleManageServiceImplTest {
                 page.setTotal(5);
                 return page;
             });
-            when(sysUserRoleMapper.selectList(any())).thenReturn(List.of(
+            when(sysUserRoleService.listByRoleIds(any())).thenReturn(List.of(
                 RoleTestFactory.sysUserRole(100L, 1L),
                 RoleTestFactory.sysUserRole(101L, 1L),
                 RoleTestFactory.sysUserRole(102L, 2L)));
@@ -139,10 +157,10 @@ class RoleManageServiceImplTest {
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(10001))
                 .hasMessage("分页参数非法：pageNum ≥ 1 且 1 ≤ pageSize ≤ 200");
-            verifyNoInteractions(sysUserRoleMapper);
+            verifyNoInteractions(sysUserRoleService);
         }
 
-        @Test   
+        @Test
         @DisplayName("分页查询角色，pageSize 大于 200 时抛出异常")
         void shouldThrow10001_whenPageSizeExceedsMax() {
             // Given
@@ -168,7 +186,7 @@ class RoleManageServiceImplTest {
                 .hasMessage("排序字段非法：drop");
         }
 
-        @Test   
+        @Test
         @DisplayName("分页查询角色，orderDirection字段不在白名单时抛出异常")
         void shouldThrow10001_whenOrderDirectionIllegal() {
             // Given
@@ -181,7 +199,7 @@ class RoleManageServiceImplTest {
                 .hasMessage("排序方向仅支持 ASC/DESC");
         }
 
-        @Test   
+        @Test
         @DisplayName("分页查询角色，orderBy字段为 role_code 时，按 role_code 升序排序")
         void shouldOrderAscending_whenDirectionAscAndUserCountZero() {
             // Given
@@ -191,7 +209,7 @@ class RoleManageServiceImplTest {
                 page.setTotal(1);
                 return page;
             });
-            when(sysUserRoleMapper.selectList(any())).thenReturn(List.of());
+            when(sysUserRoleService.listByRoleIds(any())).thenReturn(List.of());
             RolePageQueryDTO query = new RolePageQueryDTO("sales", null, 1, 1, 10, "role_code", "asc");
 
             // When
@@ -207,7 +225,7 @@ class RoleManageServiceImplTest {
                     && page.orders().get(0).isAsc()), any());
         }
 
-        @Test   
+        @Test
         @DisplayName("分页查询角色，orderBy字段为 role_code 时，按 role_code 降序排序")
         void shouldReturnEmptyList_whenNoRolesMatch() {
             // Given
@@ -226,7 +244,7 @@ class RoleManageServiceImplTest {
             assertThat(result.total()).isZero();
             assertThat(result.list()).isEmpty();
             // 空页不触发 userCount 派生查询
-            verifyNoInteractions(sysUserRoleMapper);
+            verifyNoInteractions(sysUserRoleService);
         }
     }
 
@@ -234,7 +252,7 @@ class RoleManageServiceImplTest {
     @DisplayName("create：创建角色")
     class CreateTest {
 
-        @Test   
+        @Test
         @DisplayName("创建角色，返回分配的 ID")
         void shouldCreateRoleWithDefaultValues_andReturnAssignedId() {
             // Given
@@ -259,7 +277,7 @@ class RoleManageServiceImplTest {
                     && "备注".equals(role.getRemark())));
         }
 
-        @Test   
+        @Test
         @DisplayName("创建角色，角色编码已存在时抛出异常")
         void shouldThrow18015_whenRoleCodeExists() {
             // Given
@@ -273,7 +291,7 @@ class RoleManageServiceImplTest {
             verify(sysRoleMapper, never()).insert(any(SysRole.class));
         }
 
-        @Test   
+        @Test
         @DisplayName("创建角色，数据范围配置非法时抛出异常")
         void shouldThrow18018_whenDataScopeIllegal() {
             // Given
@@ -293,12 +311,12 @@ class RoleManageServiceImplTest {
     @DisplayName("update：更新角色")
     class UpdateTest {
 
-        @Test   
+        @Test
         @DisplayName("更新角色，返回更新后的最新时间")
         void shouldUpdatePartialFields_andReturnFormattedLatestUpdateTime() {
-            // Given：第一次 selectById 命中旧角色，更新后再次 selectById 取最新数据
-            when(sysRoleMapper.selectById(5L)).thenReturn(RoleTestFactory.sysRole(),
-                RoleTestFactory.latestRoleWithUpdateTime());
+            // Given：requireRole 命中旧角色，更新后 selectById 回查取最新数据
+            when(sysRoleService.requireRole(5L)).thenReturn(RoleTestFactory.sysRole());
+            when(sysRoleMapper.selectById(5L)).thenReturn(RoleTestFactory.latestRoleWithUpdateTime());
             when(sysRoleMapper.updateById(any(SysRole.class))).thenReturn(1);
             RoleUpdateDTO dto = new RoleUpdateDTO("销售主管", 7, 3, 0, "改备注", 5);
 
@@ -319,11 +337,12 @@ class RoleManageServiceImplTest {
                     && "R001".equals(role.getRoleCode())));
         }
 
-        @Test   
+        @Test
         @DisplayName("更新角色，角色不存在时抛出异常")
         void shouldThrow18014_whenRoleNotFound() {
             // Given
-            when(sysRoleMapper.selectById(5L)).thenReturn(null);
+            when(sysRoleService.requireRole(5L)).thenThrow(
+                new BusinessException(RoleMenuErrorCode.ROLE_NOT_FOUND, "角色 5 不存在"));
 
             // When / Then
             assertThatThrownBy(() -> service.update(5L, new RoleUpdateDTO("销售主管", null, null, null, null, 5)))
@@ -332,11 +351,11 @@ class RoleManageServiceImplTest {
                 .hasMessage("角色 5 不存在");
         }
 
-        @Test   
+        @Test
         @DisplayName("更新角色，数据范围配置非法时抛出异常")
         void shouldThrow18018_whenDataScopeIllegal() {
             // Given
-            when(sysRoleMapper.selectById(5L)).thenReturn(RoleTestFactory.sysRole());
+            when(sysRoleService.requireRole(5L)).thenReturn(RoleTestFactory.sysRole());
 
             // When / Then
             assertThatThrownBy(() -> service.update(5L, new RoleUpdateDTO(null, null, 7, null, null, 5)))
@@ -346,11 +365,11 @@ class RoleManageServiceImplTest {
             verify(sysRoleMapper, never()).updateById(any(SysRole.class));
         }
 
-        @Test   
+        @Test
         @DisplayName("更新角色，乐观锁冲突时抛出异常")
         void shouldThrow10601_whenOptimisticLockConflict() {
             // Given
-            when(sysRoleMapper.selectById(5L)).thenReturn(RoleTestFactory.sysRole());
+            when(sysRoleService.requireRole(5L)).thenReturn(RoleTestFactory.sysRole());
             when(sysRoleMapper.updateById(any(SysRole.class))).thenReturn(0);
 
             // When / Then
@@ -360,11 +379,12 @@ class RoleManageServiceImplTest {
                 .hasMessage("数据已被其他操作修改，请重试");
         }
 
-        @Test   
+        @Test
         @DisplayName("更新角色，乐观锁冲突时抛出异常")
         void shouldReturnNullUpdateTime_whenRoleMissingAfterUpdate() {
-            // Given：乐观锁通过后回查被并发删除（第二次 selectById 返回 null）
-            when(sysRoleMapper.selectById(5L)).thenReturn(RoleTestFactory.sysRole(), (SysRole) null);
+            // Given：乐观锁通过后回查被并发删除（selectById 返回 null）
+            when(sysRoleService.requireRole(5L)).thenReturn(RoleTestFactory.sysRole());
+            when(sysRoleMapper.selectById(5L)).thenReturn(null);
             when(sysRoleMapper.updateById(any(SysRole.class))).thenReturn(1);
 
             // When
@@ -379,12 +399,12 @@ class RoleManageServiceImplTest {
     @DisplayName("delete：删除角色")
     class DeleteTest {
 
-        @Test   
+        @Test
         @DisplayName("删除角色，返回删除后的最新时间")
         void shouldDeleteRoleWithCascadeCleanup_whenNoUserAssigned() {
             // Given
-            when(sysRoleMapper.selectById(5L)).thenReturn(RoleTestFactory.sysRole());
-            when(sysUserRoleMapper.selectCount(any())).thenReturn(0L);
+            when(sysRoleService.requireRole(5L)).thenReturn(RoleTestFactory.sysRole());
+            when(sysUserRoleService.countUsersByRoleId(5L)).thenReturn(0L);
 
             // When
             DeleteResultVO vo = service.delete(5L);
@@ -405,11 +425,11 @@ class RoleManageServiceImplTest {
             }));
         }
 
-        @Test   
+        @Test
         @DisplayName("删除角色，内置角色不可删除时抛出异常")
         void shouldThrow18017_whenBuiltinRole() {
             // Given
-            when(sysRoleMapper.selectById(5L)).thenReturn(RoleTestFactory.builtinRole());
+            when(sysRoleService.requireRole(5L)).thenReturn(RoleTestFactory.builtinRole());
 
             // When / Then
             assertThatThrownBy(() -> service.delete(5L))
@@ -417,15 +437,15 @@ class RoleManageServiceImplTest {
                     ex -> assertThat(ex.getCode()).isEqualTo(18017))
                 .hasMessage("内置角色不可删除");
             verify(sysRoleMapper, never()).deleteById(5L);
-            verifyNoInteractions(sysUserRoleMapper, sysRoleMenuMapper, sysRoleDataScopeMapper);
+            verifyNoInteractions(sysUserRoleService, sysRoleMenuMapper, sysRoleDataScopeMapper);
         }
 
-        @Test   
+        @Test
         @DisplayName("删除角色，角色已分配给用户时抛出异常")
         void shouldThrow18016_whenRoleAssignedToUsers() {
             // Given
-            when(sysRoleMapper.selectById(5L)).thenReturn(RoleTestFactory.sysRole());
-            when(sysUserRoleMapper.selectCount(any())).thenReturn(2L);
+            when(sysRoleService.requireRole(5L)).thenReturn(RoleTestFactory.sysRole());
+            when(sysUserRoleService.countUsersByRoleId(5L)).thenReturn(2L);
 
             // When / Then
             assertThatThrownBy(() -> service.delete(5L))
@@ -436,11 +456,12 @@ class RoleManageServiceImplTest {
             verifyNoInteractions(sysRoleMenuMapper, sysRoleDataScopeMapper);
         }
 
-        @Test   
+        @Test
         @DisplayName("删除角色，角色不存在时抛出异常")
         void shouldThrow18014_whenRoleNotFound() {
             // Given
-            when(sysRoleMapper.selectById(5L)).thenReturn(null);
+            when(sysRoleService.requireRole(5L)).thenThrow(
+                new BusinessException(RoleMenuErrorCode.ROLE_NOT_FOUND, "角色 5 不存在"));
 
             // When / Then
             assertThatThrownBy(() -> service.delete(5L))
@@ -454,12 +475,12 @@ class RoleManageServiceImplTest {
     @DisplayName("assignMenus：授权角色菜单")
     class AssignMenusTest {
 
-        @Test   
+        @Test
         @DisplayName("授权角色菜单，返回授权后的最新时间")
         void shouldAssignDistinctMenus_andCountPermOnly() {
             // Given：perms 为 null 或空白不计入权限点数
-            when(sysRoleMapper.selectById(5L)).thenReturn(RoleTestFactory.sysRole());
-            when(sysMenuMapper.selectList(any())).thenReturn(List.of(
+            when(sysRoleService.requireRole(5L)).thenReturn(RoleTestFactory.sysRole());
+            when(sysMenuService.listByIds(any())).thenReturn(List.of(
                 RoleTestFactory.sysMenu(1L, "sales:list"),
                 RoleTestFactory.sysMenu(2L, null),
                 RoleTestFactory.sysMenu(3L, "   ")));
@@ -485,11 +506,11 @@ class RoleManageServiceImplTest {
                 Long.valueOf(5L).equals(roleMenu.getRoleId()) && Long.valueOf(3L).equals(roleMenu.getMenuId())));
         }
 
-        @Test   
+        @Test
         @DisplayName("收回全部授权，返回收回后的最新时间")
         void shouldRevokeAllMenus_whenMenuIdsEmpty() {
             // Given：空数组表示收回全部授权
-            when(sysRoleMapper.selectById(5L)).thenReturn(RoleTestFactory.sysRole());
+            when(sysRoleService.requireRole(5L)).thenReturn(RoleTestFactory.sysRole());
 
             // When
             RoleMenuAssignedVO vo = service.assignMenus(5L, new RoleAssignMenuDTO(List.of()));
@@ -499,15 +520,15 @@ class RoleManageServiceImplTest {
             assertThat(vo.permCount()).isZero();
             verify(sysRoleMenuMapper).delete(any(LambdaQueryWrapper.class));
             verify(sysRoleMenuMapper, never()).insert(any(SysRoleMenu.class));
-            verifyNoInteractions(sysMenuMapper);
+            verifyNoInteractions(sysMenuService);
         }
 
-        @Test   
+        @Test
         @DisplayName("分配菜单，存在不存在或已删除的菜单时抛出异常")
         void shouldThrow18019_whenAnyMenuMissing() {
             // Given：IN 查询命中数 1 < 传入 2，说明存在不存在或已删除的菜单
-            when(sysRoleMapper.selectById(5L)).thenReturn(RoleTestFactory.sysRole());
-            when(sysMenuMapper.selectList(any())).thenReturn(List.of(RoleTestFactory.sysMenu(1L, "sales:list")));
+            when(sysRoleService.requireRole(5L)).thenReturn(RoleTestFactory.sysRole());
+            when(sysMenuService.listByIds(any())).thenReturn(List.of(RoleTestFactory.sysMenu(1L, "sales:list")));
 
             // When / Then
             assertThatThrownBy(() -> service.assignMenus(5L, new RoleAssignMenuDTO(List.of(1L, 2L))))
@@ -517,18 +538,19 @@ class RoleManageServiceImplTest {
             verifyNoInteractions(sysRoleMenuMapper);
         }
 
-        @Test   
+        @Test
         @DisplayName("授权角色菜单，角色不存在时抛出异常")
         void shouldThrow18014_whenRoleNotFound() {
             // Given
-            when(sysRoleMapper.selectById(5L)).thenReturn(null);
+            when(sysRoleService.requireRole(5L)).thenThrow(
+                new BusinessException(RoleMenuErrorCode.ROLE_NOT_FOUND, "角色 5 不存在"));
 
             // When / Then
             assertThatThrownBy(() -> service.assignMenus(5L, new RoleAssignMenuDTO(List.of(1L))))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(18014))
                 .hasMessage("角色 5 不存在");
-            verifyNoInteractions(sysMenuMapper, sysRoleMenuMapper);
+            verifyNoInteractions(sysMenuService, sysRoleMenuMapper);
         }
     }
 
@@ -536,11 +558,11 @@ class RoleManageServiceImplTest {
     @DisplayName("保存角色数据权限范围")
     class SaveDataScopesTest {
 
-        @Test   
+        @Test
         @DisplayName("保存角色数据权限范围时，返回保存后的最新数据范围")
         void shouldSaveScopesWithJoinedIds_andReturnListedScopes() {
             // Given
-            when(sysRoleMapper.selectById(5L)).thenReturn(RoleTestFactory.sysRole());
+            when(sysRoleService.requireRole(5L)).thenReturn(RoleTestFactory.sysRole());
             when(sysRoleDataScopeMapper.selectList(any())).thenReturn(List.of(
                 RoleTestFactory.sysRoleDataScope("SALES_ORDER", "CREATOR", 9, "1,2", "7", 1),
                 RoleTestFactory.sysRoleDataScope("INVENTORY", "WAREHOUSE", 1, null, null, 0)));
@@ -581,11 +603,11 @@ class RoleManageServiceImplTest {
             assertThat(vo.scopes().get(1).fieldMask()).isZero();
         }
 
-        @Test   
+        @Test
         @DisplayName("保存数据范围，范围类型非法时抛出异常")
         void shouldThrow18018_whenScopeTypeIllegal() {
             // Given
-            when(sysRoleMapper.selectById(5L)).thenReturn(RoleTestFactory.sysRole());
+            when(sysRoleService.requireRole(5L)).thenReturn(RoleTestFactory.sysRole());
             RoleDataScopeSaveDTO dto = new RoleDataScopeSaveDTO(List.of(
                 new RoleDataScopeItemDTO("SALES_ORDER", "CREATOR", 7, null, null, null)));
 
@@ -596,11 +618,11 @@ class RoleManageServiceImplTest {
                 .hasMessage("数据范围配置非法：scope_type=7");
             verifyNoInteractions(sysRoleDataScopeMapper);
         }
-        @Test   
+        @Test
         @DisplayName("保存数据范围，自定义范围（9）必须至少勾选组织或人员时抛出异常")
         void shouldThrow18018_whenCustomScopeWithoutDeptAndUser() {
             // Given：自定义范围（9）必须至少勾选组织或人员
-            when(sysRoleMapper.selectById(5L)).thenReturn(RoleTestFactory.sysRole());
+            when(sysRoleService.requireRole(5L)).thenReturn(RoleTestFactory.sysRole());
             RoleDataScopeSaveDTO dto = new RoleDataScopeSaveDTO(List.of(
                 new RoleDataScopeItemDTO("SALES_ORDER", "CREATOR", 9, null, List.of(), null)));
 
@@ -612,11 +634,12 @@ class RoleManageServiceImplTest {
             verifyNoInteractions(sysRoleDataScopeMapper);
         }
 
-        @Test   
+        @Test
         @DisplayName("保存数据范围，角色不存在时抛出异常")
         void shouldThrow18014_whenRoleNotFound() {
             // Given
-            when(sysRoleMapper.selectById(5L)).thenReturn(null);
+            when(sysRoleService.requireRole(5L)).thenThrow(
+                new BusinessException(RoleMenuErrorCode.ROLE_NOT_FOUND, "角色 5 不存在"));
 
             // When / Then
             assertThatThrownBy(() -> service.saveDataScopes(5L,
@@ -632,13 +655,13 @@ class RoleManageServiceImplTest {
     @DisplayName("listDataScopes：查询角色数据范围")
     class ListDataScopesTest {
 
-        @Test   
+        @Test
         @DisplayName("查询数据范围，返回解析后的组织 ID 列表和人员 ID 列表")
         void shouldReturnRoleDataScopeWithParsedIds() {
             // Given
             SysRole role = RoleTestFactory.sysRole();
             role.setDataScope(9);
-            when(sysRoleMapper.selectById(5L)).thenReturn(role);
+            when(sysRoleService.requireRole(5L)).thenReturn(role);
             when(sysRoleDataScopeMapper.selectList(any())).thenReturn(List.of(
                 RoleTestFactory.sysRoleDataScope("SALES_ORDER", "CREATOR", 9, "1, 2", null, 2),
                 RoleTestFactory.sysRoleDataScope("INVENTORY", "WAREHOUSE", 1, "", "7", 0)));
@@ -657,11 +680,11 @@ class RoleManageServiceImplTest {
             assertThat(vo.scopes().get(1).userIds()).containsExactly(7L);
         }
 
-        @Test   
+        @Test
         @DisplayName("查询数据范围，角色未配置时返回空列表")
         void shouldReturnEmptyScopes_whenNoConfigSaved() {
             // Given
-            when(sysRoleMapper.selectById(5L)).thenReturn(RoleTestFactory.sysRole());
+            when(sysRoleService.requireRole(5L)).thenReturn(RoleTestFactory.sysRole());
             when(sysRoleDataScopeMapper.selectList(any())).thenReturn(List.of());
 
             // When
@@ -672,11 +695,12 @@ class RoleManageServiceImplTest {
             assertThat(vo.scopes()).isEmpty();
         }
 
-        @Test   
+        @Test
         @DisplayName("查询数据范围，角色不存在时抛出异常")
         void shouldThrow18014_whenRoleNotFound() {
             // Given
-            when(sysRoleMapper.selectById(5L)).thenReturn(null);
+            when(sysRoleService.requireRole(5L)).thenThrow(
+                new BusinessException(RoleMenuErrorCode.ROLE_NOT_FOUND, "角色 5 不存在"));
 
             // When / Then
             assertThatThrownBy(() -> service.listDataScopes(5L))

@@ -15,14 +15,14 @@ import me.north30.erp.common.web.RequestContextUtil;
 import me.north30.erp.system.auth.dto.ChangePasswordDTO;
 import me.north30.erp.system.auth.dto.LoginDTO;
 import me.north30.erp.system.auth.dto.RefreshTokenDTO;
-import me.north30.erp.system.log.entity.SysLoginLog;
+import me.north30.erp.system.auth.strategy.LoginLogStrategy;
 import me.north30.erp.system.user.entity.SysUser;
 import me.north30.erp.system.common.enums.LoginTypeEnum;
 import me.north30.erp.system.security.LoginUser;
 import me.north30.erp.system.security.SecurityUtils;
 import me.north30.erp.system.user.strategy.PasswordStrategy;
+import me.north30.erp.system.user.strategy.UserSessionRevokeStrategy;
 import me.north30.erp.system.auth.service.AuthService;
-import me.north30.erp.system.log.service.SysLoginLogService;
 import me.north30.erp.system.auth.service.UserAccessService;
 import me.north30.erp.system.auth.dto.UserSecurityData;
 import me.north30.erp.system.common.util.CaptchaUtil;
@@ -67,7 +67,8 @@ public class AuthServiceImpl implements AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
     private final UserAccessService userAccessService;
-    private final SysLoginLogService sysLoginLogService;
+    private final LoginLogStrategy loginLogStrategy;
+    private final UserSessionRevokeStrategy userSessionRevokeStrategy;
 
     @Override
     public CaptchaVO createCaptcha() {
@@ -98,12 +99,12 @@ public class AuthServiceImpl implements AuthService {
         // 2. 账号存在性校验（登录失败统一提示 18001，避免泄露账号存在性）
         SysUser user = userAccessService.getByUsername(dto.username());
         if (user == null) {
-            recordLoginLog(null, dto.username(), LoginTypeEnum.LOGIN_FAIL, false, "用户名或密码错误");
+            loginLogStrategy.record(null, dto.username(), LoginTypeEnum.LOGIN_FAIL, false, "用户名或密码错误");
             throw new BusinessException(SystemErrorCode.USERNAME_PASSWORD_ERROR);
         }
         // 3. 停用校验
         if (user.getStatus() == null || user.getStatus() != 1) {
-            recordLoginLog(user.getId(), user.getUsername(), LoginTypeEnum.LOGIN_FAIL, false, "账号已停用");
+            loginLogStrategy.record(user.getId(), user.getUsername(), LoginTypeEnum.LOGIN_FAIL, false, "账号已停用");
             throw new BusinessException(SystemErrorCode.ACCOUNT_DISABLED);
         }
         // 4. 锁定校验（Redis 失败计数 ≥5 次，30 分钟窗口）
@@ -116,7 +117,7 @@ public class AuthServiceImpl implements AuthService {
             failCount = null;
         }
         if (failCount != null && Integer.parseInt(failCount) >= TtlConstants.LOGIN_FAIL_LOCK_THRESHOLD) {
-            recordLoginLog(user.getId(), user.getUsername(), LoginTypeEnum.LOGIN_FAIL, false, "账号已锁定");
+            loginLogStrategy.record(user.getId(), user.getUsername(), LoginTypeEnum.LOGIN_FAIL, false, "账号已锁定");
             throw new BusinessException(SystemErrorCode.ACCOUNT_LOCKED,
                 "账号已锁定，请 " + TtlConstants.LOGIN_FAIL_TTL.toMinutes() + " 分钟后重试");
         }
@@ -129,14 +130,14 @@ public class AuthServiceImpl implements AuthService {
             } catch (RedisConnectionFailureException e) {
                 log.warn("登录失败计数写入 Redis 失败，已降级处理：{}", e.getMessage());
             }
-            recordLoginLog(user.getId(), user.getUsername(), LoginTypeEnum.LOGIN_FAIL, false, "用户名或密码错误");
+            loginLogStrategy.record(user.getId(), user.getUsername(), LoginTypeEnum.LOGIN_FAIL, false, "用户名或密码错误");
             throw new BusinessException(SystemErrorCode.USERNAME_PASSWORD_ERROR);
         }
         // 6. 签发令牌对：先 refresh 再 access（access 携带 rjti 供登出定位失效）
         IssuedToken refresh = jwtTokenProvider.createRefreshToken(user.getId(), user.getUsername());
         IssuedToken access = jwtTokenProvider.createAccessToken(user.getId(), user.getUsername(), refresh.jti());
         // 7. 写登录日志 + 更新最后登录信息（各写操作独立事务）
-        recordLoginLog(user.getId(), user.getUsername(), LoginTypeEnum.LOGIN, true, null);
+        loginLogStrategy.record(user.getId(), user.getUsername(), LoginTypeEnum.LOGIN, true, null);
         LocalDateTime now = LocalDateTime.now();
         userAccessService.updateLastLogin(user.getId(), RequestContextUtil.resolveClientIp(), now);
         // 8. 事务提交后写 Redis 会话白名单（登出/停用即时失效的关键）
@@ -192,7 +193,7 @@ public class AuthServiceImpl implements AuthService {
         }
         // 5. 签发新 access token（不延长 refresh 有效期）
         IssuedToken access = jwtTokenProvider.createAccessToken(userId, username, jti);
-        recordLoginLog(userId, username, LoginTypeEnum.REFRESH, true, null);
+        loginLogStrategy.record(userId, username, LoginTypeEnum.REFRESH, true, null);
         try {
             stringRedisTemplate.opsForValue().set(RedisKeyConstants.sessionKey(userId, access.jti()),
                 "1", access.ttlSeconds(), TimeUnit.SECONDS);
@@ -214,7 +215,7 @@ public class AuthServiceImpl implements AuthService {
         } catch (RedisConnectionFailureException e) {
             log.warn("登出清理 Redis 失败，已降级处理：{}", e.getMessage());
         }
-        recordLoginLog(currentUser.userId(), currentUser.username(), LoginTypeEnum.LOGOUT, true, null);
+        loginLogStrategy.record(currentUser.userId(), currentUser.username(), LoginTypeEnum.LOGOUT, true, null);
         return new LogoutVO(LocalDateTime.now().format(DATETIME_FORMATTER));
     }
 
@@ -292,7 +293,8 @@ public class AuthServiceImpl implements AuthService {
         user.setPassword(passwordEncoder.encode(dto.newPassword()));
         user.setPasswordUpdateTime(now);
         userAccessService.updateUser(user);
-        invalidateUserSessions(user.getId());
+        // 口令修改后使该用户全部会话失效（Redis 不可用时降级 WARN）
+        userSessionRevokeStrategy.revoke(user.getId());
         log.info("用户修改密码成功，已强制重新登录 | userId: {}", user.getId());
         return new ChangePasswordVO(now.format(DATETIME_FORMATTER), Boolean.TRUE);
     }
@@ -321,46 +323,4 @@ public class AuthServiceImpl implements AuthService {
         return passwordUpdateTime != null
             && passwordUpdateTime.plus(TtlConstants.PASSWORD_VALID_DURATION).isBefore(LocalDateTime.now());
     }
-
-    /**
-     * 记录登录日志（独立写事务，失败不影响主流程语义由调用方决定）。
-     */
-    private void recordLoginLog(Long userId, String username, LoginTypeEnum loginType,
-                                boolean success, String failReason) {
-        try {
-            SysLoginLog loginLog = new SysLoginLog();
-            loginLog.setUserId(userId);
-            loginLog.setUsername(username);
-            loginLog.setLoginType(loginType.getCode());
-            loginLog.setLoginTime(LocalDateTime.now());
-            loginLog.setLoginIp(RequestContextUtil.resolveClientIp());
-            loginLog.setUserAgent(RequestContextUtil.resolveUserAgent());
-            loginLog.setResultStatus(success ? 1 : 0);
-            loginLog.setFailReason(failReason);
-            sysLoginLogService.record(loginLog);
-        } catch (Exception e) {
-            // 日志落库失败仅告警，不阻断登录主流程（详见 SYS-01 降级约定）
-            log.error("登录日志写入失败 | username: {} | type: {}", username, loginType, e);
-        }
-    }
-
-    /**
-     * 口令修改后使该用户全部会话失效：删除 access 会话与 refresh 标记（Redis 不可用时降级 WARN）。
-     */
-    private void invalidateUserSessions(Long userId) {
-        try {
-            deleteByPattern(RedisKeyConstants.SESSION_PREFIX + userId + ":*");
-            deleteByPattern(RedisKeyConstants.SESSION_REFRESH_PREFIX + userId + ":*");
-        } catch (RedisConnectionFailureException e) {
-            log.warn("口令修改后会话清理 Redis 失败，已降级处理：{}", e.getMessage());
-        }
-    }
-
-    private void deleteByPattern(String pattern) {
-        Set<String> keys = stringRedisTemplate.keys(pattern);
-        if (keys != null && !keys.isEmpty()) {
-            stringRedisTemplate.delete(keys);
-        }
-    }
-
 }

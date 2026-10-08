@@ -230,6 +230,22 @@ public interface UserConverter {
   - `maven-compiler-plugin` 的 `annotationProcessorPaths` 顺序**必须**为：`lombok` → `lombok-mapstruct-binding` → `mapstruct-processor`。顺序错误会导致生成空实现（运行时字段全 null）且编译不报错，改动配置后必须抽查 `target/generated-sources` 下生成的 `XxxConverterImpl` 验证字段映射完整。
 - MapperScan 只扫描 `**.mapper` 包，转换器（converter 包）不会被 MyBatis 加载，二者无冲突。
 
+### 2.13 领域模型与策略类规范（小 DDD，强制）
+
+> 依据《system模块小DDD重构方案》，system 模块 10 个域已全部落地，business 模块域参照执行。
+
+- **Entity 局部充血**：Entity 方法只允许做三件事——校验自身状态、修改自身字段、抛 `BusinessException`；禁止调 Mapper/Service/Redis/HTTP，禁止触碰其他实体的持久化；需要外部能力的参数显式传入（如 `SysConfig.validateValue(ObjectMapper)`）。
+- **充血方法的归属**：跨字段业务规则（如 `SysMenu.requireTypeFieldsValid` 菜单类型与 path/component/perms 配套校验）、值域校验（如 `SysRole.changeDataScope`）下沉 Entity；查库事实校验（存在性、唯一性）收敛到对应 Service 的 `requireXxx` 方法（如 `requireDept`/`requireRole`/`requireAttachment`）。
+- **`<domain>/strategy` 策略子包**：`@Component` 策略类承接 ServiceImpl 中可命名的复用逻辑，按粒度分类：
+  - `XxxQueryStrategy`：查询构造（分页防御、排序字段白名单、Wrapper 组装）；
+  - `XxxAssembleStrategy`：纯函数装配（ID 串序列化/解析等，无 IO 依赖）；
+  - `XxxGrantStrategy` 等写策略：全删全插、级联清理等持久化编排；
+  - IO 类策略（Redis/文件）：如 `FileStorageStrategy`、`UserSessionRevokeStrategy`、`LoginLogStrategy`，降级语义（WARN 不阻断）随策略承载。
+- **AssembleStrategy 与 Converter 的边界**：Converter（MapStruct）做整对象字段映射；AssembleStrategy 只做 Converter 覆盖不了的派生处理（字符串拆合、内存关联、树补链）。
+- **ServiceImpl 目标形态**：只保留流程编排与少量一两行的私有方法，禁止累积成"私有方法仓库"；新逻辑优先下沉 Entity 充血方法或策略类。
+- **跨域依赖收敛**：禁止跨域直接注入 Mapper，必须通过目标域 Service 接口（含 `countByXxx`/`listByXxx`/`existsByXxx` 等最小方法）；同域关联表 Mapper 可进入本域策略类。
+- **避免 N+1**：批量取数一次 IN 查询后内存 `groupingBy`/`toMap` 关联（如分页 userCount 派生），禁止循环内查库。
+
 ## 三、数据库设计规范（PostgreSQL / MySQL）
 
 ### 3.1 命名规范

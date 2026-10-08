@@ -2,6 +2,7 @@ package me.north30.erp.system.auth.service.impl;
 
 import me.north30.erp.system.common.util.MenuTreeUtil;
 import me.north30.erp.system.auth.dto.UserSecurityData;
+import me.north30.erp.system.auth.strategy.AccessAssembleStrategy;
 import me.north30.erp.system.dept.service.SysDeptService;
 import me.north30.erp.system.menu.converter.MenuConverterImpl;
 import me.north30.erp.system.menu.service.SysMenuService;
@@ -11,6 +12,7 @@ import me.north30.erp.system.role.service.SysRoleService;
 import me.north30.erp.system.role.service.SysUserRoleService;
 import me.north30.erp.system.user.entity.SysUser;
 import me.north30.erp.system.user.service.SysUserService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -72,6 +74,13 @@ class UserAccessServiceImplTest {
 
     @InjectMocks
     private UserAccessServiceImpl userAccessService;
+
+    @BeforeEach
+    void setUp() {
+        userAccessService = new UserAccessServiceImpl(sysUserService, sysDeptService,
+            sysUserRoleService, sysRoleMenuService, sysMenuService, menuTreeUtil,
+            new AccessAssembleStrategy(sysUserRoleService, sysRoleService, sysRoleMenuService, sysMenuService));
+    }
 
     @Nested
     @DisplayName("按用户 ID 加载安全数据")

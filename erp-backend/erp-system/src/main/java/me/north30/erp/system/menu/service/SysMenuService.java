@@ -26,6 +26,11 @@ public interface SysMenuService {
     List<SysMenu> listEnabledByIds(Collection<Long> ids);
 
     /**
+     * 按主键集合批量查询菜单（不限状态，存在性校验用）。
+     */
+    List<SysMenu> listByIds(Collection<Long> ids);
+
+    /**
      * 查询全部启用且配置了权限点的菜单权限标识（admin 全量权限点用）。
      */
     List<String> listAllPerms();
@@ -34,4 +39,11 @@ public interface SysMenuService {
      * 新增菜单。
      */
     boolean createMenu(SysMenu menu);
+
+    /**
+     * 校验菜单存在，不存在抛 19002（@TableLogic 自动过滤已删除行）。
+     * @param id 菜单 ID
+     * @return 菜单实体
+     */
+    SysMenu requireMenu(Long id);
 }

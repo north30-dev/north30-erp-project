@@ -10,8 +10,8 @@ import me.north30.erp.system.dict.converter.DictConverter;
 import me.north30.erp.system.dict.converter.DictConverterImpl;
 import me.north30.erp.system.dict.entity.SysDictItem;
 import me.north30.erp.system.dict.entity.SysDictType;
-import me.north30.erp.system.dict.mapper.SysDictItemMapper;
 import me.north30.erp.system.dict.mapper.SysDictTypeMapper;
+import me.north30.erp.system.dict.service.SysDictItemService;
 import me.north30.erp.system.dict.vo.DictTypeVO;
 import me.north30.erp.system.support.MpTableInfoInit;
 import org.junit.jupiter.api.DisplayName;
@@ -49,7 +49,7 @@ class SysDictTypeServiceImplTest {
     private SysDictTypeMapper sysDictTypeMapper;
 
     @Mock
-    private SysDictItemMapper sysDictItemMapper;
+    private SysDictItemService sysDictItemService;
 
     @Spy
     private final DictConverter dictConverter = new DictConverterImpl();
@@ -84,8 +84,8 @@ class SysDictTypeServiceImplTest {
             page.setTotal(2);
             page.setRecords(List.of(typeA, typeB));
             given(sysDictTypeMapper.selectPage(any(), any())).willReturn(page);
-            given(sysDictItemMapper.selectMaps(any()))
-                .willReturn(List.of(Map.of("dict_type", "settlement_method", "cnt", 3L)));
+            given(sysDictItemService.countByTypes(any()))
+                .willReturn(Map.of("settlement_method", 3L));
 
             // When
             var result = service.page(DictTestFactory.typeQueryDTO(null, null, null, 1, 20));
@@ -118,7 +118,7 @@ class SysDictTypeServiceImplTest {
             // Then：空页不触发字典项统计查询
             assertThat(result.list()).isEmpty();
             assertThat(result.total()).isZero();
-            verify(sysDictItemMapper, never()).selectMaps(any());
+            verify(sysDictItemService, never()).countByTypes(any());
         }
 
         @Test
@@ -132,7 +132,7 @@ class SysDictTypeServiceImplTest {
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
                 .hasMessage("pageSize 不能超过 200");
-            verifyNoInteractions(sysDictTypeMapper, sysDictItemMapper);
+            verifyNoInteractions(sysDictTypeMapper, sysDictItemService);
         }
 
         @Test
@@ -266,7 +266,7 @@ class SysDictTypeServiceImplTest {
             // Given：类型下无字典项
             SysDictType type = DictTestFactory.dictType(1L, "settlement_method", "结算方式", 1);
             given(sysDictTypeMapper.selectById(1L)).willReturn(type);
-            given(sysDictItemMapper.selectCount(any())).willReturn(0L);
+            given(sysDictItemService.countByTypes(any())).willReturn(Map.of());
             given(sysDictTypeMapper.deleteById(1L)).willReturn(1);
 
             // When
@@ -284,7 +284,7 @@ class SysDictTypeServiceImplTest {
             // Given：类型下存在字典项
             SysDictType type = DictTestFactory.dictType(1L, "settlement_method", "结算方式", 1);
             given(sysDictTypeMapper.selectById(1L)).willReturn(type);
-            given(sysDictItemMapper.selectCount(any())).willReturn(5L);
+            given(sysDictItemService.countByTypes(any())).willReturn(Map.of("settlement_method", 5L));
 
             // When + Then
             assertThatThrownBy(() -> service.delete(1L))
@@ -305,7 +305,7 @@ class SysDictTypeServiceImplTest {
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.DICT_TYPE_NOT_FOUND.getCode()))
                 .hasMessage("字典类型 1 不存在");
-            verifyNoInteractions(sysDictItemMapper);
+            verifyNoInteractions(sysDictItemService);
         }
     }
 }

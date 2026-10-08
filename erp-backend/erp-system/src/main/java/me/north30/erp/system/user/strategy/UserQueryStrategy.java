@@ -45,6 +45,9 @@ public class UserQueryStrategy {
 
     /**
      * 分页查询参数解析：默认第 1 页，每页 10 条（接口文档 1.4）。
+     * 
+     * @param query 查询参数
+     * @return 分页页码（默认第 1 页）
      */
     public int resolvePageNum(UserQueryDTO query) {
         if (query.pageNum() == null || query.pageNum() < 1) {
@@ -55,6 +58,9 @@ public class UserQueryStrategy {
 
     /**
      * 每页条数上限按 PageConstants.MAX_PAGE_SIZE 截断（接口文档 1.4）。
+     * 
+     * @param query 查询参数
+     * @return 每页条数（默认 10 条）
      */
     public int resolvePageSize(UserQueryDTO query) {
         if (query.pageSize() == null || query.pageSize() < 1) {
@@ -66,6 +72,10 @@ public class UserQueryStrategy {
     /**
      * 解析组织及下级组织 ID 集合：组织规模小（≤百级），一次全量查询后按 ancestors 路径内存过滤，
      * 避免 LIKE 拼接注入面与循环查库。
+     * 
+     * @param deptId 组织 ID
+     * @return 组织 ID 映射下级组织 ID 集合的映射
+     * @return 组织 ID 映射下级组织 ID 集合的映射
      */
     private List<Long> resolveDeptIdsWithDescendants(Long deptId) {
         List<SysDept> depts = sysDeptMapper.selectList(
@@ -85,6 +95,10 @@ public class UserQueryStrategy {
 
     /**
      * 判断 ancestors 祖级路径（如 0,1,5）是否包含指定组织 ID。
+     * 
+     * @param ancestors 祖级路径（逗号分隔）
+     * @param deptId 组织 ID
+     * @return 是否包含指定组织 ID
      */
     private boolean containsAncestor(String ancestors, Long deptId) {
         if (ancestors == null || ancestors.isBlank()) {

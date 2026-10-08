@@ -43,6 +43,13 @@ public interface SysUserService {
     void requireUserCodeAvailable(String userCode);
 
     /**
+     * 统计挂靠在指定部门下的用户数（sys_user.dept_id，逻辑删除过滤）。
+     * @param deptId 部门 ID
+     * @return 用户数
+     */
+    long countByDeptId(Long deptId);
+
+    /**
      * 新增用户。
      * @param user 用户实体
      * @return 是否新增成功

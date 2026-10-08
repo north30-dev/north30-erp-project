@@ -47,6 +47,7 @@
 
 - 分层与业务域分包：`me.north30.erp.<模块>.<业务域>.{controller, service, service.impl, mapper, entity, dto, vo}`，第一级按业务域分包（不设 core 中间层）；模块内跨域公共部分放 `<模块>.common.{util, enums, vo}`，安全上下文放 `<模块>.security`。
 - 业务域划分：system 模块按 auth/user/role/menu/dept/dict/config/log/attachment/importtask/codesequence 分域；business 模块按 purchase/sales/inventory/manufacturing/finance 分域；base 模块按物料/BOM/工厂等基础数据域分包。
+- 小 DDD（编码规范 2.13）：Entity 局部充血（只校验自身状态 + 修改自身字段 + 抛 BusinessException）；可命名复用逻辑下沉 `<domain>/strategy` 策略类（Query/Assemble/Grant/IO 类）；ServiceImpl 只留编排，禁止私有方法仓库；**跨域禁止直接注入 Mapper**，须经目标域 Service 的 requireXxx/countByXxx/listByXxx 等最小接口。
 - 命名：Entity 对应表名大驼峰（`PurOrder` ↔ `pur_order`）；DTO/VO 后缀 `DTO`/`VO`；实现类 `Impl` 后缀；枚举 `Enum` 后缀；工具类 `Util` 后缀。
 - DTO/VO 一律 record（含 GET 查询对象），树形结构 children 用自底向上递归构造；record 类 Javadoc 必须 `@param` 逐字段注释。
 - GET 查询对象分页参数统一 `@Min(1)`/`@Max(200)` + Controller `@Valid` 入口校验（400）；Service normalize 仅做缺省兜底与防御（超限 422）。

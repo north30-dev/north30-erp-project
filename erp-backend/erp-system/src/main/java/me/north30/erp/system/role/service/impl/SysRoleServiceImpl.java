@@ -2,6 +2,8 @@ package me.north30.erp.system.role.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
+import me.north30.erp.common.exception.BusinessException;
+import me.north30.erp.system.common.enums.RoleMenuErrorCode;
 import me.north30.erp.system.role.entity.SysRole;
 import me.north30.erp.system.role.mapper.SysRoleMapper;
 import me.north30.erp.system.role.service.SysRoleService;
@@ -45,5 +47,15 @@ public class SysRoleServiceImpl implements SysRoleService {
     @Transactional(rollbackFor = Exception.class)
     public boolean createRole(SysRole role) {
         return sysRoleMapper.insert(role) > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SysRole requireRole(Long id) {
+        SysRole role = sysRoleMapper.selectById(id);
+        if (role == null) {
+            throw new BusinessException(RoleMenuErrorCode.ROLE_NOT_FOUND, "角色 " + id + " 不存在");
+        }
+        return role;
     }
 }

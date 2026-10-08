@@ -37,4 +37,11 @@ public interface SysRoleService {
      * @return 是否新增成功
      */
     boolean createRole(SysRole role);
+
+    /**
+     * 校验角色存在，不存在抛 18018（@TableLogic 自动过滤已删除行）。
+     * @param id 角色 ID
+     * @return 角色实体
+     */
+    SysRole requireRole(Long id);
 }

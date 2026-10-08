@@ -15,22 +15,35 @@ public interface SysDeptManageService {
 
     /**
      * 组织部门树查询：一次查全量后内存组树（禁 N+1）。
+     * 
+     * @param query 查询参数
+     * @return 组织部门树
      */
     List<DeptTreeVO> listTree(DeptTreeQueryDTO query);
 
     /**
      * 新增组织部门：校验父级存在、组织编码唯一、层级 ≤5，ancestors/deptLevel 服务端计算。
+     * 
+     * @param dto 新增参数
+     * @return 新增结果
      */
     DeptMutationVO create(DeptCreateDTO dto);
 
     /**
      * 修改组织部门：parentId 不得指向自身或自身后代（环检测），
      * 变更父级时级联重算下级 ancestors/dept_level；乐观锁控制并发。
+     * 
+     * @param id  组织部门 ID
+     * @param dto 更新参数
+     * @return 更新结果
      */
     DeptMutationVO update(Long id, DeptUpdateDTO dto);
 
     /**
      * 删除组织部门（逻辑删除）：有下级组织或绑定用户不可删。
+     * 
+     * @param id 组织部门 ID
+     * @return 删除结果
      */
     DeptMutationVO delete(Long id);
 }

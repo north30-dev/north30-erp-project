@@ -63,6 +63,19 @@ public class SysUserServiceImpl implements SysUserService {
     }
 
     /**
+     * 统计挂靠在指定部门下的用户数（sys_user.dept_id，逻辑删除过滤）。
+     *
+     * @param deptId 部门 ID。
+     * @return 用户数。
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public long countByDeptId(Long deptId) {
+        Long count = sysUserMapper.selectCount(new LambdaQueryWrapper<SysUser>().eq(SysUser::getDeptId, deptId));
+        return count == null ? 0L : count;
+    }
+
+    /**
      * 校验用户名可用（全局唯一），已存在抛 18006。
      *
      * @param username 用户名。

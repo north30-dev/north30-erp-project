@@ -32,4 +32,11 @@ public interface SysRoleMenuService {
     * @return 是否创建成功
      */
     void createBatch(List<SysRoleMenu> roleMenus);
+
+    /**
+     * 判断菜单是否已被任何角色引用。
+     * @param menuId 菜单 ID
+     * @return 存在角色引用返回 true
+     */
+    boolean existsByMenuId(Long menuId);
 }

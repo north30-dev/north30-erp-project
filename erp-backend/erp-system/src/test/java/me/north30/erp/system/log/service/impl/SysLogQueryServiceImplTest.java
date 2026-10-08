@@ -25,7 +25,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import me.north30.erp.system.log.strategy.AuditLogDiffStrategy;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -55,6 +58,9 @@ class SysLogQueryServiceImplTest {
 
     @Mock
     private LoginLogConverter loginLogConverter;
+
+    @Spy
+    private final AuditLogDiffStrategy auditLogDiffStrategy = new AuditLogDiffStrategy();
 
     @InjectMocks
     private SysLogQueryServiceImpl service;

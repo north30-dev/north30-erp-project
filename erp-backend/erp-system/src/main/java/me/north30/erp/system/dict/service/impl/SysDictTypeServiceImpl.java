@@ -1,22 +1,20 @@
 package me.north30.erp.system.dict.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
-import me.north30.erp.common.constant.PageConstants;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.system.dict.converter.DictConverter;
+import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.util.PageNormalizer;
 import me.north30.erp.system.dict.dto.DictTypeCreateDTO;
 import me.north30.erp.system.dict.dto.DictTypeQueryDTO;
 import me.north30.erp.system.dict.dto.DictTypeUpdateDTO;
-import me.north30.erp.system.dict.entity.SysDictItem;
 import me.north30.erp.system.dict.entity.SysDictType;
-import me.north30.erp.system.common.enums.SystemManageErrorCode;
-import me.north30.erp.system.dict.mapper.SysDictItemMapper;
 import me.north30.erp.system.dict.mapper.SysDictTypeMapper;
+import me.north30.erp.system.dict.service.SysDictItemService;
 import me.north30.erp.system.dict.service.SysDictTypeService;
 import me.north30.erp.common.util.DateTimeFormatUtil;
 import me.north30.erp.system.dict.vo.DictTypeVO;
@@ -25,7 +23,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -44,14 +41,14 @@ public class SysDictTypeServiceImpl implements SysDictTypeService {
     private static final int DELETED = 1;
 
     private final SysDictTypeMapper sysDictTypeMapper;
-    private final SysDictItemMapper sysDictItemMapper;
+    private final SysDictItemService sysDictItemService;
     private final DictConverter dictConverter;
 
     @Override
     @Transactional(readOnly = true)
     public PageResult<DictTypeVO> page(DictTypeQueryDTO query) {
-        long pageNum = normalizePageNum(query.pageNum());
-        long pageSize = normalizePageSize(query.pageSize());
+        long pageNum = PageNormalizer.normalizePageNum(query.pageNum());
+        long pageSize = PageNormalizer.normalizePageSize(query.pageSize());
         LambdaQueryWrapper<SysDictType> wrapper = new LambdaQueryWrapper<SysDictType>()
             .like(StringUtils.hasText(query.dictType()), SysDictType::getDictType, query.dictType())
             .like(StringUtils.hasText(query.dictName()), SysDictType::getDictName, query.dictName())
@@ -63,6 +60,17 @@ public class SysDictTypeServiceImpl implements SysDictTypeService {
             .map(type -> dictConverter.toVO(type, itemCounts.getOrDefault(type.getDictType(), 0L)))
             .toList();
         return PageResult.of(page.getTotal(), pageNum, pageSize, vos);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SysDictType requireByDictType(String dictType) {
+        SysDictType dictTypeEntity = sysDictTypeMapper.selectOne(
+            new LambdaQueryWrapper<SysDictType>().eq(SysDictType::getDictType, dictType));
+        if (dictTypeEntity == null) {
+            throw new BusinessException(SystemManageErrorCode.DICT_TYPE_NOT_FOUND, "字典类型 " + dictType + " 不存在");
+        }
+        return dictTypeEntity;
     }
 
     @Override
@@ -109,9 +117,9 @@ public class SysDictTypeServiceImpl implements SysDictTypeService {
         if (dictType == null) {
             throw new BusinessException(SystemManageErrorCode.DICT_TYPE_NOT_FOUND, "字典类型 " + id + " 不存在");
         }
-        Long itemCount = sysDictItemMapper.selectCount(
-            new LambdaQueryWrapper<SysDictItem>().eq(SysDictItem::getDictType, dictType.getDictType()));
-        if (itemCount != null && itemCount > 0) {
+        Long itemCount = sysDictItemService.countByTypes(List.of(dictType.getDictType()))
+            .getOrDefault(dictType.getDictType(), 0L);
+        if (itemCount > 0) {
             throw new BusinessException(SystemManageErrorCode.DICT_ITEM_REFERENCED,
                 "字典类型 " + dictType.getDictType() + " 下存在 " + itemCount + " 个字典项，不可删除");
         }
@@ -127,34 +135,6 @@ public class SysDictTypeServiceImpl implements SysDictTypeService {
             return Map.of();
         }
         List<String> dictTypes = types.stream().map(SysDictType::getDictType).toList();
-        QueryWrapper<SysDictItem> countWrapper = new QueryWrapper<SysDictItem>()
-            .select("dict_type", "count(1) AS cnt")
-            .in("dict_type", dictTypes)
-            .groupBy("dict_type");
-        List<Map<String, Object>> rows = sysDictItemMapper.selectMaps(countWrapper);
-        Map<String, Long> counts = new HashMap<>();
-        for (Map<String, Object> row : rows) {
-            Object dictType = row.get("dict_type");
-            Object cnt = row.get("cnt");
-            if (dictType != null && cnt != null) {
-                counts.put(dictType.toString(), ((Number) cnt).longValue());
-            }
-        }
-        return counts;
-    }
-
-    private long normalizePageNum(Integer pageNum) {
-        return pageNum == null || pageNum <= 0 ? PageConstants.DEFAULT_PAGE_NUM : pageNum;
-    }
-
-    private long normalizePageSize(Integer pageSize) {
-        if (pageSize == null || pageSize <= 0) {
-            return PageConstants.DEFAULT_PAGE_SIZE;
-        }
-        if (pageSize > PageConstants.MAX_PAGE_SIZE) {
-            throw new BusinessException(CommonErrorCode.PARAM_ERROR,
-                "pageSize 不能超过 " + PageConstants.MAX_PAGE_SIZE);
-        }
-        return pageSize;
+        return sysDictItemService.countByTypes(dictTypes);
     }
 }

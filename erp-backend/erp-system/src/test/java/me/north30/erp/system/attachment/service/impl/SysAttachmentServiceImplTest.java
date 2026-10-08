@@ -6,6 +6,8 @@ import me.north30.erp.system.attachment.AttachmentTestFactory;
 import me.north30.erp.system.attachment.converter.AttachmentConverterImpl;
 import me.north30.erp.system.attachment.entity.SysAttachment;
 import me.north30.erp.system.attachment.mapper.SysAttachmentMapper;
+import me.north30.erp.system.attachment.service.SysAttachmentService;
+import me.north30.erp.system.attachment.strategy.FileStorageStrategy;
 import me.north30.erp.system.attachment.vo.AttachmentDeleteVO;
 import me.north30.erp.system.attachment.vo.AttachmentDownloadVO;
 import me.north30.erp.system.attachment.vo.AttachmentVO;
@@ -73,8 +75,9 @@ class SysAttachmentServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        // @Value 配置参数无法由 Mockito 注入，手动构造（同 MP ServiceImpl 特例口径）
-        service = new SysAttachmentServiceImpl(sysAttachmentMapper, new AttachmentConverterImpl(), tempDir.toString());
+        // @Value 配置参数无法由 Mockito 注入，手动构造策略与被测类（同 MP ServiceImpl 特例口径）
+        FileStorageStrategy strategy = new FileStorageStrategy(tempDir.toString());
+        service = new SysAttachmentServiceImpl(sysAttachmentMapper, new AttachmentConverterImpl(), strategy);
     }
 
     @AfterEach

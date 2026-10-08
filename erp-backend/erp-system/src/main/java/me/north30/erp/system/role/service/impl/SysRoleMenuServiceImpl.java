@@ -45,4 +45,12 @@ public class SysRoleMenuServiceImpl implements SysRoleMenuService {
         }
         roleMenus.forEach(sysRoleMenuMapper::insert);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsByMenuId(Long menuId) {
+        Long count = sysRoleMenuMapper.selectCount(
+            new LambdaQueryWrapper<SysRoleMenu>().eq(SysRoleMenu::getMenuId, menuId));
+        return count != null && count > 0;
+    }
 }

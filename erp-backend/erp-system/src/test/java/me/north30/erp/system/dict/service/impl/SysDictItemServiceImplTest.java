@@ -12,7 +12,7 @@ import me.north30.erp.system.dict.converter.DictConverterImpl;
 import me.north30.erp.system.dict.entity.SysDictItem;
 import me.north30.erp.system.dict.entity.SysDictType;
 import me.north30.erp.system.dict.mapper.SysDictItemMapper;
-import me.north30.erp.system.dict.mapper.SysDictTypeMapper;
+import me.north30.erp.system.dict.service.SysDictTypeService;
 import me.north30.erp.system.dict.vo.DictItemVO;
 import me.north30.erp.system.support.MpTableInfoInit;
 import org.junit.jupiter.api.BeforeAll;
@@ -49,7 +49,7 @@ class SysDictItemServiceImplTest {
     private SysDictItemMapper sysDictItemMapper;
 
     @Mock
-    private SysDictTypeMapper sysDictTypeMapper;
+    private SysDictTypeService sysDictTypeService;
 
     @Spy
     private final DictConverter dictConverter = new DictConverterImpl();
@@ -87,7 +87,7 @@ class SysDictItemServiceImplTest {
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
                 .hasMessage("字典类型编码不能为空");
-            verifyNoInteractions(sysDictItemMapper, sysDictTypeMapper);
+            verifyNoInteractions(sysDictItemMapper, sysDictTypeService);
         }
 
         @Test
@@ -171,7 +171,7 @@ class SysDictItemServiceImplTest {
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
                 .hasMessage("pageSize 不能超过 200");
-            verifyNoInteractions(sysDictItemMapper, sysDictTypeMapper);
+            verifyNoInteractions(sysDictItemMapper, sysDictTypeService);
         }
 
         @Test
@@ -202,7 +202,7 @@ class SysDictItemServiceImplTest {
         void shouldInsertWithDefaults_whenLangMissing() {
             // Given：类型存在，lang/isDefault/itemSort/status 为空触发默认值
             var dto = DictTestFactory.itemCreateDTO("settlement_method", "现金", "CASH", null, null, null);
-            given(sysDictTypeMapper.selectOne(any())).willReturn(
+            given(sysDictTypeService.requireByDictType("settlement_method")).willReturn(
                 DictTestFactory.dictType(1L, "settlement_method", "结算方式", 1));
             given(sysDictItemMapper.selectCount(any())).willReturn(0L);
             given(sysDictItemMapper.insert(any(SysDictItem.class))).willAnswer(invocation -> {
@@ -229,9 +229,11 @@ class SysDictItemServiceImplTest {
         @Test
         @DisplayName("所属字典类型不存在，抛出异常")
         void shouldThrow_whenDictTypeMissing() {
-            // Given：所属字典类型不存在
+            // Given：requireByDictType 抛出"类型不存在"业务异常（异常语义由类型服务自身实现与测试保证）
             var dto = DictTestFactory.itemCreateDTO("settlement_method", "现金", "CASH", null, 1, 1);
-            given(sysDictTypeMapper.selectOne(any())).willReturn(null);
+            given(sysDictTypeService.requireByDictType(any()))
+                .willThrow(new BusinessException(SystemManageErrorCode.DICT_TYPE_NOT_FOUND,
+                    "字典类型 settlement_method 不存在"));
 
             // When + Then
             assertThatThrownBy(() -> service.create(dto))
@@ -246,7 +248,7 @@ class SysDictItemServiceImplTest {
         void shouldThrow_whenItemValueDuplicated() {
             // Given：同 dict_type + item_value + lang 已存在
             var dto = DictTestFactory.itemCreateDTO("settlement_method", "现金", "CASH", null, 1, 1);
-            given(sysDictTypeMapper.selectOne(any())).willReturn(
+            given(sysDictTypeService.requireByDictType("settlement_method")).willReturn(
                 DictTestFactory.dictType(1L, "settlement_method", "结算方式", 1));
             given(sysDictItemMapper.selectCount(any())).willReturn(1L);
 
@@ -336,7 +338,7 @@ class SysDictItemServiceImplTest {
             assertThat(vo.id()).isEqualTo(1L);
             assertThat(vo.isDeleted()).isEqualTo(1);
             verify(sysDictItemMapper).deleteById(1L);
-            verifyNoInteractions(sysDictTypeMapper);
+            verifyNoInteractions(sysDictTypeService);
         }
 
         @Test

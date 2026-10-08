@@ -2,6 +2,8 @@ package me.north30.erp.system.menu.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
+import me.north30.erp.common.exception.BusinessException;
+import me.north30.erp.system.common.enums.RoleMenuErrorCode;
 import me.north30.erp.system.menu.entity.SysMenu;
 import me.north30.erp.system.menu.mapper.SysMenuMapper;
 import me.north30.erp.system.menu.service.SysMenuService;
@@ -46,6 +48,15 @@ public class SysMenuServiceImpl implements SysMenuService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<SysMenu> listByIds(Collection<Long> ids) {
+        if (CollectionUtils.isEmpty(ids)) {
+            return List.of();
+        }
+        return sysMenuMapper.selectByIds(ids);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<String> listAllPerms() {
         return listEnabled().stream()
             .map(SysMenu::getPerms)
@@ -58,5 +69,15 @@ public class SysMenuServiceImpl implements SysMenuService {
     @Transactional(rollbackFor = Exception.class)
     public boolean createMenu(SysMenu menu) {
         return sysMenuMapper.insert(menu) > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SysMenu requireMenu(Long id) {
+        SysMenu menu = sysMenuMapper.selectById(id);
+        if (menu == null) {
+            throw new BusinessException(RoleMenuErrorCode.MENU_NOT_FOUND);
+        }
+        return menu;
     }
 }

@@ -11,18 +11,20 @@ import me.north30.erp.system.dept.dto.DeptCreateDTO;
 import me.north30.erp.system.dept.dto.DeptUpdateDTO;
 import me.north30.erp.system.dept.entity.SysDept;
 import me.north30.erp.system.dept.mapper.SysDeptMapper;
+import me.north30.erp.system.dept.service.SysDeptService;
+import me.north30.erp.system.dept.strategy.DeptTreeStrategy;
 import me.north30.erp.system.dept.vo.DeptTreeVO;
 import me.north30.erp.system.support.MpTableInfoInit;
 import me.north30.erp.system.user.entity.SysUser;
-import me.north30.erp.system.user.mapper.SysUserMapper;
+import me.north30.erp.system.user.service.SysUserService;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
-import org.mockito.InjectMocks;
 import org.mockito.Spy;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -51,7 +53,10 @@ class SysDeptManageServiceImplTest {
     private SysDeptMapper sysDeptMapper;
 
     @Mock
-    private SysUserMapper sysUserMapper;
+    private SysUserService sysUserService;
+
+    @Mock
+    private SysDeptService sysDeptService;
 
     @Spy
     private final DeptTreeUtil deptTreeUtil = new DeptTreeUtil(new DeptConverterImpl());
@@ -59,7 +64,8 @@ class SysDeptManageServiceImplTest {
     @Spy
     private final DeptConverter deptConverter = new DeptConverterImpl();
 
-    @InjectMocks
+    private DeptTreeStrategy deptTreeStrategy;
+
     private SysDeptManageServiceImpl service;
 
     @Captor
@@ -69,6 +75,13 @@ class SysDeptManageServiceImplTest {
     static void initMpTableInfo() {
         // 服务内部构建 LambdaQueryWrapper，需预先注册实体列缓存
         MpTableInfoInit.init(SysDept.class, SysUser.class);
+    }
+
+    @BeforeEach
+    void setUp() {
+        deptTreeStrategy = new DeptTreeStrategy(sysDeptMapper, sysDeptService);
+        service = new SysDeptManageServiceImpl(sysDeptMapper, sysUserService, deptTreeStrategy,
+            deptTreeUtil, deptConverter);
     }
 
     @Nested
@@ -168,7 +181,7 @@ class SysDeptManageServiceImplTest {
             DeptCreateDTO dto = DeptTestFactory.createDTO("ORG003", "生产部", 5L, 4, 1, 1);
             SysDept parent = DeptTestFactory.rootDept(5L, "ORG001", "总部", 1, 1);
             given(sysDeptMapper.selectCount(any())).willReturn(0L);
-            given(sysDeptMapper.selectById(5L)).willReturn(parent);
+            given(sysDeptService.requireDept(5L)).willReturn(parent);
             given(sysDeptMapper.insert(any(SysDept.class))).willAnswer(invocation -> {
                 invocation.getArgument(0, SysDept.class).setId(11L);
                 return 1;
@@ -203,7 +216,8 @@ class SysDeptManageServiceImplTest {
             // Given
             DeptCreateDTO dto = DeptTestFactory.createDTO("ORG003", "生产部", 99L, 4, 1, 1);
             given(sysDeptMapper.selectCount(any())).willReturn(0L);
-            given(sysDeptMapper.selectById(99L)).willReturn(null);
+            given(sysDeptService.requireDept(99L))
+                .willThrow(new BusinessException(SystemManageErrorCode.DEPT_NOT_FOUND, "组织 99 不存在"));
 
             // When + Then
             assertThatThrownBy(() -> service.create(dto))
@@ -220,7 +234,7 @@ class SysDeptManageServiceImplTest {
             DeptCreateDTO dto = DeptTestFactory.createDTO("ORG006", "车间班组", 5L, 5, 1, 1);
             SysDept parent = DeptTestFactory.dept(5L, "ORG005", "五级车间", 4L, 5, 5, "0,1,2,3,4", 1);
             given(sysDeptMapper.selectCount(any())).willReturn(0L);
-            given(sysDeptMapper.selectById(5L)).willReturn(parent);
+            given(sysDeptService.requireDept(5L)).willReturn(parent);
 
             // When + Then
             assertThatThrownBy(() -> service.create(dto))
@@ -296,7 +310,6 @@ class SysDeptManageServiceImplTest {
             SysDept current = DeptTestFactory.dept(2L, "ORG002", "生产部", 1L, 4, 2, "0,1", 1);
             DeptUpdateDTO dto = DeptTestFactory.updateDTO(2L, "生产部", 4, 1);
             given(sysDeptMapper.selectById(2L)).willReturn(current);
-            given(sysDeptMapper.selectList(any())).willReturn(List.of(current));
 
             // When + Then
             assertThatThrownBy(() -> service.update(2L, dto))
@@ -388,7 +401,7 @@ class SysDeptManageServiceImplTest {
             SysDept dept = DeptTestFactory.rootDept(1L, "ORG001", "总部", 1, 1);
             given(sysDeptMapper.selectById(1L)).willReturn(dept);
             given(sysDeptMapper.selectCount(any())).willReturn(0L);
-            given(sysUserMapper.selectCount(any())).willReturn(0L);
+            given(sysUserService.countByDeptId(1L)).willReturn(0L);
             given(sysDeptMapper.deleteById(1L)).willReturn(1);
 
             // When
@@ -415,7 +428,7 @@ class SysDeptManageServiceImplTest {
                     ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.DEPT_HAS_CHILDREN_OR_USERS.getCode()))
                 .hasMessage("组织 总部 存在下级组织，不可删除");
             verify(sysDeptMapper, never()).deleteById(anyLong());
-            verifyNoInteractions(sysUserMapper);
+            verifyNoInteractions(sysUserService);
         }
 
         @Test
@@ -425,7 +438,7 @@ class SysDeptManageServiceImplTest {
             SysDept dept = DeptTestFactory.rootDept(1L, "ORG001", "总部", 1, 1);
             given(sysDeptMapper.selectById(1L)).willReturn(dept);
             given(sysDeptMapper.selectCount(any())).willReturn(0L);
-            given(sysUserMapper.selectCount(any())).willReturn(3L);
+            given(sysUserService.countByDeptId(1L)).willReturn(3L);
 
             // When + Then
             assertThatThrownBy(() -> service.delete(1L))
@@ -445,7 +458,7 @@ class SysDeptManageServiceImplTest {
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.DEPT_NOT_FOUND.getCode()))
                 .hasMessage("组织 1 不存在");
-            verifyNoInteractions(sysUserMapper);
+            verifyNoInteractions(sysUserService);
         }
     }
 }

@@ -3,6 +3,7 @@ package me.north30.erp.system.common.util;
 import lombok.RequiredArgsConstructor;
 import me.north30.erp.system.menu.converter.MenuConverter;
 import me.north30.erp.system.menu.entity.SysMenu;
+import me.north30.erp.system.menu.vo.MenuNodeVO;
 import me.north30.erp.system.menu.vo.MenuTreeVO;
 import org.springframework.stereotype.Component;
 
@@ -26,6 +27,9 @@ public class MenuTreeUtil {
 
     private static final Comparator<MenuTreeVO> MENU_SORT_COMPARATOR =
         Comparator.comparing(MenuTreeVO::menuSort, Comparator.nullsLast(Comparator.naturalOrder()));
+
+    private static final Comparator<MenuNodeVO> NODE_SORT_COMPARATOR =
+        Comparator.comparing(MenuNodeVO::menuSort, Comparator.nullsLast(Comparator.naturalOrder()));
 
     private final MenuConverter menuConverter;
 
@@ -63,6 +67,42 @@ public class MenuTreeUtil {
             .collect(Collectors.toList());
         return new MenuTreeVO(menu.menuId(), menu.menuName(), menu.menuType(), menu.parentId(),
             menu.path(), menu.component(), menu.icon(), menu.menuSort(), menu.visible(), attached);
+    }
+
+    /**
+     * 将平铺菜单节点列表组装为管理端菜单树（parentId=0 为根节点），同级按 menuSort 升序排列。
+     *
+     * @param nodes 平铺菜单节点列表
+     * @return 树形菜单节点列表（无子节点时 children 为 null）
+     */
+    public List<MenuNodeVO> buildNodeTree(List<MenuNodeVO> nodes) {
+        if (nodes == null || nodes.isEmpty()) {
+            return new ArrayList<>();
+        }
+        Map<Long, List<MenuNodeVO>> childrenMap = nodes.stream()
+            .filter(node -> node.parentId() != null && node.parentId() != ROOT_PARENT_ID)
+            .collect(Collectors.groupingBy(MenuNodeVO::parentId));
+        return nodes.stream()
+            .filter(node -> node.parentId() == null || node.parentId() == ROOT_PARENT_ID)
+            .sorted(NODE_SORT_COMPARATOR)
+            .map(node -> attachNodeChildren(node, childrenMap))
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * 自底向上递归装配子树（MenuNodeVO 为不可变 record，需逐层新建节点）。
+     */
+    private static MenuNodeVO attachNodeChildren(MenuNodeVO node, Map<Long, List<MenuNodeVO>> childrenMap) {
+        List<MenuNodeVO> children = childrenMap.get(node.id());
+        if (children == null) {
+            return node;
+        }
+        List<MenuNodeVO> attached = children.stream()
+            .sorted(NODE_SORT_COMPARATOR)
+            .map(child -> attachNodeChildren(child, childrenMap))
+            .collect(Collectors.toList());
+        return new MenuNodeVO(node.id(), node.menuName(), node.parentId(), node.menuType(), node.path(),
+            node.component(), node.perms(), node.icon(), node.menuSort(), node.visible(), node.status(), attached);
     }
 
     /**

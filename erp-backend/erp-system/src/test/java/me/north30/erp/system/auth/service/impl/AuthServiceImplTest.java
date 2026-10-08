@@ -15,10 +15,12 @@ import me.north30.erp.system.auth.vo.LogoutVO;
 import me.north30.erp.system.auth.vo.RefreshTokenVO;
 import me.north30.erp.system.auth.vo.UserPermsVO;
 import me.north30.erp.system.auth.service.UserAccessService;
+import me.north30.erp.system.auth.strategy.LoginLogStrategy;
 import me.north30.erp.system.common.enums.LoginTypeEnum;
 import me.north30.erp.system.log.service.SysLoginLogService;
 import me.north30.erp.system.menu.vo.MenuTreeVO;
 import me.north30.erp.system.user.entity.SysUser;
+import me.north30.erp.system.user.strategy.UserSessionRevokeStrategy;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,7 +28,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.RedisConnectionFailureException;
@@ -106,8 +107,14 @@ class AuthServiceImplTest {
     @Mock
     private SysLoginLogService sysLoginLogService;
 
-    @InjectMocks
     private AuthServiceImpl authService;
+
+    @BeforeEach
+    void setUp() {
+        authService = new AuthServiceImpl(stringRedisTemplate, jwtTokenProvider, passwordEncoder,
+            userAccessService, new LoginLogStrategy(sysLoginLogService),
+            new UserSessionRevokeStrategy(stringRedisTemplate));
+    }
 
     @AfterEach
     void tearDown() {

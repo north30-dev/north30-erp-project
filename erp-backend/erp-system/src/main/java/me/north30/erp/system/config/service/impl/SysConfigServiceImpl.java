@@ -3,7 +3,6 @@ package me.north30.erp.system.config.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
-import me.north30.erp.common.constant.PageConstants;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
@@ -13,6 +12,7 @@ import me.north30.erp.system.config.dto.ConfigQueryDTO;
 import me.north30.erp.system.config.dto.ConfigUpdateDTO;
 import me.north30.erp.system.config.entity.SysConfig;
 import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.util.PageNormalizer;
 import me.north30.erp.system.config.mapper.SysConfigMapper;
 import me.north30.erp.system.config.service.SysConfigService;
 import me.north30.erp.common.util.DateTimeFormatUtil;
@@ -22,12 +22,9 @@ import me.north30.erp.system.common.vo.MutationVO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
-import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 系统参数管理服务实现。
@@ -47,10 +44,6 @@ public class SysConfigServiceImpl implements SysConfigService {
     /** 内置参数标记 */
     private static final int SYSTEM_BUILTIN = 1;
 
-    /** 值类型编码 → 名称（接口文档 5.6） */
-    private static final Map<Integer, String> VALUE_TYPE_NAMES = Map.of(
-        1, "字符串", 2, "数字", 3, "布尔", 4, "JSON");
-
     private final SysConfigMapper sysConfigMapper;
     private final ObjectMapper objectMapper;
     private final ConfigConverter configConverter;
@@ -58,8 +51,8 @@ public class SysConfigServiceImpl implements SysConfigService {
     @Override
     @Transactional(readOnly = true)
     public PageResult<ConfigVO> page(ConfigQueryDTO query) {
-        long pageNum = normalizePageNum(query.pageNum());
-        long pageSize = normalizePageSize(query.pageSize());
+        long pageNum = PageNormalizer.normalizePageNum(query.pageNum());
+        long pageSize = PageNormalizer.normalizePageSize(query.pageSize());
         LambdaQueryWrapper<SysConfig> wrapper = new LambdaQueryWrapper<SysConfig>()
             .like(StringUtils.hasText(query.configKey()), SysConfig::getConfigKey, query.configKey())
             .like(StringUtils.hasText(query.configName()), SysConfig::getConfigName, query.configName())
@@ -74,13 +67,13 @@ public class SysConfigServiceImpl implements SysConfigService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public MutationVO create(ConfigCreateDTO dto) {
-        validateValueByType(dto.valueType(), dto.configValue());
+        SysConfig config = configConverter.toEntity(dto);
+        config.validateValue(objectMapper);
         Long exists = sysConfigMapper.selectCount(
             new LambdaQueryWrapper<SysConfig>().eq(SysConfig::getConfigKey, dto.configKey()));
         if (exists != null && exists > 0) {
             throw new BusinessException(CommonErrorCode.DUPLICATE_KEY, "参数键 " + dto.configKey() + " 已存在，请检查后重试");
         }
-        SysConfig config = configConverter.toEntity(dto);
         if (config.getIsSystem() == null) {
             config.setIsSystem(0);
         }
@@ -98,8 +91,8 @@ public class SysConfigServiceImpl implements SysConfigService {
         if (config == null) {
             throw new BusinessException(SystemManageErrorCode.CONFIG_NOT_FOUND, "系统参数 " + id + " 不存在");
         }
-        validateValueByType(config.getValueType(), dto.configValue());
         config.setConfigValue(dto.configValue());
+        config.validateValue(objectMapper);
         if (dto.configName() != null) {
             config.setConfigName(dto.configName());
         }
@@ -130,57 +123,5 @@ public class SysConfigServiceImpl implements SysConfigService {
         }
         sysConfigMapper.deleteById(id);
         return new MutationVO(id, null, DELETED);
-    }
-
-    /**
-     * 按值类型校验参数值：2-数字须可解析为 BigDecimal；3-布尔仅允许 true/false；4-JSON 须可解析。
-     */
-    private void validateValueByType(Integer valueType, String value) {
-        String typeName = VALUE_TYPE_NAMES.get(valueType);
-        if (typeName == null) {
-            throw new BusinessException(CommonErrorCode.PARAM_ERROR, "参数值类型 " + valueType + " 非法");
-        }
-        switch (valueType) {
-            case 2 -> {
-                try {
-                    new BigDecimal(value);
-                } catch (NumberFormatException e) {
-                    throw new BusinessException(SystemManageErrorCode.CONFIG_VALUE_TYPE_MISMATCH,
-                        "参数值类型错误，期望类型 " + typeName);
-                }
-            }
-            case 3 -> {
-                if (!"true".equalsIgnoreCase(value) && !"false".equalsIgnoreCase(value)) {
-                    throw new BusinessException(SystemManageErrorCode.CONFIG_VALUE_TYPE_MISMATCH,
-                        "参数值类型错误，期望类型 " + typeName);
-                }
-            }
-            case 4 -> {
-                try {
-                    objectMapper.readTree(value);
-                } catch (JacksonException e) {
-                    throw new BusinessException(SystemManageErrorCode.CONFIG_VALUE_TYPE_MISMATCH,
-                        "参数值类型错误，期望类型 " + typeName);
-                }
-            }
-            default -> {
-                // 1-字符串：不做格式校验
-            }
-        }
-    }
-
-    private long normalizePageNum(Integer pageNum) {
-        return pageNum == null || pageNum <= 0 ? PageConstants.DEFAULT_PAGE_NUM : pageNum;
-    }
-
-    private long normalizePageSize(Integer pageSize) {
-        if (pageSize == null || pageSize <= 0) {
-            return PageConstants.DEFAULT_PAGE_SIZE;
-        }
-        if (pageSize > PageConstants.MAX_PAGE_SIZE) {
-            throw new BusinessException(CommonErrorCode.PARAM_ERROR,
-                "pageSize 不能超过 " + PageConstants.MAX_PAGE_SIZE);
-        }
-        return pageSize;
     }
 }

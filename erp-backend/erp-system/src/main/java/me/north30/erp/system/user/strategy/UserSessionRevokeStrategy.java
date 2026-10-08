@@ -37,6 +37,8 @@ public class UserSessionRevokeStrategy {
 
     /**
      * 根据模式删除 Redis 键。
+     *
+     * @param pattern Redis 键模式（通配符 * 表示任意字符）
      */
     private void deleteByPattern(String pattern) {
         Set<String> keys = stringRedisTemplate.keys(pattern);

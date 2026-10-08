@@ -7,7 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 import me.north30.erp.common.audit.AuditLog;
 import me.north30.erp.common.audit.AuditModuleEnum;
 import me.north30.erp.common.audit.OperateTypeEnum;
-import me.north30.erp.common.constant.PageConstants;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
@@ -16,6 +15,7 @@ import me.north30.erp.system.codesequence.dto.CodeSequenceQueryDTO;
 import me.north30.erp.system.codesequence.dto.CodeSequenceResetDTO;
 import me.north30.erp.system.codesequence.entity.SysCodeSequence;
 import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.util.PageNormalizer;
 import me.north30.erp.system.codesequence.mapper.SysCodeSequenceMapper;
 import me.north30.erp.system.codesequence.service.SysCodeSequenceService;
 import me.north30.erp.system.codesequence.vo.CodeSequenceResetVO;
@@ -42,8 +42,8 @@ public class SysCodeSequenceServiceImpl implements SysCodeSequenceService {
     @Override
     @Transactional(readOnly = true)
     public PageResult<CodeSequenceVO> page(CodeSequenceQueryDTO query) {
-        long pageNum = normalizePageNum(query.pageNum());
-        long pageSize = normalizePageSize(query.pageSize());
+        long pageNum = PageNormalizer.normalizePageNum(query.pageNum());
+        long pageSize = PageNormalizer.normalizePageSize(query.pageSize());
         LambdaQueryWrapper<SysCodeSequence> wrapper = new LambdaQueryWrapper<SysCodeSequence>()
             .eq(StringUtils.hasText(query.bizType()), SysCodeSequence::getBizType, query.bizType())
             .eq(StringUtils.hasText(query.period()), SysCodeSequence::getPeriod, query.period())
@@ -79,20 +79,5 @@ public class SysCodeSequenceServiceImpl implements SysCodeSequenceService {
                 dto.bizType(), dto.period(), dto.currentNo(), dto.reason());
         }
         return new CodeSequenceResetVO(sequence.getBizType(), sequence.getPeriod(), sequence.getCurrentNo());
-    }
-
-    private long normalizePageNum(Integer pageNum) {
-        return pageNum == null || pageNum <= 0 ? PageConstants.DEFAULT_PAGE_NUM : pageNum;
-    }
-
-    private long normalizePageSize(Integer pageSize) {
-        if (pageSize == null || pageSize <= 0) {
-            return PageConstants.DEFAULT_PAGE_SIZE;
-        }
-        if (pageSize > PageConstants.MAX_PAGE_SIZE) {
-            throw new BusinessException(CommonErrorCode.PARAM_ERROR,
-                "pageSize 不能超过 " + PageConstants.MAX_PAGE_SIZE);
-        }
-        return pageSize;
     }
 }
