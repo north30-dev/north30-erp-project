@@ -14,7 +14,7 @@ import me.north30.erp.system.common.enums.SystemManageErrorCode;
 import me.north30.erp.system.dept.mapper.SysDeptMapper;
 import me.north30.erp.system.user.mapper.SysUserMapper;
 import me.north30.erp.system.dept.service.SysDeptManageService;
-import me.north30.erp.system.common.util.DateTimeFormatUtil;
+import me.north30.erp.common.util.DateTimeFormatUtil;
 import me.north30.erp.system.common.util.DeptTreeUtil;
 import me.north30.erp.system.dept.vo.DeptMutationVO;
 import me.north30.erp.system.dept.vo.DeptTreeVO;

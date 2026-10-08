@@ -1,4 +1,4 @@
-package me.north30.erp.system.common.util;
+package me.north30.erp.common.util;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;

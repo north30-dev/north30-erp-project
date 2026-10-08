@@ -15,7 +15,7 @@ import me.north30.erp.system.config.entity.SysConfig;
 import me.north30.erp.system.common.enums.SystemManageErrorCode;
 import me.north30.erp.system.config.mapper.SysConfigMapper;
 import me.north30.erp.system.config.service.SysConfigService;
-import me.north30.erp.system.common.util.DateTimeFormatUtil;
+import me.north30.erp.common.util.DateTimeFormatUtil;
 import me.north30.erp.system.config.vo.ConfigUpdateVO;
 import me.north30.erp.system.config.vo.ConfigVO;
 import me.north30.erp.system.common.vo.MutationVO;

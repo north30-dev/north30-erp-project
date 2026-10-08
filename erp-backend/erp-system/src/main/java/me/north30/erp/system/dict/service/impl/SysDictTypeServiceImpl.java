@@ -18,7 +18,7 @@ import me.north30.erp.system.common.enums.SystemManageErrorCode;
 import me.north30.erp.system.dict.mapper.SysDictItemMapper;
 import me.north30.erp.system.dict.mapper.SysDictTypeMapper;
 import me.north30.erp.system.dict.service.SysDictTypeService;
-import me.north30.erp.system.common.util.DateTimeFormatUtil;
+import me.north30.erp.common.util.DateTimeFormatUtil;
 import me.north30.erp.system.dict.vo.DictTypeVO;
 import me.north30.erp.system.common.vo.MutationVO;
 import org.springframework.stereotype.Service;

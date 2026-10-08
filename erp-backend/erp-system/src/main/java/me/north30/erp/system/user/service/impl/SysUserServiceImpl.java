@@ -2,6 +2,9 @@ package me.north30.erp.system.user.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
+import me.north30.erp.common.exception.BusinessException;
+import me.north30.erp.common.exception.SystemErrorCode;
+import me.north30.erp.system.common.enums.UserErrorCode;
 import me.north30.erp.system.user.entity.SysUser;
 import me.north30.erp.system.user.mapper.SysUserMapper;
 import me.north30.erp.system.user.service.SysUserService;
@@ -33,7 +36,7 @@ public class SysUserServiceImpl implements SysUserService {
 
     /**
      * 根据 ID 查询用户。
-     * 
+     *
      * @param id 用户 ID。
      * @return 用户实体。
      */
@@ -41,6 +44,48 @@ public class SysUserServiceImpl implements SysUserService {
     @Transactional(readOnly = true)
     public SysUser getById(Long id) {
         return sysUserMapper.selectById(id);
+    }
+
+    /**
+     * 校验用户存在，不存在抛 18005（@TableLogic 自动过滤已删除行）。
+     *
+     * @param id 用户 ID。
+     * @return 用户实体。
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public SysUser requireUser(Long id) {
+        SysUser user = sysUserMapper.selectById(id);
+        if (user == null) {
+            throw new BusinessException(SystemErrorCode.USER_NOT_FOUND, "用户 " + id + " 不存在");
+        }
+        return user;
+    }
+
+    /**
+     * 校验用户名可用（全局唯一），已存在抛 18006。
+     *
+     * @param username 用户名。
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public void requireUsernameAvailable(String username) {
+        if (sysUserMapper.selectCount(new LambdaQueryWrapper<SysUser>().eq(SysUser::getUsername, username)) > 0) {
+            throw new BusinessException(UserErrorCode.USERNAME_EXISTS, "用户名 " + username + " 已存在");
+        }
+    }
+
+    /**
+     * 校验用户编号可用（全局唯一），已存在抛 18007。
+     *
+     * @param userCode 用户编号。
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public void requireUserCodeAvailable(String userCode) {
+        if (sysUserMapper.selectCount(new LambdaQueryWrapper<SysUser>().eq(SysUser::getUserCode, userCode)) > 0) {
+            throw new BusinessException(UserErrorCode.USER_CODE_EXISTS, "用户编号 " + userCode + " 已存在");
+        }
     }
 
     /**

@@ -3,7 +3,11 @@ package me.north30.erp.system.user.entity;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.mybatis.BaseEntity;
+import me.north30.erp.system.common.enums.UserErrorCode;
+import me.north30.erp.system.user.strategy.PasswordStrategy;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
 
@@ -62,4 +66,36 @@ public class SysUser extends BaseEntity {
 
     /** 账号锁定到期时间（锁定 30 分钟） */
     private LocalDateTime lockUntil;
+
+
+    /** 是否超级管理员 */
+    public boolean isAdmin() {
+        return isAdmin != null && isAdmin == 1;
+    }
+
+    /**
+     * 启用/停用账号：内置管理员不可停用（错误码 18012）。
+     *
+     * @param targetStatus 目标状态（0-停用 1-启用）
+     */
+    public void changeStatus(Integer targetStatus) {
+        if (isAdmin() && Integer.valueOf(0).equals(targetStatus)) {
+            throw new BusinessException(UserErrorCode.ADMIN_PROTECTED);
+        }
+        this.status = targetStatus;
+    }
+
+    /**
+     * 设置初始口令：复杂度校验（错误码 18009，规则见 {@link PasswordStrategy}）
+     * + BCrypt 加密 + 口令修改时间置为指定时间（90 天有效期基准）。
+     *
+     * @param rawPassword 明文口令
+     * @param passwordEncoder 口令加密器（外部传入，实体不持有 Spring 依赖）
+     * @param now 当前时间
+     */
+    public void initPassword(String rawPassword, PasswordEncoder passwordEncoder, LocalDateTime now) {
+        PasswordStrategy.checkOrThrow(rawPassword);
+        this.password = passwordEncoder.encode(rawPassword);
+        this.passwordUpdateTime = now;
+    }
 }

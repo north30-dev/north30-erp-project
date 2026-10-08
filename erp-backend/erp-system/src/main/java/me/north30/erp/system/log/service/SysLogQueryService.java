@@ -13,16 +13,22 @@ public interface SysLogQueryService {
 
     /**
      * 审计日志分页查询（接口文档 5.8.1，权限点 system:auditlog:list）。
+     * @param query 审计日志分页查询 DTO
+     * @return 审计日志分页结果
      */
     PageResult<AuditLogVO> pageAuditLogs(AuditLogQueryDTO query);
 
     /**
      * 审计日志详情（接口文档 5.8.2，权限点 system:auditlog:detail），含变更前后 JSON 与变更字段清单。
+     * 
+     * 
      */
     AuditLogVO getAuditLogDetail(Long id);
 
     /**
      * 登录日志分页查询（接口文档 5.8.3，权限点 system:loginlog:list）。
+     * @param query 登录日志分页查询 DTO
+     * @return 登录日志分页结果
      */
     PageResult<LoginLogVO> pageLoginLogs(LoginLogQueryDTO query);
 }

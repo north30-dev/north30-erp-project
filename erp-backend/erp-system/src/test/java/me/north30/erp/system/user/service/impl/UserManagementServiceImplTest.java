@@ -4,10 +4,14 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import me.north30.erp.common.exception.BusinessException;
+import me.north30.erp.common.exception.SystemErrorCode;
 import me.north30.erp.common.result.PageResult;
+import me.north30.erp.system.common.enums.UserErrorCode;
 import me.north30.erp.system.dept.entity.SysDept;
 import me.north30.erp.system.dept.mapper.SysDeptMapper;
+import me.north30.erp.system.role.entity.SysUserRole;
 import me.north30.erp.system.role.mapper.SysRoleMapper;
+import me.north30.erp.system.role.mapper.SysUserRoleMapper;
 import me.north30.erp.system.user.converter.UserConverter;
 import me.north30.erp.system.user.converter.UserConverterImpl;
 import me.north30.erp.system.user.dto.UserAssignRolesDTO;
@@ -18,38 +22,37 @@ import me.north30.erp.system.user.dto.UserStatusDTO;
 import me.north30.erp.system.user.dto.UserUpdateDTO;
 import me.north30.erp.system.user.entity.SysUser;
 import me.north30.erp.system.user.mapper.SysUserMapper;
+import me.north30.erp.system.user.service.SysUserService;
+import me.north30.erp.system.user.strategy.UserAssembleStrategy;
+import me.north30.erp.system.user.strategy.UserQueryStrategy;
+import me.north30.erp.system.user.strategy.UserRoleStrategy;
+import me.north30.erp.system.user.strategy.UserSessionRevokeStrategy;
 import me.north30.erp.system.user.vo.UserAssignRolesVO;
 import me.north30.erp.system.user.vo.UserDeleteVO;
 import me.north30.erp.system.user.vo.UserDetailVO;
 import me.north30.erp.system.user.vo.UserResetPasswordVO;
 import me.north30.erp.system.user.vo.UserStatusVO;
 import me.north30.erp.system.user.vo.UserVO;
-import me.north30.erp.system.role.mapper.SysUserRoleMapper;
-import me.north30.erp.system.role.entity.SysUserRole;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentMatchers;
-import org.mockito.InjectMocks;
-import org.mockito.Spy;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.redis.RedisConnectionFailureException;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Collection;
 import java.util.List;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -57,8 +60,9 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * {@link UserManagementServiceImpl} 纯 Mockito 单元测试：不连 DB/Redis，
- * Mapper 与 Redis 模板全部 mock，Wrapper 内容断言依赖 TableInfo 缓存初始化。
+ * {@link UserManagementServiceImpl} 纯 Mockito 单元测试：不连 DB/Redis。
+ * 查询/装配/角色关联策略用真实实例（内部 Mapper mock，保持 Wrapper 断言能力），
+ * 会话清理策略与 SysUserService 存在性校验用 mock。
  */
 @ExtendWith(MockitoExtension.class)
 class UserManagementServiceImplTest {
@@ -76,7 +80,10 @@ class UserManagementServiceImplTest {
     private SysDeptMapper sysDeptMapper;
 
     @Mock
-    private StringRedisTemplate stringRedisTemplate;
+    private SysUserService sysUserService;
+
+    @Mock
+    private UserSessionRevokeStrategy userSessionRevokeStrategy;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -84,13 +91,25 @@ class UserManagementServiceImplTest {
     @Spy
     private final UserConverter userConverter = new UserConverterImpl();
 
-    @InjectMocks
     private UserManagementServiceImpl service;
 
     @BeforeAll
     static void setUpTableInfo() {
         // 初始化 MP 表信息缓存：LambdaUpdateWrapper.set 与 LambdaQueryWrapper.select 会急切解析 Lambda 列
         UserTestFactory.initTableInfo();
+    }
+
+    @BeforeEach
+    void setUp() {
+        // 真实策略实例 + mock Mapper：查询条件/装配/角色关联逻辑走真实代码路径
+        UserQueryStrategy userQueryStrategy = new UserQueryStrategy(sysDeptMapper);
+        UserAssembleStrategy userAssembleStrategy =
+            new UserAssembleStrategy(sysDeptMapper, sysUserRoleMapper, sysRoleMapper, userConverter);
+        UserRoleStrategy userRoleStrategy =
+            new UserRoleStrategy(sysRoleMapper, sysUserRoleMapper, userConverter);
+        service = new UserManagementServiceImpl(sysUserMapper, sysDeptMapper, passwordEncoder,
+            userConverter, sysUserService, userQueryStrategy, userAssembleStrategy,
+            userRoleStrategy, userSessionRevokeStrategy);
     }
 
     @Nested
@@ -247,7 +266,7 @@ class UserManagementServiceImplTest {
         @Test
         void shouldReturnDetailWithDistinctRolesAndMaskedPhone() {
             // Given
-            when(sysUserMapper.selectById(10L)).thenReturn(UserTestFactory.sysUser());
+            when(sysUserService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
             when(sysUserRoleMapper.selectList(any())).thenReturn(List.of(
                 UserTestFactory.sysUserRole(10L, 20L),
                 UserTestFactory.sysUserRole(10L, 21L),
@@ -287,7 +306,7 @@ class UserManagementServiceImplTest {
             user.setDeptId(null);
             user.setPhone(null);
             user.setWarehouseIds(null);
-            when(sysUserMapper.selectById(10L)).thenReturn(user);
+            when(sysUserService.requireUser(10L)).thenReturn(user);
             when(sysUserRoleMapper.selectList(any())).thenReturn(List.of());
 
             // When
@@ -305,7 +324,8 @@ class UserManagementServiceImplTest {
         @Test
         void shouldThrow18005_whenUserNotFound() {
             // Given
-            when(sysUserMapper.selectById(99L)).thenReturn(null);
+            when(sysUserService.requireUser(99L)).thenThrow(
+                new BusinessException(SystemErrorCode.USER_NOT_FOUND, "用户 99 不存在"));
 
             // When / Then
             assertThatThrownBy(() -> service.getDetail(99L))
@@ -321,7 +341,6 @@ class UserManagementServiceImplTest {
         @Test
         void shouldCreateUserWithEncodedPasswordAndDefaultValues() {
             // Given
-            when(sysUserMapper.selectCount(any())).thenReturn(0L);
             when(sysDeptMapper.selectById(3L)).thenReturn(UserTestFactory.sysDept());
             when(sysRoleMapper.selectCount(any())).thenReturn(2L);
             when(passwordEncoder.encode("Passw0rd!")).thenReturn("encodedPwd");
@@ -356,7 +375,8 @@ class UserManagementServiceImplTest {
         @Test
         void shouldThrow18006_whenUsernameExists() {
             // Given
-            when(sysUserMapper.selectCount(any())).thenReturn(2L);
+            doThrow(new BusinessException(UserErrorCode.USERNAME_EXISTS, "用户名 zhangsan 已存在"))
+                .when(sysUserService).requireUsernameAvailable("zhangsan");
 
             // When / Then
             assertThatThrownBy(() -> service.create(UserTestFactory.validUserCreateDTO()))
@@ -369,8 +389,9 @@ class UserManagementServiceImplTest {
 
         @Test
         void shouldThrow18007_whenUserCodeExists() {
-            // Given：源码先查 username 再查 userCode，两次计数分别返回 0、2
-            when(sysUserMapper.selectCount(any())).thenReturn(0L, 2L);
+            // Given：用户名可用放行，用户编号已存在
+            doThrow(new BusinessException(UserErrorCode.USER_CODE_EXISTS, "用户编号 E001 已存在"))
+                .when(sysUserService).requireUserCodeAvailable("E001");
 
             // When / Then
             assertThatThrownBy(() -> service.create(UserTestFactory.validUserCreateDTO()))
@@ -383,7 +404,6 @@ class UserManagementServiceImplTest {
         @Test
         void shouldThrow18009_whenInitialPasswordTooWeak() {
             // Given
-            when(sysUserMapper.selectCount(any())).thenReturn(0L);
             UserCreateDTO dto = new UserCreateDTO("E001", "zhangsan", "123", "张三", null,
                 null, null, null, null, null, null, null);
 
@@ -399,7 +419,6 @@ class UserManagementServiceImplTest {
         @Test
         void shouldThrow18024_whenDeptNotFound() {
             // Given
-            when(sysUserMapper.selectCount(any())).thenReturn(0L);
             when(sysDeptMapper.selectById(99L)).thenReturn(null);
             UserCreateDTO dto = new UserCreateDTO("E001", "zhangsan", "Passw0rd!", "张三", 99L,
                 null, null, null, null, null, null, null);
@@ -416,7 +435,6 @@ class UserManagementServiceImplTest {
         @Test
         void shouldThrow18014_whenAnyRoleMissing() {
             // Given：角色数计数 1 < 传入 2，说明存在不存在的角色
-            when(sysUserMapper.selectCount(any())).thenReturn(0L);
             when(sysRoleMapper.selectCount(any())).thenReturn(1L);
             UserCreateDTO dto = new UserCreateDTO("E001", "zhangsan", "Passw0rd!", "张三", null,
                 null, null, null, null, null, List.of(1L, 2L), null);
@@ -436,7 +454,7 @@ class UserManagementServiceImplTest {
         @Test
         void shouldUpdateWithVersionAndReturnFormattedTime() {
             // Given
-            when(sysUserMapper.selectById(10L)).thenReturn(UserTestFactory.sysUser());
+            when(sysUserService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
             when(sysDeptMapper.selectById(3L)).thenReturn(UserTestFactory.sysDept());
             when(sysUserMapper.updateById(any(SysUser.class))).thenReturn(1);
             UserUpdateDTO dto = new UserUpdateDTO("李四", 3L, List.of(1L, 2L),
@@ -464,7 +482,7 @@ class UserManagementServiceImplTest {
         @Test
         void shouldThrow18012_whenDisableAdminUser() {
             // Given
-            when(sysUserMapper.selectById(10L)).thenReturn(UserTestFactory.adminUser());
+            when(sysUserService.requireUser(10L)).thenReturn(UserTestFactory.adminUser());
             UserUpdateDTO dto = new UserUpdateDTO(null, null, null, null, null, null, 0, null, 5);
 
             // When / Then
@@ -479,7 +497,7 @@ class UserManagementServiceImplTest {
         @Test
         void shouldThrow10601_whenOptimisticLockConflict() {
             // Given
-            when(sysUserMapper.selectById(10L)).thenReturn(UserTestFactory.sysUser());
+            when(sysUserService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
             when(sysUserMapper.updateById(any(SysUser.class))).thenReturn(0);
             UserUpdateDTO dto = new UserUpdateDTO("李四", null, null, null, null, null, null, null, 5);
 
@@ -493,7 +511,7 @@ class UserManagementServiceImplTest {
         @Test
         void shouldThrow18024_whenDeptNotFound() {
             // Given
-            when(sysUserMapper.selectById(10L)).thenReturn(UserTestFactory.sysUser());
+            when(sysUserService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
             when(sysDeptMapper.selectById(99L)).thenReturn(null);
             UserUpdateDTO dto = new UserUpdateDTO(null, 99L, null, null, null, null, null, null, 5);
 
@@ -508,7 +526,8 @@ class UserManagementServiceImplTest {
         @Test
         void shouldThrow18005_whenUserNotFound() {
             // Given
-            when(sysUserMapper.selectById(99L)).thenReturn(null);
+            when(sysUserService.requireUser(99L)).thenThrow(
+                new BusinessException(SystemErrorCode.USER_NOT_FOUND, "用户 99 不存在"));
             UserUpdateDTO dto = new UserUpdateDTO("李四", null, null, null, null, null, null, null, 5);
 
             // When / Then
@@ -525,7 +544,7 @@ class UserManagementServiceImplTest {
         @Test
         void shouldDeleteUserLogically_whenNoRoleAssigned() {
             // Given
-            when(sysUserMapper.selectById(10L)).thenReturn(UserTestFactory.sysUser());
+            when(sysUserService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
             when(sysUserRoleMapper.selectCount(any())).thenReturn(0L);
 
             // When
@@ -540,7 +559,7 @@ class UserManagementServiceImplTest {
         @Test
         void shouldThrow18012_whenDeleteAdminUser() {
             // Given
-            when(sysUserMapper.selectById(10L)).thenReturn(UserTestFactory.adminUser());
+            when(sysUserService.requireUser(10L)).thenReturn(UserTestFactory.adminUser());
 
             // When / Then
             assertThatThrownBy(() -> service.delete(10L))
@@ -554,7 +573,7 @@ class UserManagementServiceImplTest {
         @Test
         void shouldThrow18013_whenUserHasAssignedRoles() {
             // Given
-            when(sysUserMapper.selectById(10L)).thenReturn(UserTestFactory.sysUser());
+            when(sysUserService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
             when(sysUserRoleMapper.selectCount(any())).thenReturn(2L);
 
             // When / Then
@@ -567,8 +586,8 @@ class UserManagementServiceImplTest {
 
         @Test
         void shouldDelete_whenRoleCountIsNull() {
-            // Given：源码对计数 null 的边界放行（非引用即允许删除）
-            when(sysUserMapper.selectById(10L)).thenReturn(UserTestFactory.sysUser());
+            // Given：策略对计数 null 的边界按 0 处理（非引用即允许删除）
+            when(sysUserService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
             when(sysUserRoleMapper.selectCount(any())).thenReturn(null);
 
             // When
@@ -582,7 +601,8 @@ class UserManagementServiceImplTest {
         @Test
         void shouldThrow18005_whenUserNotFound() {
             // Given
-            when(sysUserMapper.selectById(99L)).thenReturn(null);
+            when(sysUserService.requireUser(99L)).thenThrow(
+                new BusinessException(SystemErrorCode.USER_NOT_FOUND, "用户 99 不存在"));
 
             // When / Then
             assertThatThrownBy(() -> service.delete(99L))
@@ -598,7 +618,7 @@ class UserManagementServiceImplTest {
         @Test
         void shouldEnableUser_withoutTouchingSessions() {
             // Given
-            when(sysUserMapper.selectById(10L)).thenReturn(UserTestFactory.sysUser());
+            when(sysUserService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
             when(sysUserMapper.updateById(any(SysUser.class))).thenReturn(1);
 
             // When
@@ -611,18 +631,14 @@ class UserManagementServiceImplTest {
                 Long.valueOf(10L).equals(entity.getId())
                     && Integer.valueOf(1).equals(entity.getStatus())
                     && Integer.valueOf(2).equals(entity.getVersion())));
-            verifyNoInteractions(stringRedisTemplate);
+            verifyNoInteractions(userSessionRevokeStrategy);
         }
 
         @Test
         void shouldDisableUserAndRevokeSessions_whenStatusZero() {
             // Given
-            when(sysUserMapper.selectById(10L)).thenReturn(UserTestFactory.sysUser());
+            when(sysUserService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
             when(sysUserMapper.updateById(any(SysUser.class))).thenReturn(1);
-            // 会话模式命中 k1/k2；refresh 会话模式无残留键
-            when(stringRedisTemplate.keys("system:session:10:*")).thenReturn(Set.of("k1", "k2"));
-            when(stringRedisTemplate.keys("system:session:refresh:10:*")).thenReturn(Set.of());
-            when(stringRedisTemplate.delete(anyCollection())).thenReturn(2L);
 
             // When
             UserStatusVO vo = service.changeStatus(10L, new UserStatusDTO(0, 3));
@@ -630,37 +646,17 @@ class UserManagementServiceImplTest {
             // Then
             assertThat(vo.status()).isZero();
             assertThat(vo.sessionRevoked()).isTrue();
-            verify(stringRedisTemplate).keys("system:session:10:*");
-            verify(stringRedisTemplate).keys("system:session:refresh:10:*");
-            verify(stringRedisTemplate).delete(argThat((Collection<String> keys) ->
-                keys.containsAll(List.of("k1", "k2"))));
+            verify(userSessionRevokeStrategy).revoke(10L);
             verify(sysUserMapper).updateById(argThat((SysUser entity) ->
                 Integer.valueOf(0).equals(entity.getStatus())
                     && Integer.valueOf(3).equals(entity.getVersion())));
         }
 
         @Test
-        void shouldSkipDelete_whenNoSessionKeysFound() {
-            // Given
-            when(sysUserMapper.selectById(10L)).thenReturn(UserTestFactory.sysUser());
+        void shouldStillReportRevoked_whenRedisUnavailable() {
+            // Given：Redis 连接失败时策略内降级 WARN，服务层仍视为已触发失效（与旧行为一致）
+            when(sysUserService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
             when(sysUserMapper.updateById(any(SysUser.class))).thenReturn(1);
-            when(stringRedisTemplate.keys(anyString())).thenReturn(Set.of());
-
-            // When
-            UserStatusVO vo = service.changeStatus(10L, new UserStatusDTO(0, 3));
-
-            // Then
-            assertThat(vo.sessionRevoked()).isTrue();
-            verify(stringRedisTemplate, never()).delete(anyCollection());
-        }
-
-        @Test
-        void shouldDegradeGracefully_whenRedisUnavailable() {
-            // Given：Redis 连接失败时降级 WARN，不影响停用主流程
-            when(sysUserMapper.selectById(10L)).thenReturn(UserTestFactory.sysUser());
-            when(sysUserMapper.updateById(any(SysUser.class))).thenReturn(1);
-            when(stringRedisTemplate.keys(anyString()))
-                .thenThrow(new RedisConnectionFailureException("connection refused"));
 
             // When
             UserStatusVO vo = service.changeStatus(10L, new UserStatusDTO(0, 3));
@@ -674,7 +670,8 @@ class UserManagementServiceImplTest {
         @Test
         void shouldThrow18005_whenUserNotFound() {
             // Given
-            when(sysUserMapper.selectById(99L)).thenReturn(null);
+            when(sysUserService.requireUser(99L)).thenThrow(
+                new BusinessException(SystemErrorCode.USER_NOT_FOUND, "用户 99 不存在"));
 
             // When / Then
             assertThatThrownBy(() -> service.changeStatus(99L, new UserStatusDTO(1, 2)))
@@ -686,7 +683,7 @@ class UserManagementServiceImplTest {
         @Test
         void shouldThrow10001_whenStatusValueIllegal() {
             // Given
-            when(sysUserMapper.selectById(10L)).thenReturn(UserTestFactory.sysUser());
+            when(sysUserService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
 
             // When / Then
             assertThatThrownBy(() -> service.changeStatus(10L, new UserStatusDTO(2, 2)))
@@ -694,13 +691,13 @@ class UserManagementServiceImplTest {
                     ex -> assertThat(ex.getCode()).isEqualTo(10001))
                 .hasMessage("状态取值非法，仅支持 0-停用 1-启用");
             verify(sysUserMapper, never()).updateById(any(SysUser.class));
-            verifyNoInteractions(stringRedisTemplate);
+            verifyNoInteractions(userSessionRevokeStrategy);
         }
 
         @Test
         void shouldThrow18012_whenDisableAdminUser() {
             // Given
-            when(sysUserMapper.selectById(10L)).thenReturn(UserTestFactory.adminUser());
+            when(sysUserService.requireUser(10L)).thenReturn(UserTestFactory.adminUser());
 
             // When / Then
             assertThatThrownBy(() -> service.changeStatus(10L, new UserStatusDTO(0, 2)))
@@ -708,13 +705,13 @@ class UserManagementServiceImplTest {
                     ex -> assertThat(ex.getCode()).isEqualTo(18012))
                 .hasMessage("内置超级管理员不可删除或停用");
             verify(sysUserMapper, never()).updateById(any(SysUser.class));
-            verifyNoInteractions(stringRedisTemplate);
+            verifyNoInteractions(userSessionRevokeStrategy);
         }
 
         @Test
         void shouldThrow10601_whenOptimisticLockConflict() {
             // Given
-            when(sysUserMapper.selectById(10L)).thenReturn(UserTestFactory.sysUser());
+            when(sysUserService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
             when(sysUserMapper.updateById(any(SysUser.class))).thenReturn(0);
 
             // When / Then
@@ -722,7 +719,7 @@ class UserManagementServiceImplTest {
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(10601))
                 .hasMessage("数据已被其他操作修改，请重试");
-            verifyNoInteractions(stringRedisTemplate);
+            verifyNoInteractions(userSessionRevokeStrategy);
         }
     }
 
@@ -732,7 +729,7 @@ class UserManagementServiceImplTest {
         @Test
         void shouldResetWithExplicitPassword_andSetForceChangeFlag() {
             // Given
-            when(sysUserMapper.selectById(10L)).thenReturn(UserTestFactory.sysUser());
+            when(sysUserService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
             when(passwordEncoder.encode("NewPass@123")).thenReturn("encodedNewPwd");
 
             // When
@@ -752,7 +749,7 @@ class UserManagementServiceImplTest {
         @Test
         void shouldGenerateComplexRandomPassword_whenNewPasswordBlank() {
             // Given
-            when(sysUserMapper.selectById(10L)).thenReturn(UserTestFactory.sysUser());
+            when(sysUserService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
             when(passwordEncoder.encode(anyString())).thenReturn("encodedNewPwd");
 
             // When
@@ -776,7 +773,7 @@ class UserManagementServiceImplTest {
         @Test
         void shouldThrow18009_whenExplicitPasswordTooWeak() {
             // Given
-            when(sysUserMapper.selectById(10L)).thenReturn(UserTestFactory.sysUser());
+            when(sysUserService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
 
             // When / Then
             assertThatThrownBy(() -> service.resetPassword(10L, new UserResetPasswordDTO("123")))
@@ -790,7 +787,8 @@ class UserManagementServiceImplTest {
         @Test
         void shouldThrow18005_whenUserNotFound() {
             // Given
-            when(sysUserMapper.selectById(99L)).thenReturn(null);
+            when(sysUserService.requireUser(99L)).thenThrow(
+                new BusinessException(SystemErrorCode.USER_NOT_FOUND, "用户 99 不存在"));
 
             // When / Then
             assertThatThrownBy(() -> service.resetPassword(99L, new UserResetPasswordDTO(null)))
@@ -806,7 +804,7 @@ class UserManagementServiceImplTest {
         @Test
         void shouldReplaceRolesWithDistinctIds_whenAssign() {
             // Given
-            when(sysUserMapper.selectById(10L)).thenReturn(UserTestFactory.sysUser());
+            when(sysUserService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
             when(sysRoleMapper.selectCount(any())).thenReturn(2L);
 
             // When
@@ -829,7 +827,7 @@ class UserManagementServiceImplTest {
         @Test
         void shouldClearAllRoles_whenEmptyRoleIds() {
             // Given：空数组表示清空全部角色
-            when(sysUserMapper.selectById(10L)).thenReturn(UserTestFactory.sysUser());
+            when(sysUserService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
 
             // When
             UserAssignRolesVO vo = service.assignRoles(10L, new UserAssignRolesDTO(List.of()));
@@ -844,7 +842,8 @@ class UserManagementServiceImplTest {
         @Test
         void shouldThrow18005_whenUserNotFound() {
             // Given
-            when(sysUserMapper.selectById(99L)).thenReturn(null);
+            when(sysUserService.requireUser(99L)).thenThrow(
+                new BusinessException(SystemErrorCode.USER_NOT_FOUND, "用户 99 不存在"));
 
             // When / Then
             assertThatThrownBy(() -> service.assignRoles(99L, new UserAssignRolesDTO(List.of(1L))))
@@ -857,7 +856,7 @@ class UserManagementServiceImplTest {
         @Test
         void shouldThrow18014_whenAnyRoleMissing() {
             // Given
-            when(sysUserMapper.selectById(10L)).thenReturn(UserTestFactory.sysUser());
+            when(sysUserService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
             when(sysRoleMapper.selectCount(any())).thenReturn(1L);
 
             // When / Then

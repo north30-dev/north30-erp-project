@@ -20,6 +20,7 @@ import me.north30.erp.system.user.entity.SysUser;
 import me.north30.erp.system.common.enums.LoginTypeEnum;
 import me.north30.erp.system.security.LoginUser;
 import me.north30.erp.system.security.SecurityUtils;
+import me.north30.erp.system.user.strategy.PasswordStrategy;
 import me.north30.erp.system.auth.service.AuthService;
 import me.north30.erp.system.log.service.SysLoginLogService;
 import me.north30.erp.system.auth.service.UserAccessService;
@@ -254,7 +255,7 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(SystemErrorCode.USER_NOT_FOUND, "用户 " + currentUser.username() + " 不存在");
         }
         // 菜单取数编排收敛至聚合服务：admin 全量组树，普通用户按角色并集一次查全量启用菜单内存补父链
-        return userAccessService.listMenuTree(user.getId(), isAdmin(user));
+        return userAccessService.listMenuTree(user.getId(), user.isAdmin());
     }
 
     @Override
@@ -278,8 +279,8 @@ public class AuthServiceImpl implements AuthService {
         if (!passwordEncoder.matches(dto.oldPassword(), user.getPassword())) {
             throw new BusinessException(SystemErrorCode.OLD_PASSWORD_ERROR);
         }
-        // 2. 新口令复杂度：≥8 位且含大小写/数字/特殊字符中至少 3 类
-        if (!matchesComplexity(dto.newPassword())) {
+        // 2. 新口令复杂度：≥8 位且含大小写/数字/特殊字符中至少 3 类（规则收敛于 PasswordStrategy）
+        if (!PasswordStrategy.matches(dto.newPassword())) {
             throw new BusinessException(SystemErrorCode.PASSWORD_COMPLEXITY_ERROR);
         }
         // 3. 确认口令一致
@@ -311,29 +312,6 @@ public class AuthServiceImpl implements AuthService {
             log.warn("refresh token 解析失败：{}", e.getMessage());
             throw new BusinessException(CommonErrorCode.REFRESH_TOKEN_INVALID);
         }
-    }
-
-    /**
-     * 口令复杂度：长度 ≥8 且至少包含大写、小写、数字、特殊字符中的 3 类。
-     */
-    private boolean matchesComplexity(String password) {
-        if (password == null || password.length() < 8) {
-            return false;
-        }
-        int categories = 0;
-        if (password.chars().anyMatch(Character::isUpperCase)) {
-            categories++;
-        }
-        if (password.chars().anyMatch(Character::isLowerCase)) {
-            categories++;
-        }
-        if (password.chars().anyMatch(Character::isDigit)) {
-            categories++;
-        }
-        if (password.chars().anyMatch(ch -> !Character.isLetterOrDigit(ch))) {
-            categories++;
-        }
-        return categories >= 3;
     }
 
     /**
@@ -385,7 +363,4 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
-    private boolean isAdmin(SysUser user) {
-        return user.getIsAdmin() != null && user.getIsAdmin() == 1;
-    }
 }

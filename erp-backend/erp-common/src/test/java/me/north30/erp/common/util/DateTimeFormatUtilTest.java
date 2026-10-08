@@ -1,4 +1,4 @@
-package me.north30.erp.system.common.util;
+package me.north30.erp.common.util;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

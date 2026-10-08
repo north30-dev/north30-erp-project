@@ -9,6 +9,7 @@ public interface SysLoginLogService {
 
     /**
      * 记录登录事件。
+     * @param loginLog 登录日志实体
      */
     void record(SysLoginLog loginLog);
 }

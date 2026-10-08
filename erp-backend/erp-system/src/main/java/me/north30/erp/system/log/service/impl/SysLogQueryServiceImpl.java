@@ -9,12 +9,13 @@ import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.system.log.dto.AuditLogQueryDTO;
-import me.north30.erp.system.log.dto.AuditLogQueryParam;
 import me.north30.erp.system.log.dto.LoginLogQueryDTO;
+import me.north30.erp.system.log.entity.SysAuditLog;
 import me.north30.erp.system.log.entity.SysLoginLog;
 import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.log.converter.AuditLogConverter;
 import me.north30.erp.system.log.converter.LoginLogConverter;
-import me.north30.erp.system.log.mapper.AuditLogQueryMapper;
+import me.north30.erp.system.log.mapper.SysAuditLogMapper;
 import me.north30.erp.system.log.mapper.SysLoginLogMapper;
 import me.north30.erp.system.log.service.SysLogQueryService;
 import me.north30.erp.system.log.vo.AuditLogVO;
@@ -37,7 +38,7 @@ import java.util.Objects;
 import java.util.TreeSet;
 
 /**
- * 日志查询服务实现：审计日志走只读 XML 查询（与审计写入侧解耦），登录日志走单表 LambdaQueryWrapper。
+ * 日志查询服务实现：审计日志与登录日志均为单表查询，统一走 LambdaQueryWrapper（接口文档 5.8/5.9）。
  */
 @Slf4j
 @Service
@@ -48,8 +49,9 @@ public class SysLogQueryServiceImpl implements SysLogQueryService {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
 
-    private final AuditLogQueryMapper auditLogQueryMapper;
+    private final SysAuditLogMapper sysAuditLogMapper;
     private final SysLoginLogMapper sysLoginLogMapper;
+    private final AuditLogConverter auditLogConverter;
     private final LoginLogConverter loginLogConverter;
 
     @Override
@@ -57,18 +59,39 @@ public class SysLogQueryServiceImpl implements SysLogQueryService {
     public PageResult<AuditLogVO> pageAuditLogs(AuditLogQueryDTO query) {
         long pageNum = normalizePageNum(query.pageNum());
         long pageSize = normalizePageSize(query.pageSize());
-        Page<AuditLogVO> page = new Page<>(pageNum, pageSize);
-        auditLogQueryMapper.selectAuditLogPage(page, buildAuditLogQueryParam(query));
-        return PageResult.of(page.getTotal(), pageNum, pageSize, page.getRecords());
+        // 分页列表裁剪掉 before_json/after_json 大字段，仅详情接口返回
+        LambdaQueryWrapper<SysAuditLog> wrapper = new LambdaQueryWrapper<SysAuditLog>()
+            .select(SysAuditLog::getId, SysAuditLog::getModule, SysAuditLog::getBizType,
+                SysAuditLog::getBizCode, SysAuditLog::getOperateType, SysAuditLog::getOperateDesc,
+                SysAuditLog::getOperateBy, SysAuditLog::getOperateTime, SysAuditLog::getOperateIp,
+                SysAuditLog::getRequestUri, SysAuditLog::getRequestMethod, SysAuditLog::getResultStatus,
+                SysAuditLog::getErrorCode, SysAuditLog::getErrorMessage, SysAuditLog::getCostTime,
+                SysAuditLog::getTraceId)
+            .like(StringUtils.hasText(query.bizCode()), SysAuditLog::getBizCode, query.bizCode())
+            .eq(StringUtils.hasText(query.module()), SysAuditLog::getModule, query.module())
+            .eq(StringUtils.hasText(query.bizType()), SysAuditLog::getBizType, query.bizType())
+            .eq(StringUtils.hasText(query.operateType()), SysAuditLog::getOperateType, query.operateType())
+            .like(StringUtils.hasText(query.operateBy()), SysAuditLog::getOperateBy, query.operateBy())
+            .eq(query.resultStatus() != null, SysAuditLog::getResultStatus, query.resultStatus())
+            .orderByDesc(SysAuditLog::getOperateTime)
+            .orderByDesc(SysAuditLog::getId);
+        LocalDateTime timeStart = parseTime(query.startTime(), false);
+        LocalDateTime timeEnd = parseTime(query.endTime(), true);
+        wrapper.ge(timeStart != null, SysAuditLog::getOperateTime, timeStart)
+            .lt(timeEnd != null, SysAuditLog::getOperateTime, timeEnd);
+        Page<SysAuditLog> page = sysAuditLogMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        List<AuditLogVO> list = page.getRecords().stream().map(auditLogConverter::toVO).toList();
+        return PageResult.of(page.getTotal(), pageNum, pageSize, list);
     }
 
     @Override
     @Transactional(readOnly = true)
     public AuditLogVO getAuditLogDetail(Long id) {
-        AuditLogVO detail = auditLogQueryMapper.selectAuditLogById(id);
-        if (detail == null) {
+        SysAuditLog entity = sysAuditLogMapper.selectById(id);
+        if (entity == null) {
             throw new BusinessException(SystemManageErrorCode.AUDIT_LOG_NOT_FOUND);
         }
+        AuditLogVO detail = auditLogConverter.toVO(entity);
         return detail.withDiffFields(resolveDiffFields(detail.beforeJson(), detail.afterJson()));
     }
 
@@ -90,22 +113,6 @@ public class SysLogQueryServiceImpl implements SysLogQueryService {
         Page<SysLoginLog> page = sysLoginLogMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
         List<LoginLogVO> list = page.getRecords().stream().map(loginLogConverter::toVO).toList();
         return PageResult.of(page.getTotal(), pageNum, pageSize, list);
-    }
-
-    /**
-     * 入参 DTO → Mapper 查询参数（时间字符串解析为左闭右开的 LocalDateTime）。
-     */
-    private AuditLogQueryParam buildAuditLogQueryParam(AuditLogQueryDTO query) {
-        AuditLogQueryParam param = new AuditLogQueryParam();
-        param.setBizCode(query.bizCode());
-        param.setModule(query.module());
-        param.setBizType(query.bizType());
-        param.setOperateType(query.operateType());
-        param.setOperateBy(query.operateBy());
-        param.setResultStatus(query.resultStatus());
-        param.setTimeStart(parseTime(query.startTime(), false));
-        param.setTimeEnd(parseTime(query.endTime(), true));
-        return param;
     }
 
     /**

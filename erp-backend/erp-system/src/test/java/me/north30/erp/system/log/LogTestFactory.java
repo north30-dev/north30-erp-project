@@ -3,6 +3,7 @@ package me.north30.erp.system.log;
 import me.north30.erp.common.audit.AuditLogRecord;
 import me.north30.erp.system.log.dto.AuditLogQueryDTO;
 import me.north30.erp.system.log.dto.LoginLogQueryDTO;
+import me.north30.erp.system.log.entity.SysAuditLog;
 import me.north30.erp.system.log.entity.SysLoginLog;
 import me.north30.erp.system.log.vo.AuditLogVO;
 
@@ -63,6 +64,23 @@ public final class LogTestFactory {
     public static AuditLogVO auditLogVO(Long id, String beforeJson, String afterJson) {
         return new AuditLogVO(id, "PURCHASE", "PURCHASE_ORDER", "PO202609001", "UPDATE", null, "admin",
             null, null, null, null, 1, null, null, null, null, beforeJson, afterJson, null);
+    }
+
+    /**
+     * 构建审计日志实体（与 {@link #auditLogVO} 同构，供 Entity→VO 转换链路测试）。
+     */
+    public static SysAuditLog auditLog(Long id, String beforeJson, String afterJson) {
+        SysAuditLog auditLog = new SysAuditLog();
+        auditLog.setId(id);
+        auditLog.setModule("PURCHASE");
+        auditLog.setBizType("PURCHASE_ORDER");
+        auditLog.setBizCode("PO202609001");
+        auditLog.setOperateType("UPDATE");
+        auditLog.setOperateBy("admin");
+        auditLog.setResultStatus(1);
+        auditLog.setBeforeJson(beforeJson);
+        auditLog.setAfterJson(afterJson);
+        return auditLog;
     }
 
     /**

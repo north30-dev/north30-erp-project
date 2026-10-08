@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import me.north30.erp.common.util.DesensitizeUtil;
-import me.north30.erp.system.common.util.DateTimeFormatUtil;
+import me.north30.erp.common.util.DateTimeFormatUtil;
 import me.north30.erp.system.dept.entity.SysDept;
 import me.north30.erp.system.user.dto.UserCreateDTO;
 import me.north30.erp.system.user.dto.UserUpdateDTO;

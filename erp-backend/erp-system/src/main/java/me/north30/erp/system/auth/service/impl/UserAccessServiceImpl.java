@@ -61,7 +61,7 @@ public class UserAccessServiceImpl implements UserAccessService {
         List<SysRole> roles = loadEnabledRoles(userId);
         List<String> roleCodes = roles.stream().map(SysRole::getRoleCode).toList();
         // 权限点：admin 全量；普通用户按角色并集（role_menu → menu）
-        List<String> perms = List.copyOf(loadPerms(isAdmin(user), roles));
+        List<String> perms = List.copyOf(loadPerms(user.isAdmin(), roles));
         return new UserSecurityData(userId, user.getStatus(), user.getIsAdmin(), roleCodes,
             perms, resolveWidestDataScope(roles));
     }
@@ -146,10 +146,6 @@ public class UserAccessServiceImpl implements UserAccessService {
     // ------------------------------------------------------------------
     // 私有辅助方法
     // ------------------------------------------------------------------
-
-    private boolean isAdmin(SysUser user) {
-        return user.getIsAdmin() != null && user.getIsAdmin() == 1;
-    }
 
     /**
      * 查询用户启用角色集合（两次批量查询，无循环查库）。
