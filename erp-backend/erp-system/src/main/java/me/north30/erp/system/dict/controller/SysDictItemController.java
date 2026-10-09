@@ -12,7 +12,7 @@ import me.north30.erp.common.result.Result;
 import me.north30.erp.system.dict.dto.DictItemCreateDTO;
 import me.north30.erp.system.dict.dto.DictItemQueryDTO;
 import me.north30.erp.system.dict.dto.DictItemUpdateDTO;
-import me.north30.erp.system.dict.service.SysDictItemService;
+import me.north30.erp.system.dict.service.DictManagementService;
 import me.north30.erp.system.dict.vo.DictItemVO;
 import me.north30.erp.system.common.vo.MutationVO;
 import org.springdoc.core.annotations.ParameterObject;
@@ -40,7 +40,7 @@ public class SysDictItemController {
         {"code": 18031, "message": "字典项已存在", "data": null, "timestamp": "2026-01-01 00:00:00", "traceId": "..."}\
         """;
 
-    private final SysDictItemService sysDictItemService;
+    private final DictManagementService dictManagementService;
 
     /**
      * 5.5.5 字典项查询（按字典类型过滤）。
@@ -49,7 +49,7 @@ public class SysDictItemController {
     @PreAuthorize("hasAuthority('system:dict:list')")
     @Operation(summary = "字典项查询", description = "权限点 system:dict:list；字典类型编码 dictType 必填（缺失返回 10001 参数错误）")
     public Result<PageResult<DictItemVO>> page(@ParameterObject @Valid DictItemQueryDTO query) {
-        return Result.success(sysDictItemService.page(query));
+        return Result.success(dictManagementService.pageItem(query));
     }
 
     /**
@@ -62,7 +62,7 @@ public class SysDictItemController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<MutationVO> create(@Valid @RequestBody DictItemCreateDTO dto) {
-        return Result.success(sysDictItemService.create(dto));
+        return Result.success(dictManagementService.createItem(dto));
     }
 
     /**
@@ -75,7 +75,7 @@ public class SysDictItemController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<MutationVO> update(@PathVariable Long id, @Valid @RequestBody DictItemUpdateDTO dto) {
-        return Result.success(sysDictItemService.update(id, dto));
+        return Result.success(dictManagementService.updateItem(id, dto));
     }
 
     /**
@@ -88,6 +88,6 @@ public class SysDictItemController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<MutationVO> delete(@PathVariable Long id) {
-        return Result.success(sysDictItemService.delete(id));
+        return Result.success(dictManagementService.deleteItem(id));
     }
 }

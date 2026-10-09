@@ -6,7 +6,6 @@ import lombok.extern.slf4j.Slf4j;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.util.DateTimeFormatUtil;
-import me.north30.erp.system.common.enums.SystemManageErrorCode;
 import me.north30.erp.system.common.util.DeptTreeUtil;
 import me.north30.erp.system.dept.converter.DeptConverter;
 import me.north30.erp.system.dept.dto.DeptCreateDTO;
@@ -15,10 +14,10 @@ import me.north30.erp.system.dept.dto.DeptUpdateDTO;
 import me.north30.erp.system.dept.entity.SysDept;
 import me.north30.erp.system.dept.mapper.SysDeptMapper;
 import me.north30.erp.system.dept.service.SysDeptManageService;
+import me.north30.erp.system.dept.service.SysDeptService;
 import me.north30.erp.system.dept.strategy.DeptTreeStrategy;
 import me.north30.erp.system.dept.vo.DeptMutationVO;
 import me.north30.erp.system.dept.vo.DeptTreeVO;
-import me.north30.erp.system.user.service.SysUserService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -47,7 +46,7 @@ public class SysDeptManageServiceImpl implements SysDeptManageService {
     private static final int DELETED = 1;
 
     private final SysDeptMapper sysDeptMapper;
-    private final SysUserService sysUserService;
+    private final SysDeptService sysDeptService;
     private final DeptTreeStrategy deptTreeStrategy;
     private final DeptTreeUtil deptTreeUtil;
     private final DeptConverter deptConverter;
@@ -67,11 +66,7 @@ public class SysDeptManageServiceImpl implements SysDeptManageService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public DeptMutationVO create(DeptCreateDTO dto) {
-        Long exists = sysDeptMapper.selectCount(
-            new LambdaQueryWrapper<SysDept>().eq(SysDept::getDeptCode, dto.deptCode()));
-        if (exists != null && exists > 0) {
-            throw new BusinessException(SystemManageErrorCode.DEPT_CODE_EXISTS, "组织编码 " + dto.deptCode() + " 已存在");
-        }
+        sysDeptService.requireDeptCodeAvailable(dto.deptCode());
         SysDept dept = deptConverter.toCreatedEntity(dto);
         dept.applyParent(deptTreeStrategy.resolveParent(dto.parentId()));
         if (dept.getDeptSort() == null) {
@@ -88,10 +83,7 @@ public class SysDeptManageServiceImpl implements SysDeptManageService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public DeptMutationVO update(Long id, DeptUpdateDTO dto) {
-        SysDept current = sysDeptMapper.selectById(id);
-        if (current == null) {
-            throw new BusinessException(SystemManageErrorCode.DEPT_NOT_FOUND, "组织 " + id + " 不存在");
-        }
+        SysDept current = sysDeptService.requireDept(id);
         boolean parentChanged = !Objects.equals(current.getParentId(), dto.parentId());
         SysDept dept = current;
         if (parentChanged) {
@@ -126,18 +118,9 @@ public class SysDeptManageServiceImpl implements SysDeptManageService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public DeptMutationVO delete(Long id) {
-        SysDept dept = sysDeptMapper.selectById(id);
-        if (dept == null) {
-            throw new BusinessException(SystemManageErrorCode.DEPT_NOT_FOUND, "组织 " + id + " 不存在");
-        }
-        if (deptTreeStrategy.countChildren(id) > 0) {
-            throw new BusinessException(SystemManageErrorCode.DEPT_HAS_CHILDREN_OR_USERS,
-                "组织 " + dept.getDeptName() + " 存在下级组织，不可删除");
-        }
-        if (sysUserService.countByDeptId(id) > 0) {
-            throw new BusinessException(SystemManageErrorCode.DEPT_HAS_CHILDREN_OR_USERS,
-                "组织 " + dept.getDeptName() + " 已绑定用户，不可删除");
-        }
+        SysDept dept = sysDeptService.requireDept(id);
+        sysDeptService.requireDeptHasNoChildren(dept);
+        sysDeptService.requireDeptHasNoUsers(dept);
         sysDeptMapper.deleteById(id);
         return new DeptMutationVO(id, null, null, null, DELETED);
     }

@@ -11,6 +11,8 @@ import me.north30.erp.system.menu.service.SysMenuService;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
+import lombok.RequiredArgsConstructor;
+
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -23,6 +25,7 @@ import java.util.stream.Collectors;
  * <p>纯编排装配，依赖取数 Service 完成批量查询后在内存组装，杜绝循环查库（N+1）。</p>
  */
 @Component
+@RequiredArgsConstructor
 public class AccessAssembleStrategy {
 
     /** 数据范围档位按"最宽"排序：1-全部 2-本组织及下级 3-本组织 4-本部门及下级 5-本部门 6-仅本人 9-自定义 */
@@ -32,16 +35,6 @@ public class AccessAssembleStrategy {
     private final SysRoleService sysRoleService;
     private final SysRoleMenuService sysRoleMenuService;
     private final SysMenuService sysMenuService;
-
-    public AccessAssembleStrategy(SysUserRoleService sysUserRoleService,
-                                  SysRoleService sysRoleService,
-                                  SysRoleMenuService sysRoleMenuService,
-                                  SysMenuService sysMenuService) {
-        this.sysUserRoleService = sysUserRoleService;
-        this.sysRoleService = sysRoleService;
-        this.sysRoleMenuService = sysRoleMenuService;
-        this.sysMenuService = sysMenuService;
-    }
 
     /**
      * 查询用户启用角色集合（两次批量查询，无循环查库）。

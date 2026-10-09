@@ -37,7 +37,7 @@ public interface DictConverter {
     @Mapping(target = "extJson")
     @Mapping(target = "status")
     @Mapping(target = "remark")
-    SysDictItem toEntity(DictItemCreateDTO dto);
+    SysDictItem creatSysDictItem(DictItemCreateDTO dto);
 
     /**
      * 修改字典项 DTO 合并到已加载实体（null 字段跳过，实现部分更新语义）。
@@ -51,13 +51,13 @@ public interface DictConverter {
     @Mapping(target = "extJson")
     @Mapping(target = "status")
     @Mapping(target = "remark")
-    void updateEntity(DictItemUpdateDTO dto, @MappingTarget SysDictItem item);
+    void updateSysDictItem(DictItemUpdateDTO dto, @MappingTarget SysDictItem item);
 
     /**
      * 字典项实体 → VO（cached 恒为 false，字典缓存后续阶段接入）。
      */
     @Mapping(target = "cached", constant = "false")
-    DictItemVO toVO(SysDictItem item);
+    DictItemVO toDictItemVO(SysDictItem item);
 
     /**
      * 新增字典类型 DTO → 实体。
@@ -68,12 +68,12 @@ public interface DictConverter {
     @Mapping(target = "dictName")
     @Mapping(target = "status")
     @Mapping(target = "remark")
-    SysDictType toEntity(DictTypeCreateDTO dto);
+    SysDictType creatSysDictItem(DictTypeCreateDTO dto);
 
     /**
      * 字典类型实体 → VO（createTime 统一格式化，itemCount 为派生统计值）。
      */
     @Mapping(target = "createTime", source = "type.createTime", dateFormat = "yyyy-MM-dd HH:mm:ss")
     @Mapping(target = "itemCount", source = "itemCount")
-    DictTypeVO toVO(SysDictType type, long itemCount);
+    DictTypeVO toDictTypeVO(SysDictType type, long itemCount);
 }

@@ -6,7 +6,6 @@ import me.north30.erp.system.attachment.AttachmentTestFactory;
 import me.north30.erp.system.attachment.converter.AttachmentConverterImpl;
 import me.north30.erp.system.attachment.entity.SysAttachment;
 import me.north30.erp.system.attachment.mapper.SysAttachmentMapper;
-import me.north30.erp.system.attachment.service.SysAttachmentService;
 import me.north30.erp.system.attachment.strategy.FileStorageStrategy;
 import me.north30.erp.system.attachment.vo.AttachmentDownloadVO;
 import me.north30.erp.system.attachment.vo.AttachmentVO;

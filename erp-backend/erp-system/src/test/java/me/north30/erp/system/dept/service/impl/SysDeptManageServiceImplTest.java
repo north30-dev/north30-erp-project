@@ -15,8 +15,6 @@ import me.north30.erp.system.dept.service.SysDeptService;
 import me.north30.erp.system.dept.strategy.DeptTreeStrategy;
 import me.north30.erp.system.dept.vo.DeptTreeVO;
 import me.north30.erp.system.support.MpTableInfoInit;
-import me.north30.erp.system.user.entity.SysUser;
-import me.north30.erp.system.user.service.SysUserService;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -37,10 +35,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * {@link SysDeptManageServiceImpl} 纯单元测试：树查询、编码唯一、层级上限、
@@ -51,9 +49,6 @@ class SysDeptManageServiceImplTest {
 
     @Mock
     private SysDeptMapper sysDeptMapper;
-
-    @Mock
-    private SysUserService sysUserService;
 
     @Mock
     private SysDeptService sysDeptService;
@@ -74,13 +69,13 @@ class SysDeptManageServiceImplTest {
     @BeforeAll
     static void initMpTableInfo() {
         // 服务内部构建 LambdaQueryWrapper，需预先注册实体列缓存
-        MpTableInfoInit.init(SysDept.class, SysUser.class);
+        MpTableInfoInit.init(SysDept.class);
     }
 
     @BeforeEach
     void setUp() {
         deptTreeStrategy = new DeptTreeStrategy(sysDeptMapper, sysDeptService);
-        service = new SysDeptManageServiceImpl(sysDeptMapper, sysUserService, deptTreeStrategy,
+        service = new SysDeptManageServiceImpl(sysDeptMapper, sysDeptService, deptTreeStrategy,
             deptTreeUtil, deptConverter);
     }
 
@@ -149,7 +144,6 @@ class SysDeptManageServiceImplTest {
         void shouldCreateTopDeptWithDefaults_whenParentIdZero() {
             // Given：parentId=0 表示顶级，sort/status 为空触发默认值
             DeptCreateDTO dto = DeptTestFactory.createDTO("ORG001", "总部", 0L, 1, null, null);
-            given(sysDeptMapper.selectCount(any())).willReturn(0L);
             given(sysDeptMapper.insert(any(SysDept.class))).willAnswer(invocation -> {
                 SysDept dept = invocation.getArgument(0, SysDept.class);
                 dept.setId(10L);
@@ -180,7 +174,6 @@ class SysDeptManageServiceImplTest {
             // Given：父级为 1 级组织（祖级路径 "0"）
             DeptCreateDTO dto = DeptTestFactory.createDTO("ORG003", "生产部", 5L, 4, 1, 1);
             SysDept parent = DeptTestFactory.rootDept(5L, "ORG001", "总部", 1, 1);
-            given(sysDeptMapper.selectCount(any())).willReturn(0L);
             given(sysDeptService.requireDept(5L)).willReturn(parent);
             given(sysDeptMapper.insert(any(SysDept.class))).willAnswer(invocation -> {
                 invocation.getArgument(0, SysDept.class).setId(11L);
@@ -200,7 +193,8 @@ class SysDeptManageServiceImplTest {
         void shouldThrow_whenDeptCodeExists() {
             // Given
             DeptCreateDTO dto = DeptTestFactory.createDTO("ORG001", "总部", 0L, 1, 1, 1);
-            given(sysDeptMapper.selectCount(any())).willReturn(1L);
+            willThrow(new BusinessException(SystemManageErrorCode.DEPT_CODE_EXISTS, "组织编码 ORG001 已存在"))
+                .given(sysDeptService).requireDeptCodeAvailable("ORG001");
 
             // When + Then
             assertThatThrownBy(() -> service.create(dto))
@@ -215,7 +209,6 @@ class SysDeptManageServiceImplTest {
         void shouldThrow_whenParentMissing() {
             // Given
             DeptCreateDTO dto = DeptTestFactory.createDTO("ORG003", "生产部", 99L, 4, 1, 1);
-            given(sysDeptMapper.selectCount(any())).willReturn(0L);
             given(sysDeptService.requireDept(99L))
                 .willThrow(new BusinessException(SystemManageErrorCode.DEPT_NOT_FOUND, "组织 99 不存在"));
 
@@ -233,7 +226,6 @@ class SysDeptManageServiceImplTest {
             // Given：父级已是第 5 级，子级将超过层级上限
             DeptCreateDTO dto = DeptTestFactory.createDTO("ORG006", "车间班组", 5L, 5, 1, 1);
             SysDept parent = DeptTestFactory.dept(5L, "ORG005", "五级车间", 4L, 5, 5, "0,1,2,3,4", 1);
-            given(sysDeptMapper.selectCount(any())).willReturn(0L);
             given(sysDeptService.requireDept(5L)).willReturn(parent);
 
             // When + Then
@@ -256,7 +248,7 @@ class SysDeptManageServiceImplTest {
             SysDept current = DeptTestFactory.rootDept(1L, "ORG001", "旧名称", 1, 1);
             current.setUpdateTime(LocalDateTime.of(2026, 9, 28, 12, 0, 0));
             DeptUpdateDTO dto = DeptTestFactory.updateDTO(0L, "新名称", 4, 2);
-            given(sysDeptMapper.selectById(1L)).willReturn(current);
+            given(sysDeptService.requireDept(1L)).willReturn(current);
             given(sysDeptMapper.updateById(any(SysDept.class))).willReturn(1);
 
             // When
@@ -283,7 +275,7 @@ class SysDeptManageServiceImplTest {
             deptB.setUpdateTime(LocalDateTime.of(2026, 9, 28, 12, 0, 0));
             SysDept deptD = DeptTestFactory.dept(4L, "ORG004", "一班", 2L, 5, 3, "0,1,2", 1);
             DeptUpdateDTO dto = DeptTestFactory.updateDTO(3L, "生产部", 4, 5);
-            given(sysDeptMapper.selectById(2L)).willReturn(deptB);
+            given(sysDeptService.requireDept(2L)).willReturn(deptB);
             given(sysDeptMapper.selectList(any())).willReturn(List.of(deptA, deptB, deptC, deptD));
             given(sysDeptMapper.updateById(any(SysDept.class))).willReturn(1);
 
@@ -309,7 +301,7 @@ class SysDeptManageServiceImplTest {
             // Given
             SysDept current = DeptTestFactory.dept(2L, "ORG002", "生产部", 1L, 4, 2, "0,1", 1);
             DeptUpdateDTO dto = DeptTestFactory.updateDTO(2L, "生产部", 4, 1);
-            given(sysDeptMapper.selectById(2L)).willReturn(current);
+            given(sysDeptService.requireDept(2L)).willReturn(current);
 
             // When + Then
             assertThatThrownBy(() -> service.update(2L, dto))
@@ -327,7 +319,7 @@ class SysDeptManageServiceImplTest {
             SysDept deptB = DeptTestFactory.dept(2L, "ORG002", "生产部", 1L, 4, 2, "0,1", 1);
             SysDept deptD = DeptTestFactory.dept(4L, "ORG004", "一班", 2L, 5, 3, "0,1,2", 1);
             DeptUpdateDTO dto = DeptTestFactory.updateDTO(4L, "总部", 1, 1);
-            given(sysDeptMapper.selectById(1L)).willReturn(deptA);
+            given(sysDeptService.requireDept(1L)).willReturn(deptA);
             given(sysDeptMapper.selectList(any())).willReturn(List.of(deptA, deptB, deptD));
 
             // When + Then
@@ -344,7 +336,7 @@ class SysDeptManageServiceImplTest {
             // Given：新父级不在组织表中
             SysDept current = DeptTestFactory.dept(2L, "ORG002", "生产部", 1L, 4, 2, "0,1", 1);
             DeptUpdateDTO dto = DeptTestFactory.updateDTO(99L, "生产部", 4, 1);
-            given(sysDeptMapper.selectById(2L)).willReturn(current);
+            given(sysDeptService.requireDept(2L)).willReturn(current);
             given(sysDeptMapper.selectList(any())).willReturn(List.of(current));
 
             // When + Then
@@ -362,7 +354,7 @@ class SysDeptManageServiceImplTest {
             SysDept current = DeptTestFactory.dept(2L, "ORG002", "生产部", 1L, 4, 2, "0,1", 1);
             SysDept deepParent = DeptTestFactory.dept(5L, "ORG005", "五级车间", 4L, 5, 5, "0,1,2,3,4", 1);
             DeptUpdateDTO dto = DeptTestFactory.updateDTO(5L, "生产部", 4, 1);
-            given(sysDeptMapper.selectById(2L)).willReturn(current);
+            given(sysDeptService.requireDept(2L)).willReturn(current);
             given(sysDeptMapper.selectList(any())).willReturn(List.of(current, deepParent));
 
             // When + Then
@@ -379,7 +371,7 @@ class SysDeptManageServiceImplTest {
             // Given
             SysDept current = DeptTestFactory.rootDept(1L, "ORG001", "总部", 1, 1);
             DeptUpdateDTO dto = DeptTestFactory.updateDTO(0L, "总部", 1, 9);
-            given(sysDeptMapper.selectById(1L)).willReturn(current);
+            given(sysDeptService.requireDept(1L)).willReturn(current);
             given(sysDeptMapper.updateById(any(SysDept.class))).willReturn(0);
 
             // When + Then
@@ -399,9 +391,7 @@ class SysDeptManageServiceImplTest {
         void shouldDelete_whenNoChildrenAndNoUsers() {
             // Given
             SysDept dept = DeptTestFactory.rootDept(1L, "ORG001", "总部", 1, 1);
-            given(sysDeptMapper.selectById(1L)).willReturn(dept);
-            given(sysDeptMapper.selectCount(any())).willReturn(0L);
-            given(sysUserService.countByDeptId(1L)).willReturn(0L);
+            given(sysDeptService.requireDept(1L)).willReturn(dept);
             given(sysDeptMapper.deleteById(1L)).willReturn(1);
 
             // When
@@ -419,16 +409,17 @@ class SysDeptManageServiceImplTest {
         void shouldThrow_whenHasChildren() {
             // Given
             SysDept dept = DeptTestFactory.rootDept(1L, "ORG001", "总部", 1, 1);
-            given(sysDeptMapper.selectById(1L)).willReturn(dept);
-            given(sysDeptMapper.selectCount(any())).willReturn(2L);
+            given(sysDeptService.requireDept(1L)).willReturn(dept);
+            willThrow(new BusinessException(SystemManageErrorCode.DEPT_HAS_CHILDREN_OR_USERS,
+                "组织 总部 存在下级组织或绑定用户，不可删除"))
+                .given(sysDeptService).requireDeptHasNoChildren(dept);
 
             // When + Then
             assertThatThrownBy(() -> service.delete(1L))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.DEPT_HAS_CHILDREN_OR_USERS.getCode()))
-                .hasMessage("组织 总部 存在下级组织，不可删除");
+                .hasMessage("组织 总部 存在下级组织或绑定用户，不可删除");
             verify(sysDeptMapper, never()).deleteById(anyLong());
-            verifyNoInteractions(sysUserService);
         }
 
         @Test
@@ -436,29 +427,31 @@ class SysDeptManageServiceImplTest {
         void shouldThrow_whenHasUsers() {
             // Given：无下级但绑定了用户
             SysDept dept = DeptTestFactory.rootDept(1L, "ORG001", "总部", 1, 1);
-            given(sysDeptMapper.selectById(1L)).willReturn(dept);
-            given(sysDeptMapper.selectCount(any())).willReturn(0L);
-            given(sysUserService.countByDeptId(1L)).willReturn(3L);
+            given(sysDeptService.requireDept(1L)).willReturn(dept);
+            willThrow(new BusinessException(SystemManageErrorCode.DEPT_HAS_CHILDREN_OR_USERS,
+                "组织 总部 存在下级组织或绑定用户，不可删除"))
+                .given(sysDeptService).requireDeptHasNoUsers(dept);
 
             // When + Then
             assertThatThrownBy(() -> service.delete(1L))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.DEPT_HAS_CHILDREN_OR_USERS.getCode()))
-                .hasMessage("组织 总部 已绑定用户，不可删除");
+                .hasMessage("组织 总部 存在下级组织或绑定用户，不可删除");
             verify(sysDeptMapper, never()).deleteById(anyLong());
         }
         @Test
         @DisplayName("部门删除，部门不存在，抛出异常")
         void shouldThrow_whenDeptNotFound() {
             // Given
-            given(sysDeptMapper.selectById(1L)).willReturn(null);
+            given(sysDeptService.requireDept(1L))
+                .willThrow(new BusinessException(SystemManageErrorCode.DEPT_NOT_FOUND, "组织 1 不存在"));
 
             // When + Then
             assertThatThrownBy(() -> service.delete(1L))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.DEPT_NOT_FOUND.getCode()))
                 .hasMessage("组织 1 不存在");
-            verifyNoInteractions(sysUserService);
+            verify(sysDeptMapper, never()).deleteById(anyLong());
         }
     }
 }

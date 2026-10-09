@@ -68,7 +68,11 @@ public class SysUser extends BaseEntity {
     private LocalDateTime lockUntil;
 
 
-    /** 是否超级管理员 */
+    /**
+     * 是否超级管理员
+     *
+     * @return 是否超级管理员
+     */
     public boolean isAdmin() {
         return isAdmin != null && isAdmin == 1;
     }

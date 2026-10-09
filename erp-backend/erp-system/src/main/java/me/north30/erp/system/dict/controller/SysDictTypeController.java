@@ -12,7 +12,7 @@ import me.north30.erp.common.result.Result;
 import me.north30.erp.system.dict.dto.DictTypeCreateDTO;
 import me.north30.erp.system.dict.dto.DictTypeQueryDTO;
 import me.north30.erp.system.dict.dto.DictTypeUpdateDTO;
-import me.north30.erp.system.dict.service.SysDictTypeService;
+import me.north30.erp.system.dict.service.DictManagementService;
 import me.north30.erp.system.dict.vo.DictTypeVO;
 import me.north30.erp.system.common.vo.MutationVO;
 import org.springdoc.core.annotations.ParameterObject;
@@ -40,7 +40,7 @@ public class SysDictTypeController {
         {"code": 18029, "message": "字典类型已存在", "data": null, "timestamp": "2026-01-01 00:00:00", "traceId": "..."}\
         """;
 
-    private final SysDictTypeService sysDictTypeService;
+    private final DictManagementService dictManagementService;
 
     /**
      * 5.5.1 字典类型分页查询。
@@ -49,7 +49,7 @@ public class SysDictTypeController {
     @PreAuthorize("hasAuthority('system:dict:list')")
     @Operation(summary = "字典类型分页查询", description = "权限点 system:dict:list")
     public Result<PageResult<DictTypeVO>> page(@ParameterObject @Valid DictTypeQueryDTO query) {
-        return Result.success(sysDictTypeService.page(query));
+        return Result.success(dictManagementService.pageType(query));
     }
 
     /**
@@ -62,7 +62,7 @@ public class SysDictTypeController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<MutationVO> create(@Valid @RequestBody DictTypeCreateDTO dto) {
-        return Result.success(sysDictTypeService.create(dto));
+        return Result.success(dictManagementService.createType(dto));
     }
 
     /**
@@ -75,7 +75,7 @@ public class SysDictTypeController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<MutationVO> update(@PathVariable Long id, @Valid @RequestBody DictTypeUpdateDTO dto) {
-        return Result.success(sysDictTypeService.update(id, dto));
+        return Result.success(dictManagementService.updateType(id, dto));
     }
 
     /**
@@ -88,6 +88,6 @@ public class SysDictTypeController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<MutationVO> delete(@PathVariable Long id) {
-        return Result.success(sysDictTypeService.delete(id));
+        return Result.success(dictManagementService.deleteType(id));
     }
 }

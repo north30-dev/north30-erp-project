@@ -1,9 +1,7 @@
 package me.north30.erp.system.dept.strategy;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.exception.BusinessException;
-import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.system.common.enums.SystemManageErrorCode;
 import me.north30.erp.system.dept.entity.SysDept;
 import me.north30.erp.system.dept.mapper.SysDeptMapper;
@@ -109,18 +107,5 @@ public class DeptTreeStrategy {
             throw new BusinessException(SystemManageErrorCode.DEPT_NOT_FOUND, "组织 " + parentId + " 不存在");
         }
         return parent;
-    }
-
-    /**
-     * 统计指定组织的下级组织数（逻辑删除过滤）。
-     * 
-     * @param deptId 组织 ID
-     * @param deptMap 组织索引（按 ID 建立）
-     * @return 下级组织数
-     */
-    public long countChildren(Long deptId) {
-        Long count = sysDeptMapper.selectCount(
-            new LambdaQueryWrapper<SysDept>().eq(SysDept::getParentId, deptId));
-        return count == null ? 0L : count;
     }
 }
