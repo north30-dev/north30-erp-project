@@ -22,7 +22,7 @@ public interface AttachmentConverter {
      * 附件实体 → VO（downloadUrl 由 id 派生，走 {@link #map(Long)}）。
      */
     @Mapping(target = "downloadUrl", source = "id")
-    AttachmentVO toVO(SysAttachment attachment);
+    AttachmentVO toAttachmentVO(SysAttachment attachment);
 
     /**
      * Long ID → 下载地址（MapStruct 自动应用于 Long→String 的属性映射）。

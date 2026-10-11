@@ -53,6 +53,9 @@ public class FileStorageStrategy {
 
     /**
      * 按扩展名判定文件类型（PDF/JPG/PNG/XLSX/DOCX），不支持则抛 10401。
+     * 
+     * @param originalFilename 原始文件名（包含路径）
+     * @return 文件类型（PDF/JPG/PNG/XLSX/DOCX）
      */
     public String resolveFileType(String originalFilename) {
         String ext = extensionOf(originalFilename);
@@ -65,6 +68,9 @@ public class FileStorageStrategy {
 
     /**
      * 文件名安全处理：剥离路径分隔符与控制字符，防止路径穿越，超长截断。
+     * 
+     * @param originalFilename 原始文件名（包含路径）
+     * @return 安全文件名（不包含路径）
      */
     public String sanitizeFileName(String originalFilename) {
         if (!StringUtils.hasText(originalFilename)) {
@@ -80,6 +86,9 @@ public class FileStorageStrategy {
 
     /**
      * 存储相对路径：yyyyMM/{uuid}.{ext}，目录与文件名均为服务端生成。
+     * 
+     * @param fileType 文件类型（PDF/JPG/PNG/XLSX/DOCX）
+     * @return 相对路径（yyyyMM/{uuid}.{ext}）
      */
     public String buildRelativePath(String fileType) {
         String monthDir = LocalDate.now().format(MONTH_DIR_FORMATTER);
@@ -89,6 +98,9 @@ public class FileStorageStrategy {
 
     /**
      * 写盘：先建目录再写入；写盘失败转为系统错误（不吞异常）。
+     * 
+     * @param relativePath 相对路径（yyyyMM/{uuid}.{ext}）
+     * @param file 上传文件（MultipartFile）
      */
     public void writeFile(String relativePath, MultipartFile file) {
         Path target = storeRoot.resolve(relativePath);
@@ -103,6 +115,9 @@ public class FileStorageStrategy {
 
     /**
      * 相对路径 → 物理路径；路径逃逸（越出存储根目录）视为附件不存在。
+     * 
+     * @param relativePath 相对路径（yyyyMM/{uuid}.{ext}）
+     * @return 物理路径（绝对路径）
      */
     public Path resolveStoredPath(String relativePath) {
         Path target = storeRoot.resolve(relativePath).normalize();
@@ -112,6 +127,12 @@ public class FileStorageStrategy {
         return target;
     }
 
+    /**
+     * 提取文件扩展名（不包含点号）。
+     * 
+     * @param originalFilename 原始文件名（包含路径）
+     * @return 扩展名（不包含点号）
+     */
     private String extensionOf(String originalFilename) {
         String safeName = sanitizeFileName(originalFilename);
         int dot = safeName.lastIndexOf('.');

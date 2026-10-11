@@ -1,7 +1,7 @@
 package me.north30.erp.system.attachment.service;
 
-import me.north30.erp.system.attachment.entity.SysAttachment;
 import me.north30.erp.system.common.vo.DeleteResultVO;
+import me.north30.erp.system.attachment.dto.AttachmentBizQueryDTO;
 import me.north30.erp.system.attachment.vo.AttachmentDownloadVO;
 import me.north30.erp.system.attachment.vo.AttachmentVO;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,12 +16,12 @@ public interface SysAttachmentService {
     /**
      * 附件上传（接口文档 5.9.1，权限点 system:attachment:upload）：写盘 + 落库。
      */
-    AttachmentVO upload(MultipartFile file, String bizType, Long bizId, String bizCode);
+    AttachmentVO upload(MultipartFile file, AttachmentBizQueryDTO query);
 
     /**
      * 附件列表查询（接口文档 5.9.3，权限点 system:attachment:list）：按业务类型 + 业务主键，id 倒序，不分页。
      */
-    List<AttachmentVO> listByBiz(String bizType, Long bizId);
+    List<AttachmentVO> listByBiz(AttachmentBizQueryDTO query);
 
     /**
      * 附件下载（接口文档 5.9.2，权限点 system:attachment:download）：流式返回。
@@ -32,9 +32,4 @@ public interface SysAttachmentService {
      * 附件删除（接口文档 5.9.4，权限点 system:attachment:delete）：逻辑删除，仅上传人可删。
      */
     DeleteResultVO delete(Long id);
-
-    /**
-     * 加载有效附件：不存在或已逻辑删除抛 ATTACHMENT_NOT_FOUND。
-     */
-    SysAttachment requireAttachment(Long id);
 }

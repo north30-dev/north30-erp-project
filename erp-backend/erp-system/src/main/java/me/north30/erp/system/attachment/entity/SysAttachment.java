@@ -44,4 +44,8 @@ public class SysAttachment extends BaseEntity {
 
     /** 上传时间 */
     private LocalDateTime uploadTime;
+
+    public boolean isDeleted() {
+        return Integer.valueOf(1).equals(this.getIsDeleted());
+    }
 }

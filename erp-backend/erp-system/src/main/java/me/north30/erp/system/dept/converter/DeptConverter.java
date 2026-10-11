@@ -38,7 +38,7 @@ public interface DeptConverter {
     @Mapping(target = "deptSort")
     @Mapping(target = "status")
     @Mapping(target = "remark")
-    SysDept toCreatedEntity(DeptCreateDTO dto);
+    SysDept createDept(DeptCreateDTO dto);
 
     /**
      * 更新组织 DTO → 实体。
@@ -52,8 +52,7 @@ public interface DeptConverter {
     @Mapping(target = "deptSort", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "status", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "remark", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    @Mapping(target = "version")
-    void toUpdatedEntity(DeptUpdateDTO dto, @MappingTarget SysDept dept);
+    void updateDept(DeptUpdateDTO dto, @MappingTarget SysDept dept);
 
     /**
      * 实体 → 组织树 VO（children 由树构建逻辑装配）。

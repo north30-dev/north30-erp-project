@@ -52,10 +52,10 @@ public enum SystemManageErrorCode implements ErrorCode {
     /** 流水号重置值不得小于当前已用流水号 */
     SEQUENCE_RESET_CONFLICT(18036, "流水号重置值不得小于当前已用流水号 {currentNo}"),
 
-    /** 附件：文件大小超出上限 */
+    /** 附件：文件类型不支持 */
     ATTACHMENT_TYPE_NOT_SUPPORTED(10401, "文件类型不支持"),
 
-    /** 附件：文件类型不支持 */
+    /** 附件：文件大小超出上限 */
     ATTACHMENT_SIZE_EXCEEDED(10402, "文件大小超出上限"),
 
     /** 附件：业务对象附件数量超限 */

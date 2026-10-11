@@ -44,11 +44,13 @@ public class SysConfig extends BaseEntity {
 
     /** 值类型编码 → 名称（接口文档 5.6） */
     private static final Map<Integer, String> VALUE_TYPE_NAMES = Map.of(
-        1, "字符串", 2, "数字", 3, "布尔", 4, "JSON");
+            1, "字符串", 2, "数字", 3, "布尔", 4, "JSON");
 
     /**
      * 按 valueType 校验参数值：2-数字须可解析为 BigDecimal；3-布尔仅允许 true/false；4-JSON 须可解析。
-     * <p>充血方法：仅校验自身字段（valueType/configValue），ObjectMapper 作为外部能力由调用方传入。</p>
+     * <p>
+     * 充血方法：仅校验自身字段（valueType/configValue），ObjectMapper 作为外部能力由调用方传入。
+     * </p>
      * 
      * @param objectMapper JSON 解析器
      */
@@ -63,13 +65,13 @@ public class SysConfig extends BaseEntity {
                     new BigDecimal(configValue);
                 } catch (NumberFormatException e) {
                     throw new BusinessException(SystemManageErrorCode.CONFIG_VALUE_TYPE_MISMATCH,
-                        "参数值类型错误，期望类型 " + typeName);
+                            "参数值类型错误，期望类型 " + typeName);
                 }
             }
             case 3 -> {
                 if (!"true".equalsIgnoreCase(configValue) && !"false".equalsIgnoreCase(configValue)) {
                     throw new BusinessException(SystemManageErrorCode.CONFIG_VALUE_TYPE_MISMATCH,
-                        "参数值类型错误，期望类型 " + typeName);
+                            "参数值类型错误，期望类型 " + typeName);
                 }
             }
             case 4 -> {
@@ -77,12 +79,40 @@ public class SysConfig extends BaseEntity {
                     objectMapper.readTree(configValue);
                 } catch (JacksonException e) {
                     throw new BusinessException(SystemManageErrorCode.CONFIG_VALUE_TYPE_MISMATCH,
-                        "参数值类型错误，期望类型 " + typeName);
+                            "参数值类型错误，期望类型 " + typeName);
                 }
             }
             default -> {
                 // 1-字符串：不做格式校验
             }
+        }
+    }
+
+    /**
+     * 校验是否系统内置：1-是（内置不可删）
+     */
+    public void validateIsSystem() {
+        if (isSystem != null && isSystem == 1) {
+            throw new BusinessException(SystemManageErrorCode.BUILTIN_CONFIG_UNDELETABLE,
+                    "内置系统参数 " + configKey + " 不可删除");
+        }
+    }
+
+    /**
+     * 初始化是否系统内置参数：0-否 1-是（内置不可删）
+     */
+    public void initIsSystemParam() {
+        if (isSystem == null) {
+            isSystem = 0;
+        }
+    }
+
+    /**
+     * 初始化状态参数：0-停用 1-启用
+     */
+    public void initStatusParam() {
+        if (status == null) {
+            status = 1;
         }
     }
 }

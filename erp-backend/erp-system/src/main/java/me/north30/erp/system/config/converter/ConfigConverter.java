@@ -1,12 +1,16 @@
 package me.north30.erp.system.config.converter;
 
 import me.north30.erp.system.config.dto.ConfigCreateDTO;
+import me.north30.erp.system.config.dto.ConfigUpdateDTO;
 import me.north30.erp.system.config.entity.SysConfig;
 import me.north30.erp.system.config.vo.ConfigVO;
+
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.ReportingPolicy;
 
 /**
@@ -30,10 +34,22 @@ public interface ConfigConverter {
     @Mapping(target = "isSystem")
     @Mapping(target = "status")
     @Mapping(target = "remark")
-    SysConfig toEntity(ConfigCreateDTO dto);
+    SysConfig createConfig(ConfigCreateDTO dto);
+
+    /**
+     * 更新参数 DTO → 实体（局部更新）。
+     * <p>ignoreByDefault + IGNORE：DTO 中为 null 的字段跳过 setter，不覆盖实体已有值；
+     * 生成代码等价于手写的 "if (dto.x() != null) config.setX(dto.x())"。</p>
+     */
+    @BeanMapping(ignoreByDefault = true, nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "configValue")
+    @Mapping(target = "configName")
+    @Mapping(target = "status")
+    @Mapping(target = "remark")
+    void updateConfig(ConfigUpdateDTO dto, @MappingTarget SysConfig config);
 
     /**
      * 参数实体 → VO。
      */
-    ConfigVO toVO(SysConfig config);
+    ConfigVO toConfigVO(SysConfig config);
 }

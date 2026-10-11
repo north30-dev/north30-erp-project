@@ -4,9 +4,11 @@ import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.system.attachment.AttachmentTestFactory;
 import me.north30.erp.system.attachment.converter.AttachmentConverterImpl;
+import me.north30.erp.system.attachment.dto.AttachmentBizQueryDTO;
 import me.north30.erp.system.attachment.entity.SysAttachment;
 import me.north30.erp.system.attachment.mapper.SysAttachmentMapper;
 import me.north30.erp.system.attachment.strategy.FileStorageStrategy;
+import me.north30.erp.system.attachment.strategy.FileValidStrategy;
 import me.north30.erp.system.attachment.vo.AttachmentDownloadVO;
 import me.north30.erp.system.attachment.vo.AttachmentVO;
 import me.north30.erp.system.common.enums.SystemManageErrorCode;
@@ -76,7 +78,8 @@ class SysAttachmentServiceImplTest {
     void setUp() {
         // @Value 配置参数无法由 Mockito 注入，手动构造策略与被测类（同 MP ServiceImpl 特例口径）
         FileStorageStrategy strategy = new FileStorageStrategy(tempDir.toString());
-        service = new SysAttachmentServiceImpl(sysAttachmentMapper, new AttachmentConverterImpl(), strategy);
+        service = new SysAttachmentServiceImpl(sysAttachmentMapper, new AttachmentConverterImpl(), strategy,
+            new FileValidStrategy(sysAttachmentMapper));
     }
 
     @AfterEach
@@ -109,7 +112,7 @@ class SysAttachmentServiceImplTest {
             });
 
             // When
-            AttachmentVO vo = service.upload(file, " PURCHASE_RECEIPT ", 1L, "PR202609001");
+            AttachmentVO vo = service.upload(file, new AttachmentBizQueryDTO(" PURCHASE_RECEIPT ", 1L, "PR202609001"));
 
             // Then：VO 字段正确，落库字段与写盘目标路径符合约定
             assertThat(vo.id()).isEqualTo(100L);
@@ -143,7 +146,7 @@ class SysAttachmentServiceImplTest {
             });
 
             // When
-            service.upload(file, "PURCHASE_RECEIPT", 1L, null);
+            service.upload(file, new AttachmentBizQueryDTO("PURCHASE_RECEIPT", 1L, null));
 
             // Then：上传人取自安全上下文
             verify(sysAttachmentMapper).insert(attachmentCaptor.capture());
@@ -157,7 +160,7 @@ class SysAttachmentServiceImplTest {
             MultipartFile file = AttachmentTestFactory.emptyFile();
 
             // When + Then
-            assertThatThrownBy(() -> service.upload(file, "PURCHASE_RECEIPT", 1L, null))
+            assertThatThrownBy(() -> service.upload(file, new AttachmentBizQueryDTO("PURCHASE_RECEIPT", 1L, null)))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
                 .hasMessage("上传文件不能为空");
@@ -171,7 +174,7 @@ class SysAttachmentServiceImplTest {
             MultipartFile file = AttachmentTestFactory.fileNamed("报价单.pdf");
 
             // When + Then
-            assertThatThrownBy(() -> service.upload(file, " ", null, null))
+            assertThatThrownBy(() -> service.upload(file, new AttachmentBizQueryDTO(" ", null, null)))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
                 .hasMessage("业务类型与业务主键不能为空");
@@ -185,7 +188,7 @@ class SysAttachmentServiceImplTest {
             MultipartFile file = AttachmentTestFactory.fileNamed("malware.exe");
 
             // When + Then
-            assertThatThrownBy(() -> service.upload(file, "PURCHASE_RECEIPT", 1L, null))
+            assertThatThrownBy(() -> service.upload(file, new AttachmentBizQueryDTO("PURCHASE_RECEIPT", 1L, null)))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode())
                         .isEqualTo(SystemManageErrorCode.ATTACHMENT_TYPE_NOT_SUPPORTED.getCode()))
@@ -200,11 +203,11 @@ class SysAttachmentServiceImplTest {
             MultipartFile file = AttachmentTestFactory.file("big.pdf", 21L * 1024 * 1024);
 
             // When + Then
-            assertThatThrownBy(() -> service.upload(file, "PURCHASE_RECEIPT", 1L, null))
+            assertThatThrownBy(() -> service.upload(file, new AttachmentBizQueryDTO("PURCHASE_RECEIPT", 1L, null)))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode())
                         .isEqualTo(SystemManageErrorCode.ATTACHMENT_SIZE_EXCEEDED.getCode()))
-                .hasMessage("文件大小超出上限");
+                .hasMessage("上传文件大小不能超过 20MB");
             verifyNoInteractions(sysAttachmentMapper);
         }
 
@@ -216,7 +219,7 @@ class SysAttachmentServiceImplTest {
             given(sysAttachmentMapper.selectCount(any())).willReturn(20L);
 
             // When + Then
-            assertThatThrownBy(() -> service.upload(file, "PURCHASE_RECEIPT", 1L, null))
+            assertThatThrownBy(() -> service.upload(file, new AttachmentBizQueryDTO("PURCHASE_RECEIPT", 1L, null)))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode())
                         .isEqualTo(SystemManageErrorCode.ATTACHMENT_COUNT_EXCEEDED.getCode()))
@@ -236,7 +239,7 @@ class SysAttachmentServiceImplTest {
             });
 
             // When
-            service.upload(file, "PURCHASE_RECEIPT", 1L, null);
+            service.upload(file, new AttachmentBizQueryDTO("PURCHASE_RECEIPT", 1L, null));
 
             // Then：落库文件名剥离路径分隔符，存储相对路径仍由服务端生成
             verify(sysAttachmentMapper).insert(attachmentCaptor.capture());
@@ -255,7 +258,7 @@ class SysAttachmentServiceImplTest {
             willThrow(new IOException("disk full")).given(file).transferTo(any(Path.class));
 
             // When + Then：写盘失败转系统错误且不落库
-            assertThatThrownBy(() -> service.upload(file, "PURCHASE_RECEIPT", 1L, null))
+            assertThatThrownBy(() -> service.upload(file, new AttachmentBizQueryDTO("PURCHASE_RECEIPT", 1L, null)))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.SYSTEM_ERROR.getCode()))
                 .hasMessage("附件保存失败，请稍后重试");
@@ -278,7 +281,7 @@ class SysAttachmentServiceImplTest {
             given(sysAttachmentMapper.selectList(any())).willReturn(List.of(a1, a2));
 
             // When
-            List<AttachmentVO> vos = service.listByBiz("PURCHASE_RECEIPT", 1L);
+            List<AttachmentVO> vos = service.listByBiz(new AttachmentBizQueryDTO("PURCHASE_RECEIPT", 1L, null));
 
             // Then：按 Mapper 返回顺序映射并携带下载地址
             assertThat(vos).hasSize(2);
@@ -297,7 +300,7 @@ class SysAttachmentServiceImplTest {
         void shouldThrow_whenBizParamsMissing() {
             // Given：业务主键为空
             // When + Then
-            assertThatThrownBy(() -> service.listByBiz("PURCHASE_RECEIPT", null))
+            assertThatThrownBy(() -> service.listByBiz(new AttachmentBizQueryDTO("PURCHASE_RECEIPT", null, null)))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
                 .hasMessage("业务类型与业务主键不能为空");

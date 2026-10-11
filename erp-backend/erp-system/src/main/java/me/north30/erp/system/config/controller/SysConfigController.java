@@ -15,6 +15,7 @@ import me.north30.erp.system.config.dto.ConfigUpdateDTO;
 import me.north30.erp.system.config.service.SysConfigService;
 import me.north30.erp.system.config.vo.ConfigUpdateVO;
 import me.north30.erp.system.config.vo.ConfigVO;
+import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.common.vo.MutationVO;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -88,7 +89,7 @@ public class SysConfigController {
     @ApiResponse(responseCode = "422", description = "业务校验失败（18032 系统参数不存在、18033 内置系统参数不可删除）",
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
-    public Result<MutationVO> delete(@PathVariable Long id) {
+    public Result<DeleteResultVO> delete(@PathVariable Long id) {
         return Result.success(sysConfigService.delete(id));
     }
 }

@@ -6,6 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.util.DateTimeFormatUtil;
+import me.north30.erp.common.util.QueryGuardUtil;
+import me.north30.erp.common.util.UpdateGuardUtil;
 import me.north30.erp.system.common.util.DeptTreeUtil;
 import me.north30.erp.system.dept.converter.DeptConverter;
 import me.north30.erp.system.dept.dto.DeptCreateDTO;
@@ -67,7 +69,7 @@ public class SysDeptManageServiceImpl implements SysDeptManageService {
     @Transactional(rollbackFor = Exception.class)
     public DeptMutationVO create(DeptCreateDTO dto) {
         sysDeptService.requireDeptCodeAvailable(dto.deptCode());
-        SysDept dept = deptConverter.toCreatedEntity(dto);
+        SysDept dept = deptConverter.createDept(dto);
         dept.applyParent(deptTreeStrategy.resolveParent(dto.parentId()));
         if (dept.getDeptSort() == null) {
             dept.setDeptSort(0);
@@ -103,11 +105,10 @@ public class SysDeptManageServiceImpl implements SysDeptManageService {
             dept.applyParent(newParent);
         }
 
-        deptConverter.toUpdatedEntity(dto, dept);
-
-        if (sysDeptMapper.updateById(dept) == 0) {
-            throw new BusinessException(CommonErrorCode.OPTIMISTIC_LOCK_CONFLICT);
-        }
+        deptConverter.updateDept(dto, dept);
+        dept.setVersion(dto.version());
+        UpdateGuardUtil.checkOptimisticLockConflict(sysDeptMapper.updateById(dept));
+        
         if (parentChanged) {
             deptTreeStrategy.cascadeRefreshDescendants(deptTreeStrategy.loadDeptMap(), dept);
         }

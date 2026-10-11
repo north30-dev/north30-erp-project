@@ -90,5 +90,5 @@
 
 ## 六、关联未决事项
 
-- **ManagementService 命名统一**（`SysUserManagementService` 等 4 个，补 Sys 前缀 + Management 拼法统一）：方案已讨论达成倾向，待确认后单独 refactor commit，不与本方案混提。
+- **ManagementService 命名统一（已定稿 2026-10-11）**：采用 ApplicationService + DomainService 风格并保留 Sys 前缀——`SysXxxManagementService` → `SysXxxApplicationService`（编排层），`SysXxxService` → `SysXxxDomainService`（领域基础服务）；单独 refactor commit，不与本方案混提。
 - 守卫层双接口是否引入 `DomainService` 后缀（方案二）：仅讨论，未决。

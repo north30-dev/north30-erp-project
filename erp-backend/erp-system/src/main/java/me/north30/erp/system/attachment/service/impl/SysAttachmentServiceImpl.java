@@ -11,6 +11,8 @@ import me.north30.erp.system.attachment.entity.SysAttachment;
 import me.north30.erp.system.attachment.mapper.SysAttachmentMapper;
 import me.north30.erp.system.attachment.service.SysAttachmentService;
 import me.north30.erp.system.attachment.strategy.FileStorageStrategy;
+import me.north30.erp.system.attachment.strategy.FileValidStrategy;
+import me.north30.erp.system.attachment.dto.AttachmentBizQueryDTO;
 import me.north30.erp.system.attachment.vo.AttachmentDownloadVO;
 import me.north30.erp.system.attachment.vo.AttachmentVO;
 import me.north30.erp.system.common.enums.SystemManageErrorCode;
@@ -42,23 +44,22 @@ public class SysAttachmentServiceImpl implements SysAttachmentService {
     private final SysAttachmentMapper sysAttachmentMapper;
     private final AttachmentConverter attachmentConverter;
     private final FileStorageStrategy fileStorageStrategy;
+    private final FileValidStrategy fileValidStrategy;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public AttachmentVO upload(MultipartFile file, String bizType, Long bizId, String bizCode) {
-        if (file == null || file.isEmpty()) {
-            throw new BusinessException(CommonErrorCode.PARAM_ERROR, "上传文件不能为空");
-        }
-        if (!StringUtils.hasText(bizType) || bizId == null) {
+    public AttachmentVO upload(MultipartFile file, AttachmentBizQueryDTO query) {
+        fileValidStrategy.requireFileNotEmpty(file);
+        if (!StringUtils.hasText(query.bizType()) || query.bizId() == null) {
             throw new BusinessException(CommonErrorCode.PARAM_ERROR, "业务类型与业务主键不能为空");
         }
         String fileType = fileStorageStrategy.resolveFileType(file.getOriginalFilename());
         if (file.getSize() > FileStorageStrategy.MAX_FILE_SIZE) {
-            throw new BusinessException(SystemManageErrorCode.ATTACHMENT_SIZE_EXCEEDED);
+            throw new BusinessException(SystemManageErrorCode.ATTACHMENT_SIZE_EXCEEDED, "上传文件大小不能超过 20MB");
         }
         Long count = sysAttachmentMapper.selectCount(new LambdaQueryWrapper<SysAttachment>()
-            .eq(SysAttachment::getBizType, bizType.trim())
-            .eq(SysAttachment::getBizId, bizId));
+            .eq(SysAttachment::getBizType, query.bizType().trim())
+            .eq(SysAttachment::getBizId, query.bizId()));
         if (count != null && count >= MAX_COUNT_PER_BIZ) {
             throw new BusinessException(SystemManageErrorCode.ATTACHMENT_COUNT_EXCEEDED);
         }
@@ -67,9 +68,9 @@ public class SysAttachmentServiceImpl implements SysAttachmentService {
         fileStorageStrategy.writeFile(relativePath, file);
 
         SysAttachment attachment = new SysAttachment();
-        attachment.setBizType(bizType.trim());
-        attachment.setBizId(bizId);
-        attachment.setBizCode(bizCode);
+        attachment.setBizType(query.bizType().trim());
+        attachment.setBizId(query.bizId());
+        attachment.setBizCode(query.bizCode());
         attachment.setFileName(fileName);
         attachment.setFilePath(relativePath);
         attachment.setFileType(fileType);
@@ -79,26 +80,26 @@ public class SysAttachmentServiceImpl implements SysAttachmentService {
         attachment.setUploadBy(user != null ? user.username() : "system");
         attachment.setUploadTime(LocalDateTime.now());
         sysAttachmentMapper.insert(attachment);
-        return attachmentConverter.toVO(attachment);
+        return attachmentConverter.toAttachmentVO(attachment);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<AttachmentVO> listByBiz(String bizType, Long bizId) {
-        if (!StringUtils.hasText(bizType) || bizId == null) {
+    public List<AttachmentVO> listByBiz(AttachmentBizQueryDTO query) {
+        if (!StringUtils.hasText(query.bizType()) || query.bizId() == null) {
             throw new BusinessException(CommonErrorCode.PARAM_ERROR, "业务类型与业务主键不能为空");
         }
         List<SysAttachment> list = sysAttachmentMapper.selectList(new LambdaQueryWrapper<SysAttachment>()
-            .eq(SysAttachment::getBizType, bizType.trim())
-            .eq(SysAttachment::getBizId, bizId)
+            .eq(SysAttachment::getBizType, query.bizType().trim())
+            .eq(SysAttachment::getBizId, query.bizId())
             .orderByDesc(SysAttachment::getId));
-        return list.stream().map(attachmentConverter::toVO).toList();
+        return list.stream().map(attachmentConverter::toAttachmentVO).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public AttachmentDownloadVO download(Long id) {
-        SysAttachment attachment = requireAttachment(id);
+        SysAttachment attachment = fileValidStrategy.requireAttachment(id);
         Path target = fileStorageStrategy.resolveStoredPath(attachment.getFilePath());
         if (!Files.exists(target)) {
             log.warn("附件物理文件缺失：id={}, path={}", id, attachment.getFilePath());
@@ -110,7 +111,7 @@ public class SysAttachmentServiceImpl implements SysAttachmentService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public DeleteResultVO delete(Long id) {
-        SysAttachment attachment = requireAttachment(id);
+        SysAttachment attachment = fileValidStrategy.requireAttachment(id);
         LoginUser user = SecurityUtils.requireCurrentUser();
         // 横向数据守卫：仅上传人可删除（接口文档 5.9.4 错误码 10202）
         if (!user.username().equals(attachment.getUploadBy())) {
@@ -120,12 +121,4 @@ public class SysAttachmentServiceImpl implements SysAttachmentService {
         return new DeleteResultVO(id, 1);
     }
 
-    @Override
-    public SysAttachment requireAttachment(Long id) {
-        SysAttachment attachment = sysAttachmentMapper.selectById(id);
-        if (attachment == null || Integer.valueOf(1).equals(attachment.getIsDeleted())) {
-            throw new BusinessException(SystemManageErrorCode.ATTACHMENT_NOT_FOUND);
-        }
-        return attachment;
-    }
 }

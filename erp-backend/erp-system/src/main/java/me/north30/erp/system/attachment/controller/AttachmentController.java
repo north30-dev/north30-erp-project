@@ -6,11 +6,15 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import me.north30.erp.common.result.Result;
+import me.north30.erp.system.attachment.dto.AttachmentBizQueryDTO;
 import me.north30.erp.system.attachment.service.SysAttachmentService;
 import me.north30.erp.system.attachment.vo.AttachmentDownloadVO;
 import me.north30.erp.system.attachment.vo.AttachmentVO;
 import me.north30.erp.system.common.vo.DeleteResultVO;
+
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -60,13 +64,8 @@ public class AttachmentController {
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<AttachmentVO> upload(@Parameter(description = "附件文件（必填，支持 pdf/jpg/jpeg/png/xlsx/docx，不超过 20MB）")
                                        @RequestPart("file") MultipartFile file,
-                                       @Parameter(description = "业务类型（必填，附件所属业务类型，服务端按其 + 业务主键统计附件数量）")
-                                       @RequestParam("bizType") String bizType,
-                                       @Parameter(description = "业务主键（必填，附件所属业务记录 ID）")
-                                       @RequestParam("bizId") Long bizId,
-                                       @Parameter(description = "单据号（可选，附件所属业务单据编码）")
-                                       @RequestParam(value = "bizCode", required = false) String bizCode) {
-        return Result.success(attachmentService.upload(file, bizType, bizId, bizCode));
+                                       @ParameterObject @Valid AttachmentBizQueryDTO query) {
+        return Result.success(attachmentService.upload(file, query));
     }
 
     /**
@@ -75,11 +74,8 @@ public class AttachmentController {
     @GetMapping
     @PreAuthorize("hasAuthority('system:attachment:list')")
     @Operation(summary = "附件列表查询", description = "权限点 system:attachment:list；按业务类型 + 业务主键查询，不分页，按 ID 倒序")
-    public Result<List<AttachmentVO>> list(@Parameter(description = "业务类型（必填）")
-                                           @RequestParam("bizType") String bizType,
-                                           @Parameter(description = "业务主键（必填）")
-                                           @RequestParam("bizId") Long bizId) {
-        return Result.success(attachmentService.listByBiz(bizType, bizId));
+    public Result<List<AttachmentVO>> list(@ParameterObject @Valid AttachmentBizQueryDTO query) {
+        return Result.success(attachmentService.listByBiz(query));
     }
 
     /**
@@ -94,10 +90,12 @@ public class AttachmentController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public ResponseEntity<Resource> download(@PathVariable Long id) {
+        
         AttachmentDownloadVO download = attachmentService.download(id);
         ContentDisposition disposition = ContentDisposition.attachment()
             .filename(download.fileName(), StandardCharsets.UTF_8)
             .build();
+
         return ResponseEntity.ok()
             .contentType(MediaType.APPLICATION_OCTET_STREAM)
             .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())

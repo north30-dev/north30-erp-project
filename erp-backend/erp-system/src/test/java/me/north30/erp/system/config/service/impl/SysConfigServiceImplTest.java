@@ -5,6 +5,7 @@ import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.common.vo.MutationVO;
 import me.north30.erp.system.config.ConfigTestFactory;
 import me.north30.erp.system.config.converter.ConfigConverter;
@@ -407,11 +408,10 @@ class SysConfigServiceImplTest {
             given(sysConfigMapper.deleteById(1L)).willReturn(1);
 
             // When
-            MutationVO vo = service.delete(1L);
+            DeleteResultVO vo = service.delete(1L);
 
             // Then
             assertThat(vo.id()).isEqualTo(1L);
-            assertThat(vo.updateTime()).isNull();
             assertThat(vo.isDeleted()).isEqualTo(1);
             verify(sysConfigMapper).deleteById(1L);
         }

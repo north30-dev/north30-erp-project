@@ -16,8 +16,11 @@ import me.north30.erp.system.common.util.PageNormalizer;
 import me.north30.erp.system.config.mapper.SysConfigMapper;
 import me.north30.erp.system.config.service.SysConfigService;
 import me.north30.erp.common.util.DateTimeFormatUtil;
+import me.north30.erp.common.util.QueryGuardUtil;
+import me.north30.erp.common.util.UpdateGuardUtil;
 import me.north30.erp.system.config.vo.ConfigUpdateVO;
 import me.north30.erp.system.config.vo.ConfigVO;
+import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.common.vo.MutationVO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,15 +38,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SysConfigServiceImpl implements SysConfigService {
 
-    /** 默认启用状态 */
-    private static final int STATUS_ENABLED = 1;
-
-    /** 逻辑删除标记 */
-    private static final int DELETED = 1;
-
-    /** 内置参数标记 */
-    private static final int SYSTEM_BUILTIN = 1;
-
     private final SysConfigMapper sysConfigMapper;
     private final ObjectMapper objectMapper;
     private final ConfigConverter configConverter;
@@ -60,26 +54,21 @@ public class SysConfigServiceImpl implements SysConfigService {
             .eq(query.status() != null, SysConfig::getStatus, query.status())
             .orderByAsc(SysConfig::getId);
         Page<SysConfig> page = sysConfigMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
-        List<ConfigVO> vos = page.getRecords().stream().map(configConverter::toVO).toList();
+        List<ConfigVO> vos = page.getRecords().stream().map(configConverter::toConfigVO).toList();
         return PageResult.of(page.getTotal(), pageNum, pageSize, vos);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public MutationVO create(ConfigCreateDTO dto) {
-        SysConfig config = configConverter.toEntity(dto);
+        SysConfig config = configConverter.createConfig(dto);
         config.validateValue(objectMapper);
         Long exists = sysConfigMapper.selectCount(
             new LambdaQueryWrapper<SysConfig>().eq(SysConfig::getConfigKey, dto.configKey()));
-        if (exists != null && exists > 0) {
-            throw new BusinessException(CommonErrorCode.DUPLICATE_KEY, "参数键 " + dto.configKey() + " 已存在，请检查后重试");
-        }
-        if (config.getIsSystem() == null) {
-            config.setIsSystem(0);
-        }
-        if (config.getStatus() == null) {
-            config.setStatus(STATUS_ENABLED);
-        }
+        QueryGuardUtil.requireCountZero(exists, 
+            CommonErrorCode.DUPLICATE_KEY, "参数键 " + dto.configKey() + " 已存在，请检查后重试");
+        config.initIsSystemParam();
+        config.initStatusParam();
         sysConfigMapper.insert(config);
         return new MutationVO(config.getId(), null, null);
     }
@@ -87,41 +76,25 @@ public class SysConfigServiceImpl implements SysConfigService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ConfigUpdateVO update(Long id, ConfigUpdateDTO dto) {
-        SysConfig config = sysConfigMapper.selectById(id);
-        if (config == null) {
-            throw new BusinessException(SystemManageErrorCode.CONFIG_NOT_FOUND, "系统参数 " + id + " 不存在");
-        }
-        config.setConfigValue(dto.configValue());
+        SysConfig config = QueryGuardUtil.requirePresent(sysConfigMapper.selectById(id), 
+            SystemManageErrorCode.CONFIG_NOT_FOUND, "系统参数 " + id + " 不存在");
+        configConverter.updateConfig(dto, config);
         config.validateValue(objectMapper);
-        if (dto.configName() != null) {
-            config.setConfigName(dto.configName());
-        }
-        if (dto.status() != null) {
-            config.setStatus(dto.status());
-        }
-        if (dto.remark() != null) {
-            config.setRemark(dto.remark());
-        }
         config.setVersion(dto.version());
-        if (sysConfigMapper.updateById(config) == 0) {
-            throw new BusinessException(CommonErrorCode.OPTIMISTIC_LOCK_CONFLICT);
-        }
+        UpdateGuardUtil.checkOptimisticLockConflict(sysConfigMapper.updateById(config));
         // 缓存 system:param:{configKey} 的事务提交后失效在缓存模块接入时补充
         return new ConfigUpdateVO("参数将在 1 分钟内生效", DateTimeFormatUtil.format(config.getUpdateTime()));
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public MutationVO delete(Long id) {
-        SysConfig config = sysConfigMapper.selectById(id);
-        if (config == null) {
-            throw new BusinessException(SystemManageErrorCode.CONFIG_NOT_FOUND, "系统参数 " + id + " 不存在");
-        }
-        if (config.getIsSystem() != null && config.getIsSystem() == SYSTEM_BUILTIN) {
-            throw new BusinessException(SystemManageErrorCode.BUILTIN_CONFIG_UNDELETABLE,
-                "内置系统参数 " + config.getConfigKey() + " 不可删除");
-        }
+    public DeleteResultVO delete(Long id) {
+        SysConfig config = QueryGuardUtil.requirePresent(sysConfigMapper.selectById(id), 
+            SystemManageErrorCode.CONFIG_NOT_FOUND, "系统参数 " + id + " 不存在");
+        config.validateIsSystem();
         sysConfigMapper.deleteById(id);
-        return new MutationVO(id, null, DELETED);
+        // 逻辑删除语义：删除成功后实体侧置位，供 DeleteResultVO 回执
+        config.setIsDeleted(1);
+        return new DeleteResultVO(id, config.getIsDeleted());
     }
 }
