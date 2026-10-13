@@ -14,7 +14,7 @@
 | dept | **B** | 跨表校验（环检测、级联重算）①；关联 2 表（user 挂靠计数）②；树状态变化③；规则 5+（层级上限、编码唯一、级联刷新）④；被 user/auth 调用⑤ | 同上（DeptTreeStrategy 已具备） |
 | auth | **B** | 跨表/跨域协调（user/role/menu/dept 五域取数）①；状态变化（token 签发/会话失效）②；规则 6+（密码过期、账号锁定、验证码、会话清理）③ | `auth/{controller, service(App+Domain), dto, vo, strategy}`（无 Entity/Mapper，纯编排读模型） |
 | log | **A** | 90% 是追加写+查询①；Entity 单表②；校验仅格式③；无状态流转④ | `log/{controller, service, mapper, entity, dto, vo, converter, strategy}`（保留 AuditLogDiffStrategy 纯函数） |
-| dict | **A** | 90% CRUD①；单表（type/item 各自单表）②；校验仅格式/存在性③；无状态流转④ | `dict/{controller, service, mapper, entity, dto, vo, converter}`（**撤销 ManagementService**） |
+| dict | **A** | 90% CRUD①；单表（type/item 各自单表）②；校验仅格式/存在性③；无状态流转④ | `dict/{controller, service, mapper, entity, dto, vo, converter}`（**已撤销 ManagementService，2026-10-11 执行**） |
 | config | **A** | 90% CRUD①；单表②；校验仅格式（valueType）③；无状态流转④ | 同上（**撤销 ManagementService**，SysConfig.validateValueByType 充血保留） |
 | attachment | **A** | 校验仅格式/上限①；无状态流转②；无跨域③ | `attachment/{controller, service, mapper, entity, dto, vo, converter, strategy}`（FileStorageStrategy 保留，IO 收纳有价值） |
 | importtask | **A** | 90% CRUD①；单表②；无校验/无状态③ | `importtask/{controller, service, mapper, vo}` |
@@ -63,6 +63,8 @@
 **dict / config（过度设计典型）**
 - 问题：`DictManagementService` + `SysDictTypeService`/`SysDictItemService` 三层并存，但 dict/config 是纯 CRUD——ManagementService 只是零价值转发，双 Service 属模板套用；双向 Mapper 依赖已收敛，无剩余痛点；此外 item/type 的缺省兜底 if 散落 Service（见上，下沉 `fillDefaults()`）。
 - 方向：**撤销 ManagementService**，Controller 直调单层 `SysDictTypeService`/`SysDictItemService`/`SysConfigService`；A 类域不改名 DomainService（单层即 DomainService 本身，无需后缀区分）。
+- **dict 执行记录（2026-10-11）**：已删除 `DictManagementService`/`DictManagementServiceImpl`，8 个用例合并进 `SysDictTypeService`（pageType/createType/updateType/deleteType）与 `SysDictItemService`（pageItem/createItem/updateItem/deleteItem），Controller 直调单层 Service；守卫收敛为 `requireDictTypeAvailable`/`requireById`/`requireByDictType`/`requireItemAvailable`（requireXxx 即 A 类单层 Service 的本职，"只做编排"约束的是编排层而非领域服务），全部改用 `QueryGuardUtil.requirePresent/requireCountZero` + `UpdateGuardUtil.checkOptimisticLockConflict`；删除用例统一返回 `DeleteResultVO`；依赖方向 item → type（`SysDictItemServiceImpl` 注入 `SysDictTypeService.requireByDictType`，type 不反向依赖 item，无环），type 侧的字典项计数为查询装配辅助（私有 `countItemsByTypes`，非校验，保留）；`SysDictType.applyCreateDefault()` 充血（status 兜底）；全量 356 单测通过，错误码与 API 行为无变化。
+- **config 执行记录（2026-10-11，用户手动完成）**：已确认 config 无需执行回退——核查代码即已是单层 `SysConfigService`（无 ManagementService），4 个用例全部被 Controller 直调；守卫工具与 Entity 充血均已到位（`QueryGuardUtil.requirePresent/requireCountZero`、`UpdateGuardUtil.checkOptimisticLockConflict`、`SysConfig.validateValue/validateIsSystem/applyCreateDefault`）。与 dict 的差异：config 无跨域消费预期（业务域读参数应走后续缓存化参数接口而非管理 Service），故存在性守卫保持内联不设接口方法，仅 update/delete 处 `requirePresent(selectById)` 有两处重复，可选收敛为私有 `requireById`。**P2（dict/config 撤双层 + A 类 Entity 充血）至此全部完成**。
 
 **log / attachment / importtask / codesequence**
 - log：AuditLogDiffStrategy 纯函数保留（有真实复用价值）；其余不动。
@@ -92,12 +94,12 @@
 |---|---|---|
 | **P0**（进行中/有硬违规） | user、role、menu、dept | 02 方案 Commit ①②：跨域 Mapper 收敛 + 守卫进 DomainService + Entity 充血 + Strategy 下沉 |
 | **P1**（被多域依赖，改名影响面大） | 全体 B 类 + auth | 命名统一：`SysXxxManagementService`→`SysXxxApplicationService`（4 个）、`SysXxxService`→`SysXxxDomainService`（B 类 5 个）；单独 refactor commit，Controller/测试成套改 |
-| **P2**（过度设计回退，中等收益） | dict、config | 撤销 ManagementService 双层，Controller 直调单层 Service |
+| **P2**（过度设计回退，中等收益） | dict、config | 撤销 ManagementService 双层，Controller 直调单层 Service（**已完成 2026-10-11：dict 回退执行，config 核查时已是单层**） |
 | **P3**（简单且稳定，不动） | log、attachment、importtask、codesequence | 仅 attachment 按既定结论删 2 处死代码/内联判空，其余零改动 |
 
 ## 五、实施顺序建议
 
 1. P0（02 方案两步 commit，行为不变）；
 2. P1（纯改名 commit，编译期可验证）；
-3. P2（dict/config 回退 + A 类 Entity 缺省兜底/格式校验下沉 `fillDefaults()` 等，删代码与搬方法为主）；
+3. ~~P2（dict/config 回退 + A 类 Entity 缺省兜底/格式校验下沉 `fillDefaults()` 等，删代码与搬方法为主）~~（**已完成 2026-10-11**）；
 4. 每步 `mvn clean compile` + 全量 338 单测。

@@ -12,8 +12,9 @@ import me.north30.erp.common.result.Result;
 import me.north30.erp.system.dict.dto.DictTypeCreateDTO;
 import me.north30.erp.system.dict.dto.DictTypeQueryDTO;
 import me.north30.erp.system.dict.dto.DictTypeUpdateDTO;
-import me.north30.erp.system.dict.service.DictManagementService;
+import me.north30.erp.system.dict.service.SysDictTypeService;
 import me.north30.erp.system.dict.vo.DictTypeVO;
+import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.common.vo.MutationVO;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -40,7 +41,7 @@ public class SysDictTypeController {
         {"code": 18029, "message": "字典类型已存在", "data": null, "timestamp": "2026-01-01 00:00:00", "traceId": "..."}\
         """;
 
-    private final DictManagementService dictManagementService;
+    private final SysDictTypeService sysDictTypeService;
 
     /**
      * 5.5.1 字典类型分页查询。
@@ -49,7 +50,7 @@ public class SysDictTypeController {
     @PreAuthorize("hasAuthority('system:dict:list')")
     @Operation(summary = "字典类型分页查询", description = "权限点 system:dict:list")
     public Result<PageResult<DictTypeVO>> page(@ParameterObject @Valid DictTypeQueryDTO query) {
-        return Result.success(dictManagementService.pageType(query));
+        return Result.success(sysDictTypeService.pageType(query));
     }
 
     /**
@@ -62,7 +63,7 @@ public class SysDictTypeController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<MutationVO> create(@Valid @RequestBody DictTypeCreateDTO dto) {
-        return Result.success(dictManagementService.createType(dto));
+        return Result.success(sysDictTypeService.createType(dto));
     }
 
     /**
@@ -75,7 +76,7 @@ public class SysDictTypeController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<MutationVO> update(@PathVariable Long id, @Valid @RequestBody DictTypeUpdateDTO dto) {
-        return Result.success(dictManagementService.updateType(id, dto));
+        return Result.success(sysDictTypeService.updateType(id, dto));
     }
 
     /**
@@ -87,7 +88,7 @@ public class SysDictTypeController {
     @ApiResponse(responseCode = "422", description = "业务校验失败（18028 字典类型不存在、18030 字典类型下存在字典项不可删除）",
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
-    public Result<MutationVO> delete(@PathVariable Long id) {
-        return Result.success(dictManagementService.deleteType(id));
+    public Result<DeleteResultVO> delete(@PathVariable Long id) {
+        return Result.success(sysDictTypeService.deleteType(id));
     }
 }

@@ -21,4 +21,17 @@ public class SysDictType extends BaseEntity {
 
     /** 状态 0-停用 1-启用 */
     private Integer status;
+
+    /**
+     * 应用创建值默认值。
+     * <p>
+     * 仅在创建时应用，默认值。
+     * status 状态默认值 1-启用
+     * </p>
+     */
+    public void applyCreateDefault() {
+        if (status == null) {
+            status = 1;
+        }
+    }
 }
