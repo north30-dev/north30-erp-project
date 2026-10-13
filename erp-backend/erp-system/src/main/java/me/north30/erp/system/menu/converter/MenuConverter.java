@@ -37,7 +37,7 @@ public interface MenuConverter {
     @Mapping(target = "visible")
     @Mapping(target = "status")
     @Mapping(target = "remark")
-    SysMenu toEntity(MenuCreateDTO dto);
+    SysMenu createSysMenu(MenuCreateDTO dto);
 
     /**
      * 修改菜单 DTO 合并到已加载实体（null 字段跳过，实现部分更新语义）。
@@ -55,18 +55,18 @@ public interface MenuConverter {
     @Mapping(target = "visible")
     @Mapping(target = "status")
     @Mapping(target = "remark")
-    void updateEntity(MenuUpdateDTO dto, @MappingTarget SysMenu menu);
+    void updateSysMenu(MenuUpdateDTO dto, @MappingTarget SysMenu menu);
 
     /**
      * 实体 → 树节点 VO（children 由树构建逻辑装配）。
      */
     @Mapping(target = "children", ignore = true)
-    MenuNodeVO toNodeVO(SysMenu menu);
+    MenuNodeVO toMenuNodeVO(SysMenu menu);
 
     /**
      * 实体 → 菜单树 VO（children 由树构建逻辑装配）。
      */
     @Mapping(target = "menuId", source = "id")
     @Mapping(target = "children", ignore = true)
-    MenuTreeVO toTreeVO(SysMenu menu);
+    MenuTreeVO toMenuTreeVO(SysMenu menu);
 }

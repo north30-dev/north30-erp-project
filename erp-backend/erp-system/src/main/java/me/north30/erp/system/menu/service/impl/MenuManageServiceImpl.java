@@ -54,7 +54,7 @@ public class MenuManageServiceImpl implements MenuManageService {
             .like(StringUtils.hasText(query.menuName()), SysMenu::getMenuName, query.menuName())
             .like(StringUtils.hasText(query.perms()), SysMenu::getPerms, query.perms())
             .eq(query.status() != null, SysMenu::getStatus, query.status()));
-        List<MenuNodeVO> nodes = menus.stream().map(menuConverter::toNodeVO).toList();
+        List<MenuNodeVO> nodes = menus.stream().map(menuConverter::toMenuNodeVO).toList();
         return menuTreeUtil.buildNodeTree(nodes);
     }
 
@@ -68,18 +68,10 @@ public class MenuManageServiceImpl implements MenuManageService {
                 throw new BusinessException(SystemErrorCode.MENU_LEVEL_EXCEEDED);
             }
         }
-        SysMenu menu = menuConverter.toEntity(dto);
+        SysMenu menu = menuConverter.createSysMenu(dto);
         menu.requireTypeFieldsValid();
         checkPermsUnique(menu.getPerms(), null);
-        if (menu.getMenuSort() == null) {
-            menu.setMenuSort(0);
-        }
-        if (menu.getVisible() == null) {
-            menu.setVisible(1);
-        }
-        if (menu.getStatus() == null) {
-            menu.setStatus(1);
-        }
+        menu.applyCreateDefaults();
         menu.clearRouteFieldsIfButton();
         sysMenuMapper.insert(menu);
         return new MenuCreatedVO(menu.getId());
@@ -93,7 +85,7 @@ public class MenuManageServiceImpl implements MenuManageService {
             validateParent(id, dto.parentId());
         }
         // null 字段跳过（部分更新语义），按钮字段清空与乐观锁 version 由下方逻辑处理
-        menuConverter.updateEntity(dto, menu);
+        menuConverter.updateSysMenu(dto, menu);
         menu.requireTypeFieldsValid();
         checkPermsUnique(menu.getPerms(), id);
         menu.clearRouteFieldsIfButton();

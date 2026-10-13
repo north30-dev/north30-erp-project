@@ -1,6 +1,7 @@
 package me.north30.erp.system.codesequence.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.injector.methods.Update;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +11,8 @@ import me.north30.erp.common.audit.OperateTypeEnum;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
+import me.north30.erp.common.util.QueryGuardUtil;
+import me.north30.erp.common.util.UpdateGuardUtil;
 import me.north30.erp.system.codesequence.converter.CodeSequenceConverter;
 import me.north30.erp.system.codesequence.dto.CodeSequenceQueryDTO;
 import me.north30.erp.system.codesequence.dto.CodeSequenceResetDTO;
@@ -58,23 +61,19 @@ public class SysCodeSequenceServiceImpl implements SysCodeSequenceService {
     @Transactional(rollbackFor = Exception.class)
     @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     public CodeSequenceResetVO reset(CodeSequenceResetDTO dto) {
-        SysCodeSequence sequence = sysCodeSequenceMapper.selectOne(new LambdaQueryWrapper<SysCodeSequence>()
+        LambdaQueryWrapper<SysCodeSequence> wrapper = new LambdaQueryWrapper<SysCodeSequence>()
             .eq(SysCodeSequence::getBizType, dto.bizType())
-            .eq(SysCodeSequence::getPeriod, dto.period()));
-        if (sequence == null) {
-            throw new BusinessException(SystemErrorCode.SEQUENCE_NOT_FOUND,
-                "编号序列 " + dto.bizType() + "/" + dto.period() + " 不存在");
-        }
-        if (dto.currentNo() < sequence.getCurrentNo()) {
-            throw new BusinessException(SystemErrorCode.SEQUENCE_RESET_CONFLICT,
-                "流水号重置值不得小于当前已用流水号 " + sequence.getCurrentNo());
-        }
+            .eq(SysCodeSequence::getPeriod, dto.period());
+
+        SysCodeSequence sequence = QueryGuardUtil.requirePresent(sysCodeSequenceMapper.selectOne(wrapper),
+            SystemErrorCode.SEQUENCE_NOT_FOUND,
+            "编号序列 " + dto.bizType() + "/" + dto.period() + " 不存在");
+
+        sequence.validateResetCurrentNo(dto.currentNo());
         // 幂等：目标值与当前值相同则跳过更新
         if (!dto.currentNo().equals(sequence.getCurrentNo())) {
             sequence.setCurrentNo(dto.currentNo());
-            if (sysCodeSequenceMapper.updateById(sequence) == 0) {
-                throw new BusinessException(CommonErrorCode.OPTIMISTIC_LOCK_CONFLICT);
-            }
+            UpdateGuardUtil.checkOptimisticLockConflict(sysCodeSequenceMapper.updateById(sequence));
             log.info("编号序列已重置 | bizType: {} | period: {} | currentNo: {} | 原因: {}",
                 dto.bizType(), dto.period(), dto.currentNo(), dto.reason());
         }

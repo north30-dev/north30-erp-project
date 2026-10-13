@@ -109,6 +109,6 @@ public class MenuTreeUtil {
      * 实体 → 树 VO 转换（委托 MenuConverter）。
      */
     public MenuTreeVO toVO(SysMenu menu) {
-        return menuConverter.toTreeVO(menu);
+        return menuConverter.toMenuTreeVO(menu);
     }
 }

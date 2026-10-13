@@ -52,6 +52,18 @@ public class SysMenu extends BaseEntity {
     /** 状态 0-停用 1-启用 */
     private Integer status;
 
+    public void applyCreateDefaults() {
+        if (menuSort == null) {
+            menuSort = 0;
+        }
+        if (visible == null) {
+            visible = 1;
+        }
+        if (status == null) {
+            status = 1;
+        }
+    }
+
     /**
      * 校验菜单类型与按类型的必填字段（目录/菜单必填 path，菜单还需 component，按钮必填 perms）。
      * <p>仅校验自身状态，非法抛 10001 参数错误。</p>
