@@ -9,7 +9,7 @@ import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.system.attachment.entity.SysAttachment;
 import me.north30.erp.system.attachment.mapper.SysAttachmentMapper;
-import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 
 /**
  * 附件校验策略：
@@ -30,7 +30,7 @@ public class FileValidStrategy {
     public SysAttachment requireAttachment(Long id){
         SysAttachment attachment = sysAttachmentMapper.selectById(id);
         if (attachment == null) {
-            throw new BusinessException(SystemManageErrorCode.ATTACHMENT_NOT_FOUND, "附件不存在");
+            throw new BusinessException(SystemErrorCode.ATTACHMENT_NOT_FOUND, "附件不存在");
         }
         return attachment;
     }

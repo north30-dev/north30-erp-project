@@ -3,7 +3,7 @@ package me.north30.erp.system.menu.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
-import me.north30.erp.system.common.enums.RoleMenuErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.common.util.MenuTreeUtil;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.menu.MenuTestFactory;
@@ -209,7 +209,7 @@ class MenuManageServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.create(dto))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(RoleMenuErrorCode.MENU_NOT_FOUND.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.MENU_NOT_FOUND.getCode()))
                 .hasMessage("上级菜单不存在或已删除");
             verify(sysMenuMapper, never()).insert(any(SysMenu.class));
         }
@@ -224,7 +224,7 @@ class MenuManageServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.create(dto))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(RoleMenuErrorCode.MENU_LEVEL_EXCEEDED.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.MENU_LEVEL_EXCEEDED.getCode()))
                 .hasMessage("菜单仅支持三级（目录/菜单/按钮）");
             verify(sysMenuMapper, never()).insert(any(SysMenu.class));
         }
@@ -267,7 +267,7 @@ class MenuManageServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.create(dto))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(RoleMenuErrorCode.MENU_PERMS_DUPLICATED.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.MENU_PERMS_DUPLICATED.getCode()))
                 .hasMessage("权限标识 sys:menu:add 已存在");
             verify(sysMenuMapper, never()).insert(any(SysMenu.class));
         }
@@ -307,12 +307,12 @@ class MenuManageServiceImplTest {
         void shouldThrow_whenMenuNotFound() {
             // Given
             given(sysMenuService.requireMenu(1L))
-                .willThrow(new BusinessException(RoleMenuErrorCode.MENU_NOT_FOUND));
+                .willThrow(new BusinessException(SystemErrorCode.MENU_NOT_FOUND));
 
             // When + Then
             assertThatThrownBy(() -> service.update(1L, MenuTestFactory.updateDTO(1)))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(RoleMenuErrorCode.MENU_NOT_FOUND.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.MENU_NOT_FOUND.getCode()))
                 .hasMessage("菜单不存在");
             verify(sysMenuMapper, never()).updateById(any(SysMenu.class));
         }
@@ -360,7 +360,7 @@ class MenuManageServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.update(1L, MenuTestFactory.updateDTO(1, null, 99L, null, null, null, null, null)))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(RoleMenuErrorCode.MENU_NOT_FOUND.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.MENU_NOT_FOUND.getCode()))
                 .hasMessage("上级菜单不存在或已删除");
             verify(sysMenuMapper, never()).updateById(any(SysMenu.class));
         }
@@ -376,7 +376,7 @@ class MenuManageServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.update(1L, MenuTestFactory.updateDTO(1, null, 9L, null, null, null, null, null)))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(RoleMenuErrorCode.MENU_LEVEL_EXCEEDED.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.MENU_LEVEL_EXCEEDED.getCode()))
                 .hasMessage("菜单仅支持三级（目录/菜单/按钮）");
             verify(sysMenuMapper, never()).updateById(any(SysMenu.class));
         }
@@ -393,7 +393,7 @@ class MenuManageServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.update(1L, dto))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(RoleMenuErrorCode.MENU_PERMS_DUPLICATED.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.MENU_PERMS_DUPLICATED.getCode()))
                 .hasMessage("权限标识 dup:perm 已存在");
             verify(sysMenuMapper, never()).updateById(any(SysMenu.class));
         }
@@ -474,7 +474,7 @@ class MenuManageServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.delete(1L))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(RoleMenuErrorCode.MENU_HAS_CHILDREN.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.MENU_HAS_CHILDREN.getCode()))
                 .hasMessage("菜单 系统管理 存在子节点，不可删除");
             verify(sysMenuMapper, never()).deleteById(anyLong());
             verifyNoInteractions(sysRoleMenuService);
@@ -492,7 +492,7 @@ class MenuManageServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.delete(1L))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(RoleMenuErrorCode.MENU_REFERENCED_BY_ROLE.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.MENU_REFERENCED_BY_ROLE.getCode()))
                 .hasMessage("菜单 系统管理 已被角色引用，不可删除");
             verify(sysMenuMapper, never()).deleteById(anyLong());
         }
@@ -502,12 +502,12 @@ class MenuManageServiceImplTest {
         void shouldThrow_whenMenuNotFound() {
             // Given
             given(sysMenuService.requireMenu(1L))
-                .willThrow(new BusinessException(RoleMenuErrorCode.MENU_NOT_FOUND));
+                .willThrow(new BusinessException(SystemErrorCode.MENU_NOT_FOUND));
 
             // When + Then
             assertThatThrownBy(() -> service.delete(1L))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(RoleMenuErrorCode.MENU_NOT_FOUND.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.MENU_NOT_FOUND.getCode()))
                 .hasMessage("菜单不存在");
             verifyNoInteractions(sysRoleMenuService);
         }

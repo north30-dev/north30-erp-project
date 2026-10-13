@@ -1,7 +1,7 @@
 package me.north30.erp.system.dept.service.impl;
 
 import me.north30.erp.common.exception.BusinessException;
-import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.dept.DeptTestFactory;
 import me.north30.erp.system.dept.entity.SysDept;
 import me.north30.erp.system.dept.mapper.SysDeptMapper;
@@ -105,7 +105,7 @@ class SysDeptServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.requireDept(99L))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.DEPT_NOT_FOUND.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DEPT_NOT_FOUND.getCode()))
                 .hasMessage("组织 99 不存在");
         }
     }
@@ -134,7 +134,7 @@ class SysDeptServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.requireDeptCodeAvailable("ORG001"))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.DEPT_CODE_EXISTS.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DEPT_CODE_EXISTS.getCode()))
                 .hasMessage("组织编码 ORG001 已存在");
         }
     }
@@ -164,7 +164,7 @@ class SysDeptServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.requireDeptHasNoChildren(dept))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.DEPT_HAS_CHILDREN_OR_USERS.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DEPT_HAS_CHILDREN_OR_USERS.getCode()))
                 .hasMessage("组织 总部 存在下级组织或绑定用户，不可删除");
         }
     }
@@ -194,7 +194,7 @@ class SysDeptServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.requireDeptHasNoUsers(dept))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.DEPT_HAS_CHILDREN_OR_USERS.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DEPT_HAS_CHILDREN_OR_USERS.getCode()))
                 .hasMessage("组织 总部 存在下级组织或绑定用户，不可删除");
         }
     }

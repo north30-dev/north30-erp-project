@@ -12,8 +12,7 @@ import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.common.util.DateTimeFormatUtil;
 import me.north30.erp.common.util.WarehouseIdCodecUtil;
-import me.north30.erp.system.common.enums.SystemManageErrorCode;
-import me.north30.erp.system.common.enums.UserErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.dept.entity.SysDept;
 import me.north30.erp.system.dept.mapper.SysDeptMapper;
@@ -123,7 +122,7 @@ public class UserManagementServiceImpl implements UserManagementService {
         sysUserService.requireUserCodeAvailable(dto.userCode());
         // 2. 组织存在性校验（18024）；角色集合去重去空后校验存在性（18014）
         if (dto.deptId() != null && sysDeptMapper.selectById(dto.deptId()) == null) {
-            throw new BusinessException(SystemManageErrorCode.DEPT_NOT_FOUND, "组织 " + dto.deptId() + " 不存在");
+            throw new BusinessException(SystemErrorCode.DEPT_NOT_FOUND, "组织 " + dto.deptId() + " 不存在");
         }
         List<Long> roleIds = dto.roleIds() == null ? List.of()
             : dto.roleIds().stream().filter(Objects::nonNull).distinct().toList();
@@ -158,10 +157,10 @@ public class UserManagementServiceImpl implements UserManagementService {
         SysUser user = sysUserService.requireUser(id);
         // 停用内置管理员视为受保护操作（18012）；update 语义是资料更新，不走 changeStatus 实体方法
         if (user.isAdmin() && dto.status() != null && dto.status() == 0) {
-            throw new BusinessException(UserErrorCode.ADMIN_PROTECTED);
+            throw new BusinessException(SystemErrorCode.ADMIN_PROTECTED);
         }
         if (dto.deptId() != null && sysDeptMapper.selectById(dto.deptId()) == null) {
-            throw new BusinessException(SystemManageErrorCode.DEPT_NOT_FOUND, "组织 " + dto.deptId() + " 不存在");
+            throw new BusinessException(SystemErrorCode.DEPT_NOT_FOUND, "组织 " + dto.deptId() + " 不存在");
         }
         SysUser entity = userConverter.toEntity(dto);
         entity.setId(id);
@@ -187,11 +186,11 @@ public class UserManagementServiceImpl implements UserManagementService {
         SysUser user = sysUserService.requireUser(id);
         // 内置管理员不可删除（18012）
         if (user.isAdmin()) {
-            throw new BusinessException(UserErrorCode.ADMIN_PROTECTED);
+            throw new BusinessException(SystemErrorCode.ADMIN_PROTECTED);
         }
         // 存在角色分配即视为被引用，拒绝删除（18013）
         if (userRoleStrategy.countByUserId(id) > 0) {
-            throw new BusinessException(UserErrorCode.USER_REFERENCED,
+            throw new BusinessException(SystemErrorCode.USER_REFERENCED,
                 "用户 " + user.getUsername() + " 已分配角色，不可删除（请先解除角色分配或选择停用）");
         }
         // @TableLogic 逻辑删除，禁止物理 DELETE

@@ -5,7 +5,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.mybatis.BaseEntity;
-import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 
 /**
  * 组织/部门表（sys_dept）。
@@ -66,7 +66,7 @@ public class SysDept extends BaseEntity {
         }
         int level = newParent.getDeptLevel() + 1;
         if (level > MAX_DEPT_LEVEL) {
-            throw new BusinessException(SystemManageErrorCode.DEPT_LEVEL_EXCEED);
+            throw new BusinessException(SystemErrorCode.DEPT_LEVEL_EXCEED);
         }
         this.parentId = newParent.getId();
         this.deptLevel = level;

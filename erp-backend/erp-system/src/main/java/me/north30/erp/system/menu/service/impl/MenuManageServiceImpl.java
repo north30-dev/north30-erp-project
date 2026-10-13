@@ -6,7 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.util.DateTimeFormatUtil;
-import me.north30.erp.system.common.enums.RoleMenuErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.common.util.MenuTreeUtil;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.menu.converter.MenuConverter;
@@ -65,7 +65,7 @@ public class MenuManageServiceImpl implements MenuManageService {
         if (dto.parentId() != null && dto.parentId() != ROOT_PARENT_ID) {
             SysMenu parent = requireParent(dto.parentId());
             if (parent.getMenuType() != null && parent.getMenuType() == SysMenu.TYPE_BUTTON) {
-                throw new BusinessException(RoleMenuErrorCode.MENU_LEVEL_EXCEEDED);
+                throw new BusinessException(SystemErrorCode.MENU_LEVEL_EXCEEDED);
             }
         }
         SysMenu menu = menuConverter.toEntity(dto);
@@ -116,11 +116,11 @@ public class MenuManageServiceImpl implements MenuManageService {
         Long childCount = sysMenuMapper.selectCount(
             new LambdaQueryWrapper<SysMenu>().eq(SysMenu::getParentId, id));
         if (childCount != null && childCount > 0) {
-            throw new BusinessException(RoleMenuErrorCode.MENU_HAS_CHILDREN,
+            throw new BusinessException(SystemErrorCode.MENU_HAS_CHILDREN,
                 "菜单 " + menu.getMenuName() + " 存在子节点，不可删除");
         }
         if (sysRoleMenuService.existsByMenuId(id)) {
-            throw new BusinessException(RoleMenuErrorCode.MENU_REFERENCED_BY_ROLE,
+            throw new BusinessException(SystemErrorCode.MENU_REFERENCED_BY_ROLE,
                 "菜单 " + menu.getMenuName() + " 已被角色引用，不可删除");
         }
         sysMenuMapper.deleteById(id);
@@ -142,7 +142,7 @@ public class MenuManageServiceImpl implements MenuManageService {
             .eq(SysMenu::getPerms, perms)
             .ne(excludeId != null, SysMenu::getId, excludeId));
         if (count != null && count > 0) {
-            throw new BusinessException(RoleMenuErrorCode.MENU_PERMS_DUPLICATED,
+            throw new BusinessException(SystemErrorCode.MENU_PERMS_DUPLICATED,
                 "权限标识 " + perms + " 已存在");
         }
     }
@@ -153,7 +153,7 @@ public class MenuManageServiceImpl implements MenuManageService {
     private SysMenu requireParent(Long parentId) {
         SysMenu parent = sysMenuMapper.selectById(parentId);
         if (parent == null) {
-            throw new BusinessException(RoleMenuErrorCode.MENU_NOT_FOUND, "上级菜单不存在或已删除");
+            throw new BusinessException(SystemErrorCode.MENU_NOT_FOUND, "上级菜单不存在或已删除");
         }
         return parent;
     }
@@ -170,7 +170,7 @@ public class MenuManageServiceImpl implements MenuManageService {
         }
         SysMenu parent = requireParent(parentId);
         if (parent.getMenuType() != null && parent.getMenuType() == SysMenu.TYPE_BUTTON) {
-            throw new BusinessException(RoleMenuErrorCode.MENU_LEVEL_EXCEEDED);
+            throw new BusinessException(SystemErrorCode.MENU_LEVEL_EXCEEDED);
         }
         // 防环：从新父级沿父链向上回溯，若回到自身则说明父级位于自身下级
         Long cursor = parentId;

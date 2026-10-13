@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
-import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.common.vo.MutationVO;
 import me.north30.erp.system.config.ConfigTestFactory;
@@ -244,7 +244,7 @@ class SysConfigServiceImplTest {
             // When + Then：值校验先于唯一性查询，Mapper 与 ObjectMapper 均不应被调用
             assertThatThrownBy(() -> service.create(dto))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.CONFIG_VALUE_TYPE_MISMATCH.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.CONFIG_VALUE_TYPE_MISMATCH.getCode()))
                 .hasMessage("参数值类型错误，期望类型 数字");
             verifyNoInteractions(sysConfigMapper, objectMapper);
         }
@@ -258,7 +258,7 @@ class SysConfigServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.create(dto))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.CONFIG_VALUE_TYPE_MISMATCH.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.CONFIG_VALUE_TYPE_MISMATCH.getCode()))
                 .hasMessage("参数值类型错误，期望类型 布尔");
             verifyNoInteractions(sysConfigMapper);
         }
@@ -274,7 +274,7 @@ class SysConfigServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.create(dto))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.CONFIG_VALUE_TYPE_MISMATCH.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.CONFIG_VALUE_TYPE_MISMATCH.getCode()))
                 .hasMessage("参数值类型错误，期望类型 JSON");
             verify(sysConfigMapper, never()).insert(any(SysConfig.class));
         }
@@ -355,7 +355,7 @@ class SysConfigServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.update(1L, ConfigTestFactory.updateDTO("120", null, null, null, 1)))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.CONFIG_NOT_FOUND.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.CONFIG_NOT_FOUND.getCode()))
                 .hasMessage("系统参数 1 不存在");
             verify(sysConfigMapper, never()).updateById(any(SysConfig.class));
         }
@@ -372,7 +372,7 @@ class SysConfigServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.update(1L, dto))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.CONFIG_VALUE_TYPE_MISMATCH.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.CONFIG_VALUE_TYPE_MISMATCH.getCode()))
                 .hasMessage("参数值类型错误，期望类型 布尔");
             verify(sysConfigMapper, never()).updateById(any(SysConfig.class));
         }
@@ -427,7 +427,7 @@ class SysConfigServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.delete(1L))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.BUILTIN_CONFIG_UNDELETABLE.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.BUILTIN_CONFIG_UNDELETABLE.getCode()))
                 .hasMessage("内置系统参数 inventory.stagnant.days 不可删除");
             verify(sysConfigMapper, never()).deleteById(anyLong());
         }
@@ -441,7 +441,7 @@ class SysConfigServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.delete(1L))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.CONFIG_NOT_FOUND.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.CONFIG_NOT_FOUND.getCode()))
                 .hasMessage("系统参数 1 不存在");
             verify(sysConfigMapper, never()).deleteById(anyLong());
         }

@@ -14,7 +14,7 @@ import me.north30.erp.system.codesequence.converter.CodeSequenceConverter;
 import me.north30.erp.system.codesequence.dto.CodeSequenceQueryDTO;
 import me.north30.erp.system.codesequence.dto.CodeSequenceResetDTO;
 import me.north30.erp.system.codesequence.entity.SysCodeSequence;
-import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.common.util.PageNormalizer;
 import me.north30.erp.system.codesequence.mapper.SysCodeSequenceMapper;
 import me.north30.erp.system.codesequence.service.SysCodeSequenceService;
@@ -62,11 +62,11 @@ public class SysCodeSequenceServiceImpl implements SysCodeSequenceService {
             .eq(SysCodeSequence::getBizType, dto.bizType())
             .eq(SysCodeSequence::getPeriod, dto.period()));
         if (sequence == null) {
-            throw new BusinessException(SystemManageErrorCode.SEQUENCE_NOT_FOUND,
+            throw new BusinessException(SystemErrorCode.SEQUENCE_NOT_FOUND,
                 "编号序列 " + dto.bizType() + "/" + dto.period() + " 不存在");
         }
         if (dto.currentNo() < sequence.getCurrentNo()) {
-            throw new BusinessException(SystemManageErrorCode.SEQUENCE_RESET_CONFLICT,
+            throw new BusinessException(SystemErrorCode.SEQUENCE_RESET_CONFLICT,
                 "流水号重置值不得小于当前已用流水号 " + sequence.getCurrentNo());
         }
         // 幂等：目标值与当前值相同则跳过更新

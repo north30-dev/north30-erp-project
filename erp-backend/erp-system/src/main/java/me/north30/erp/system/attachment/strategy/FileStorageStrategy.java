@@ -3,7 +3,7 @@ package me.north30.erp.system.attachment.strategy;
 import lombok.extern.slf4j.Slf4j;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
-import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -61,7 +61,7 @@ public class FileStorageStrategy {
         String ext = extensionOf(originalFilename);
         String fileType = SUPPORTED_TYPES.get(ext);
         if (fileType == null) {
-            throw new BusinessException(SystemManageErrorCode.ATTACHMENT_TYPE_NOT_SUPPORTED);
+            throw new BusinessException(CommonErrorCode.ATTACHMENT_TYPE_NOT_SUPPORTED);
         }
         return fileType;
     }
@@ -122,7 +122,7 @@ public class FileStorageStrategy {
     public Path resolveStoredPath(String relativePath) {
         Path target = storeRoot.resolve(relativePath).normalize();
         if (!target.startsWith(storeRoot)) {
-            throw new BusinessException(SystemManageErrorCode.ATTACHMENT_NOT_FOUND);
+            throw new BusinessException(SystemErrorCode.ATTACHMENT_NOT_FOUND);
         }
         return target;
     }

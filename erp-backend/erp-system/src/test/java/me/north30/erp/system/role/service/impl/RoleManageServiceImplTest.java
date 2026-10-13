@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.result.PageResult;
-import me.north30.erp.system.common.enums.RoleMenuErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.menu.service.SysMenuService;
 import me.north30.erp.system.role.converter.RoleConverter;
@@ -342,7 +342,7 @@ class RoleManageServiceImplTest {
         void shouldThrow18014_whenRoleNotFound() {
             // Given
             when(sysRoleService.requireRole(5L)).thenThrow(
-                new BusinessException(RoleMenuErrorCode.ROLE_NOT_FOUND, "角色 5 不存在"));
+                new BusinessException(SystemErrorCode.ROLE_NOT_FOUND, "角色 5 不存在"));
 
             // When / Then
             assertThatThrownBy(() -> service.update(5L, new RoleUpdateDTO("销售主管", null, null, null, null, 5)))
@@ -461,7 +461,7 @@ class RoleManageServiceImplTest {
         void shouldThrow18014_whenRoleNotFound() {
             // Given
             when(sysRoleService.requireRole(5L)).thenThrow(
-                new BusinessException(RoleMenuErrorCode.ROLE_NOT_FOUND, "角色 5 不存在"));
+                new BusinessException(SystemErrorCode.ROLE_NOT_FOUND, "角色 5 不存在"));
 
             // When / Then
             assertThatThrownBy(() -> service.delete(5L))
@@ -543,7 +543,7 @@ class RoleManageServiceImplTest {
         void shouldThrow18014_whenRoleNotFound() {
             // Given
             when(sysRoleService.requireRole(5L)).thenThrow(
-                new BusinessException(RoleMenuErrorCode.ROLE_NOT_FOUND, "角色 5 不存在"));
+                new BusinessException(SystemErrorCode.ROLE_NOT_FOUND, "角色 5 不存在"));
 
             // When / Then
             assertThatThrownBy(() -> service.assignMenus(5L, new RoleAssignMenuDTO(List.of(1L))))
@@ -639,7 +639,7 @@ class RoleManageServiceImplTest {
         void shouldThrow18014_whenRoleNotFound() {
             // Given
             when(sysRoleService.requireRole(5L)).thenThrow(
-                new BusinessException(RoleMenuErrorCode.ROLE_NOT_FOUND, "角色 5 不存在"));
+                new BusinessException(SystemErrorCode.ROLE_NOT_FOUND, "角色 5 不存在"));
 
             // When / Then
             assertThatThrownBy(() -> service.saveDataScopes(5L,
@@ -700,7 +700,7 @@ class RoleManageServiceImplTest {
         void shouldThrow18014_whenRoleNotFound() {
             // Given
             when(sysRoleService.requireRole(5L)).thenThrow(
-                new BusinessException(RoleMenuErrorCode.ROLE_NOT_FOUND, "角色 5 不存在"));
+                new BusinessException(SystemErrorCode.ROLE_NOT_FOUND, "角色 5 不存在"));
 
             // When / Then
             assertThatThrownBy(() -> service.listDataScopes(5L))

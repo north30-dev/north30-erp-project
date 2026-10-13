@@ -1,13 +1,14 @@
 package me.north30.erp.system.dict.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.injector.methods.Update;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
-import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.common.util.PageNormalizer;
 import me.north30.erp.system.common.vo.MutationVO;
 import me.north30.erp.system.dict.converter.DictConverter;
@@ -27,6 +28,9 @@ import me.north30.erp.system.dict.service.SysDictTypeService;
 import me.north30.erp.system.dict.vo.DictItemVO;
 import me.north30.erp.system.dict.vo.DictTypeVO;
 import me.north30.erp.common.util.DateTimeFormatUtil;
+import me.north30.erp.common.util.QueryGuardUtil;
+import me.north30.erp.common.util.UpdateGuardUtil;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -85,9 +89,9 @@ public class DictManagementServiceImpl implements DictManagementService {
         Long exists = sysDictTypeMapper.selectCount(
             new LambdaQueryWrapper<SysDictType>().eq(SysDictType::getDictType, dto.dictType()));
         if (exists != null && exists > 0) {
-            throw new BusinessException(SystemManageErrorCode.DICT_TYPE_EXISTS, "字典类型 " + dto.dictType() + " 已存在");
+            throw new BusinessException(SystemErrorCode.DICT_TYPE_EXISTS, "字典类型 " + dto.dictType() + " 已存在");
         }
-        SysDictType dictType = dictConverter.creatSysDictItem(dto);
+        SysDictType dictType = dictConverter.createSysDictType(dto);
         if (dictType.getStatus() == null) {
             dictType.setStatus(STATUS_ENABLED);
         }
@@ -98,17 +102,9 @@ public class DictManagementServiceImpl implements DictManagementService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public MutationVO updateType(Long id, DictTypeUpdateDTO dto) {
-        SysDictType dictType = sysDictTypeMapper.selectById(id);
-        if (dictType == null) {
-            throw new BusinessException(SystemManageErrorCode.DICT_TYPE_NOT_FOUND, "字典类型 " + id + " 不存在");
-        }
-        dictType.setDictName(dto.dictName());
-        if (dto.status() != null) {
-            dictType.setStatus(dto.status());
-        }
-        if (dto.remark() != null) {
-            dictType.setRemark(dto.remark());
-        }
+        SysDictType dictType = QueryGuardUtil.requirePresent(sysDictTypeMapper.selectById(id), 
+            SystemErrorCode.DICT_TYPE_NOT_FOUND, "字典类型 " + id + " 不存在");
+        dictConverter.updateSysDictType(dto, dictType);
         dictType.setVersion(dto.version());
         if (sysDictTypeMapper.updateById(dictType) == 0) {
             throw new BusinessException(CommonErrorCode.OPTIMISTIC_LOCK_CONFLICT);
@@ -121,12 +117,12 @@ public class DictManagementServiceImpl implements DictManagementService {
     public MutationVO deleteType(Long id) {
         SysDictType dictType = sysDictTypeMapper.selectById(id);
         if (dictType == null) {
-            throw new BusinessException(SystemManageErrorCode.DICT_TYPE_NOT_FOUND, "字典类型 " + id + " 不存在");
+            throw new BusinessException(SystemErrorCode.DICT_TYPE_NOT_FOUND, "字典类型 " + id + " 不存在");
         }
         Long itemCount = sysDictItemService.countByTypes(List.of(dictType.getDictType()))
             .getOrDefault(dictType.getDictType(), 0L);
         if (itemCount > 0) {
-            throw new BusinessException(SystemManageErrorCode.DICT_ITEM_REFERENCED,
+            throw new BusinessException(SystemErrorCode.DICT_ITEM_REFERENCED,
                 "字典类型 " + dictType.getDictType() + " 下存在 " + itemCount + " 个字典项，不可删除");
         }
         sysDictTypeMapper.deleteById(id);
@@ -166,19 +162,11 @@ public class DictManagementServiceImpl implements DictManagementService {
             .eq(SysDictItem::getItemValue, dto.itemValue())
             .eq(SysDictItem::getLang, lang));
         if (exists != null && exists > 0) {
-            throw new BusinessException(SystemManageErrorCode.DICT_ITEM_EXISTS, "字典项 " + dto.itemValue() + " 已存在");
+            throw new BusinessException(SystemErrorCode.DICT_ITEM_EXISTS, "字典项 " + dto.itemValue() + " 已存在");
         }
-        SysDictItem item = dictConverter.creatSysDictItem(dto);
+        SysDictItem item = dictConverter.createSysDictItem(dto);
         item.setLang(lang);
-        if (item.getItemSort() == null) {
-            item.setItemSort(0);
-        }
-        if (item.getIsDefault() == null) {
-            item.setIsDefault(0);
-        }
-        if (item.getStatus() == null) {
-            item.setStatus(STATUS_ENABLED);
-        }
+        item.applyCreateDefault();
         sysDictItemMapper.insert(item);
         return new MutationVO(item.getId(), null, null);
     }

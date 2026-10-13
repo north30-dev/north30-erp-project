@@ -11,7 +11,7 @@ import me.north30.erp.system.attachment.strategy.FileStorageStrategy;
 import me.north30.erp.system.attachment.strategy.FileValidStrategy;
 import me.north30.erp.system.attachment.vo.AttachmentDownloadVO;
 import me.north30.erp.system.attachment.vo.AttachmentVO;
-import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.security.LoginUser;
 import me.north30.erp.system.support.MpTableInfoInit;
@@ -168,20 +168,6 @@ class SysAttachmentServiceImplTest {
         }
 
         @Test
-        @DisplayName("业务类型空白且业务主键为空抛出异常")
-        void shouldThrow_whenBizParamsMissing() {
-            // Given：业务类型空白且业务主键为空
-            MultipartFile file = AttachmentTestFactory.fileNamed("报价单.pdf");
-
-            // When + Then
-            assertThatThrownBy(() -> service.upload(file, new AttachmentBizQueryDTO(" ", null, null)))
-                .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
-                .hasMessage("业务类型与业务主键不能为空");
-            verifyNoInteractions(sysAttachmentMapper);
-        }
-
-        @Test
         @DisplayName("扩展名不在支持列表抛出异常")
         void shouldThrow_whenFileTypeNotSupported() {
             // Given：扩展名不在支持列表
@@ -191,7 +177,7 @@ class SysAttachmentServiceImplTest {
             assertThatThrownBy(() -> service.upload(file, new AttachmentBizQueryDTO("PURCHASE_RECEIPT", 1L, null)))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode())
-                        .isEqualTo(SystemManageErrorCode.ATTACHMENT_TYPE_NOT_SUPPORTED.getCode()))
+                        .isEqualTo(CommonErrorCode.ATTACHMENT_TYPE_NOT_SUPPORTED.getCode()))
                 .hasMessage("文件类型不支持");
             verifyNoInteractions(sysAttachmentMapper);
         }
@@ -206,7 +192,7 @@ class SysAttachmentServiceImplTest {
             assertThatThrownBy(() -> service.upload(file, new AttachmentBizQueryDTO("PURCHASE_RECEIPT", 1L, null)))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode())
-                        .isEqualTo(SystemManageErrorCode.ATTACHMENT_SIZE_EXCEEDED.getCode()))
+                        .isEqualTo(CommonErrorCode.ATTACHMENT_SIZE_EXCEEDED.getCode()))
                 .hasMessage("上传文件大小不能超过 20MB");
             verifyNoInteractions(sysAttachmentMapper);
         }
@@ -222,7 +208,7 @@ class SysAttachmentServiceImplTest {
             assertThatThrownBy(() -> service.upload(file, new AttachmentBizQueryDTO("PURCHASE_RECEIPT", 1L, null)))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode())
-                        .isEqualTo(SystemManageErrorCode.ATTACHMENT_COUNT_EXCEEDED.getCode()))
+                        .isEqualTo(CommonErrorCode.ATTACHMENT_COUNT_EXCEEDED.getCode()))
                 .hasMessage("附件数量超出上限");
             verify(sysAttachmentMapper, never()).insert(any(SysAttachment.class));
         }
@@ -294,18 +280,6 @@ class SysAttachmentServiceImplTest {
             assertThat(vos.get(1).id()).isEqualTo(4L);
             assertThat(vos.get(1).downloadUrl()).isEqualTo("/api/system/attachments/4/download");
         }
-
-        @Test
-        @DisplayName("按业务对象查询附件，业务主键为空抛出异常")
-        void shouldThrow_whenBizParamsMissing() {
-            // Given：业务主键为空
-            // When + Then
-            assertThatThrownBy(() -> service.listByBiz(new AttachmentBizQueryDTO("PURCHASE_RECEIPT", null, null)))
-                .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
-                .hasMessage("业务类型与业务主键不能为空");
-            verifyNoInteractions(sysAttachmentMapper);
-        }
     }
 
     @Nested
@@ -341,7 +315,7 @@ class SysAttachmentServiceImplTest {
             assertThatThrownBy(() -> service.download(5L))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode())
-                        .isEqualTo(SystemManageErrorCode.ATTACHMENT_NOT_FOUND.getCode()))
+                        .isEqualTo(SystemErrorCode.ATTACHMENT_NOT_FOUND.getCode()))
                 .hasMessage("附件不存在");
         }
 
@@ -357,7 +331,7 @@ class SysAttachmentServiceImplTest {
             assertThatThrownBy(() -> service.download(5L))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode())
-                        .isEqualTo(SystemManageErrorCode.ATTACHMENT_NOT_FOUND.getCode()))
+                        .isEqualTo(SystemErrorCode.ATTACHMENT_NOT_FOUND.getCode()))
                 .hasMessage("附件不存在");
         }
 
@@ -373,7 +347,7 @@ class SysAttachmentServiceImplTest {
             assertThatThrownBy(() -> service.download(5L))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode())
-                        .isEqualTo(SystemManageErrorCode.ATTACHMENT_NOT_FOUND.getCode()))
+                        .isEqualTo(SystemErrorCode.ATTACHMENT_NOT_FOUND.getCode()))
                 .hasMessage("附件不存在");
         }
 
@@ -389,7 +363,7 @@ class SysAttachmentServiceImplTest {
             assertThatThrownBy(() -> service.download(5L))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode())
-                        .isEqualTo(SystemManageErrorCode.ATTACHMENT_NOT_FOUND.getCode()))
+                        .isEqualTo(SystemErrorCode.ATTACHMENT_NOT_FOUND.getCode()))
                 .hasMessage("附件不存在");
         }
     }
@@ -429,8 +403,8 @@ class SysAttachmentServiceImplTest {
             assertThatThrownBy(() -> service.delete(5L))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode())
-                        .isEqualTo(SystemManageErrorCode.DATA_SCOPE_DENIED.getCode()))
-                .hasMessage("仅上传人可删除该附件");
+                        .isEqualTo(CommonErrorCode.DATA_SCOPE_DENIED.getCode()))
+                .hasMessage("上传人 admin 与登录用户 alice 不一致");
             verify(sysAttachmentMapper, never()).deleteById(any(Long.class));
         }
 

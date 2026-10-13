@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import me.north30.erp.common.exception.BusinessException;
-import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.dict.entity.SysDictType;
 import me.north30.erp.system.dict.mapper.SysDictTypeMapper;
 import me.north30.erp.system.dict.service.SysDictTypeService;
@@ -27,7 +27,7 @@ public class SysDictTypeServiceImpl implements SysDictTypeService {
         SysDictType dictTypeEntity = sysDictTypeMapper.selectOne(
             new LambdaQueryWrapper<SysDictType>().eq(SysDictType::getDictType, dictType));
         if (dictTypeEntity == null) {
-            throw new BusinessException(SystemManageErrorCode.DICT_TYPE_NOT_FOUND, "字典类型 " + dictType + " 不存在");
+            throw new BusinessException(SystemErrorCode.DICT_TYPE_NOT_FOUND, "字典类型 " + dictType + " 不存在");
         }
         return dictTypeEntity;
     }

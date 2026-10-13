@@ -1,7 +1,7 @@
 package me.north30.erp.system.user.strategy;
 
 import me.north30.erp.common.exception.BusinessException;
-import me.north30.erp.common.exception.SystemErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 
 import java.security.SecureRandom;
 import java.util.List;

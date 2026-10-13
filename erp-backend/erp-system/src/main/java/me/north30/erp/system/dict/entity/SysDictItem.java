@@ -39,4 +39,25 @@ public class SysDictItem extends BaseEntity {
 
     /** 状态 0-停用 1-启用 */
     private Integer status;
+
+    /**
+     * 应用创建值默认值。
+     * <p>
+     * 仅在创建时应用，默认值。
+     * itemSort 显示顺序默认值 0
+     * isDefault 是否默认选中默认值 0-否 
+     * status 状态默认值 1-启用
+     * </p>
+     */
+    public void applyCreateDefault(){
+        if (itemSort == null) {
+            itemSort = 0;
+        }
+        if (isDefault == null) {
+            isDefault = 0;
+        }
+        if (status == null) {
+            status = 1;
+        }
+    }
 }

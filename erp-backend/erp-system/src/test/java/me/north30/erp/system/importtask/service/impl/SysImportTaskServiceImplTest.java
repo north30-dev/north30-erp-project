@@ -3,7 +3,7 @@ package me.north30.erp.system.importtask.service.impl;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
-import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -91,7 +91,7 @@ class SysImportTaskServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.getResult("TASK-001"))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.IMPORT_TASK_NOT_FOUND.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.IMPORT_TASK_NOT_FOUND.getCode()))
                 .hasMessage("导入任务不存在");
         }
     }

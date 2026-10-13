@@ -2,7 +2,7 @@ package me.north30.erp.system.dept.service.impl;
 
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
-import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.common.util.DeptTreeUtil;
 import me.north30.erp.system.dept.DeptTestFactory;
 import me.north30.erp.system.dept.converter.DeptConverter;
@@ -193,13 +193,13 @@ class SysDeptManageServiceImplTest {
         void shouldThrow_whenDeptCodeExists() {
             // Given
             DeptCreateDTO dto = DeptTestFactory.createDTO("ORG001", "总部", 0L, 1, 1, 1);
-            willThrow(new BusinessException(SystemManageErrorCode.DEPT_CODE_EXISTS, "组织编码 ORG001 已存在"))
+            willThrow(new BusinessException(SystemErrorCode.DEPT_CODE_EXISTS, "组织编码 ORG001 已存在"))
                 .given(sysDeptService).requireDeptCodeAvailable("ORG001");
 
             // When + Then
             assertThatThrownBy(() -> service.create(dto))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.DEPT_CODE_EXISTS.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DEPT_CODE_EXISTS.getCode()))
                 .hasMessage("组织编码 ORG001 已存在");
             verify(sysDeptMapper, never()).insert(any(SysDept.class));
         }
@@ -210,12 +210,12 @@ class SysDeptManageServiceImplTest {
             // Given
             DeptCreateDTO dto = DeptTestFactory.createDTO("ORG003", "生产部", 99L, 4, 1, 1);
             given(sysDeptService.requireDept(99L))
-                .willThrow(new BusinessException(SystemManageErrorCode.DEPT_NOT_FOUND, "组织 99 不存在"));
+                .willThrow(new BusinessException(SystemErrorCode.DEPT_NOT_FOUND, "组织 99 不存在"));
 
             // When + Then
             assertThatThrownBy(() -> service.create(dto))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.DEPT_NOT_FOUND.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DEPT_NOT_FOUND.getCode()))
                 .hasMessage("组织 99 不存在");
             verify(sysDeptMapper, never()).insert(any(SysDept.class));
         }
@@ -231,7 +231,7 @@ class SysDeptManageServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.create(dto))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.DEPT_LEVEL_EXCEED.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DEPT_LEVEL_EXCEED.getCode()))
                 .hasMessage("组织层级超过上限");
             verify(sysDeptMapper, never()).insert(any(SysDept.class));
         }
@@ -342,7 +342,7 @@ class SysDeptManageServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.update(2L, dto))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.DEPT_NOT_FOUND.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DEPT_NOT_FOUND.getCode()))
                 .hasMessage("组织 99 不存在");
             verify(sysDeptMapper, never()).updateById(any(SysDept.class));
         }
@@ -360,7 +360,7 @@ class SysDeptManageServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.update(2L, dto))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.DEPT_LEVEL_EXCEED.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DEPT_LEVEL_EXCEED.getCode()))
                 .hasMessage("组织层级超过上限");
             verify(sysDeptMapper, never()).updateById(any(SysDept.class));
         }
@@ -410,14 +410,14 @@ class SysDeptManageServiceImplTest {
             // Given
             SysDept dept = DeptTestFactory.rootDept(1L, "ORG001", "总部", 1, 1);
             given(sysDeptService.requireDept(1L)).willReturn(dept);
-            willThrow(new BusinessException(SystemManageErrorCode.DEPT_HAS_CHILDREN_OR_USERS,
+            willThrow(new BusinessException(SystemErrorCode.DEPT_HAS_CHILDREN_OR_USERS,
                 "组织 总部 存在下级组织或绑定用户，不可删除"))
                 .given(sysDeptService).requireDeptHasNoChildren(dept);
 
             // When + Then
             assertThatThrownBy(() -> service.delete(1L))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.DEPT_HAS_CHILDREN_OR_USERS.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DEPT_HAS_CHILDREN_OR_USERS.getCode()))
                 .hasMessage("组织 总部 存在下级组织或绑定用户，不可删除");
             verify(sysDeptMapper, never()).deleteById(anyLong());
         }
@@ -428,14 +428,14 @@ class SysDeptManageServiceImplTest {
             // Given：无下级但绑定了用户
             SysDept dept = DeptTestFactory.rootDept(1L, "ORG001", "总部", 1, 1);
             given(sysDeptService.requireDept(1L)).willReturn(dept);
-            willThrow(new BusinessException(SystemManageErrorCode.DEPT_HAS_CHILDREN_OR_USERS,
+            willThrow(new BusinessException(SystemErrorCode.DEPT_HAS_CHILDREN_OR_USERS,
                 "组织 总部 存在下级组织或绑定用户，不可删除"))
                 .given(sysDeptService).requireDeptHasNoUsers(dept);
 
             // When + Then
             assertThatThrownBy(() -> service.delete(1L))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.DEPT_HAS_CHILDREN_OR_USERS.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DEPT_HAS_CHILDREN_OR_USERS.getCode()))
                 .hasMessage("组织 总部 存在下级组织或绑定用户，不可删除");
             verify(sysDeptMapper, never()).deleteById(anyLong());
         }
@@ -444,12 +444,12 @@ class SysDeptManageServiceImplTest {
         void shouldThrow_whenDeptNotFound() {
             // Given
             given(sysDeptService.requireDept(1L))
-                .willThrow(new BusinessException(SystemManageErrorCode.DEPT_NOT_FOUND, "组织 1 不存在"));
+                .willThrow(new BusinessException(SystemErrorCode.DEPT_NOT_FOUND, "组织 1 不存在"));
 
             // When + Then
             assertThatThrownBy(() -> service.delete(1L))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.DEPT_NOT_FOUND.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DEPT_NOT_FOUND.getCode()))
                 .hasMessage("组织 1 不存在");
             verify(sysDeptMapper, never()).deleteById(anyLong());
         }

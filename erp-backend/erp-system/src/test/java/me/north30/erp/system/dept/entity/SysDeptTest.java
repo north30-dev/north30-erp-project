@@ -1,7 +1,7 @@
 package me.north30.erp.system.dept.entity;
 
 import me.north30.erp.common.exception.BusinessException;
-import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -62,7 +62,7 @@ class SysDeptTest {
         assertThatThrownBy(() -> dept.applyParent(parent))
             .isInstanceOfSatisfying(BusinessException.class,
                 ex -> assertThat(ex.getCode())
-                    .isEqualTo(SystemManageErrorCode.DEPT_LEVEL_EXCEED.getCode()))
+                    .isEqualTo(SystemErrorCode.DEPT_LEVEL_EXCEED.getCode()))
             .hasMessage("组织层级超过上限");
     }
 }

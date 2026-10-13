@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
-import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.log.LogTestFactory;
 import me.north30.erp.system.log.converter.AuditLogConverter;
 import me.north30.erp.system.log.converter.LoginLogConverter;
@@ -275,7 +275,7 @@ class SysLogQueryServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.getAuditLogDetail(1L))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.AUDIT_LOG_NOT_FOUND.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.AUDIT_LOG_NOT_FOUND.getCode()))
                 .hasMessage("审计日志不存在");
         }
     }

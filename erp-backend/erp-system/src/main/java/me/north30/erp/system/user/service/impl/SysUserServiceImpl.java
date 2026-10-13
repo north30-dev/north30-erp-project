@@ -3,8 +3,7 @@ package me.north30.erp.system.user.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.exception.BusinessException;
-import me.north30.erp.common.exception.SystemErrorCode;
-import me.north30.erp.system.common.enums.UserErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.user.entity.SysUser;
 import me.north30.erp.system.user.mapper.SysUserMapper;
 import me.north30.erp.system.user.service.SysUserService;
@@ -84,7 +83,7 @@ public class SysUserServiceImpl implements SysUserService {
     @Transactional(readOnly = true)
     public void requireUsernameAvailable(String username) {
         if (sysUserMapper.selectCount(new LambdaQueryWrapper<SysUser>().eq(SysUser::getUsername, username)) > 0) {
-            throw new BusinessException(UserErrorCode.USERNAME_EXISTS, "用户名 " + username + " 已存在");
+            throw new BusinessException(SystemErrorCode.USERNAME_EXISTS, "用户名 " + username + " 已存在");
         }
     }
 
@@ -96,8 +95,8 @@ public class SysUserServiceImpl implements SysUserService {
     @Override
     @Transactional(readOnly = true)
     public void requireUserCodeAvailable(String userCode) {
-        if (sysUserMapper.selectCount(new LambdaQueryWrapper<SysUser>().eq(SysUser::getUserCode, userCode)) > 0) {
-            throw new BusinessException(UserErrorCode.USER_CODE_EXISTS, "用户编号 " + userCode + " 已存在");
+        if (sysUserMapper.exists(new LambdaQueryWrapper<SysUser>().eq(SysUser::getUserCode, userCode))) {
+            throw new BusinessException(SystemErrorCode.USER_CODE_EXISTS, "用户编号 " + userCode + " 已存在");
         }
     }
 

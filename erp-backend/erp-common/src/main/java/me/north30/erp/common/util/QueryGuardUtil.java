@@ -91,7 +91,7 @@ public final class QueryGuardUtil {
     }
 
     /**
-     * 确保查询结果为0条
+     * 确保查询结果大于0条
      * 
      * @param count 查询结果数量
      * @param errorCode 错误码
@@ -103,7 +103,7 @@ public final class QueryGuardUtil {
     }
 
     /**
-     * 确保查询结果为0条
+     * 确保查询结果大于0条
      * 
      * @param count 查询结果数量
      * @param errorCode 错误码

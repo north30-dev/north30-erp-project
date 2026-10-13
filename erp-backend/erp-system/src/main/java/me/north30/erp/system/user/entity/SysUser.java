@@ -5,7 +5,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.mybatis.BaseEntity;
-import me.north30.erp.system.common.enums.UserErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.user.strategy.PasswordStrategy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -84,7 +84,7 @@ public class SysUser extends BaseEntity {
      */
     public void changeStatus(Integer targetStatus) {
         if (isAdmin() && Integer.valueOf(0).equals(targetStatus)) {
-            throw new BusinessException(UserErrorCode.ADMIN_PROTECTED);
+            throw new BusinessException(SystemErrorCode.ADMIN_PROTECTED);
         }
         this.status = targetStatus;
     }

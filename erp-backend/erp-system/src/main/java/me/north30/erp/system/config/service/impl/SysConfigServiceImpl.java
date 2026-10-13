@@ -11,7 +11,7 @@ import me.north30.erp.system.config.dto.ConfigCreateDTO;
 import me.north30.erp.system.config.dto.ConfigQueryDTO;
 import me.north30.erp.system.config.dto.ConfigUpdateDTO;
 import me.north30.erp.system.config.entity.SysConfig;
-import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.common.util.PageNormalizer;
 import me.north30.erp.system.config.mapper.SysConfigMapper;
 import me.north30.erp.system.config.service.SysConfigService;
@@ -44,14 +44,14 @@ public class SysConfigServiceImpl implements SysConfigService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResult<ConfigVO> page(ConfigQueryDTO query) {
-        long pageNum = PageNormalizer.normalizePageNum(query.pageNum());
-        long pageSize = PageNormalizer.normalizePageSize(query.pageSize());
+    public PageResult<ConfigVO> page(ConfigQueryDTO dto) {
+        long pageNum = PageNormalizer.normalizePageNum(dto.pageNum());
+        long pageSize = PageNormalizer.normalizePageSize(dto.pageSize());
         LambdaQueryWrapper<SysConfig> wrapper = new LambdaQueryWrapper<SysConfig>()
-            .like(StringUtils.hasText(query.configKey()), SysConfig::getConfigKey, query.configKey())
-            .like(StringUtils.hasText(query.configName()), SysConfig::getConfigName, query.configName())
-            .eq(StringUtils.hasText(query.configGroup()), SysConfig::getConfigGroup, query.configGroup())
-            .eq(query.status() != null, SysConfig::getStatus, query.status())
+            .like(StringUtils.hasText(dto.configKey()), SysConfig::getConfigKey, dto.configKey())
+            .like(StringUtils.hasText(dto.configName()), SysConfig::getConfigName, dto.configName())
+            .eq(StringUtils.hasText(dto.configGroup()), SysConfig::getConfigGroup, dto.configGroup())
+            .eq(dto.status() != null, SysConfig::getStatus, dto.status())
             .orderByAsc(SysConfig::getId);
         Page<SysConfig> page = sysConfigMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
         List<ConfigVO> vos = page.getRecords().stream().map(configConverter::toConfigVO).toList();
@@ -67,8 +67,7 @@ public class SysConfigServiceImpl implements SysConfigService {
             new LambdaQueryWrapper<SysConfig>().eq(SysConfig::getConfigKey, dto.configKey()));
         QueryGuardUtil.requireCountZero(exists, 
             CommonErrorCode.DUPLICATE_KEY, "参数键 " + dto.configKey() + " 已存在，请检查后重试");
-        config.initIsSystemParam();
-        config.initStatusParam();
+        config.applyCreateDefault();
         sysConfigMapper.insert(config);
         return new MutationVO(config.getId(), null, null);
     }
@@ -77,7 +76,7 @@ public class SysConfigServiceImpl implements SysConfigService {
     @Transactional(rollbackFor = Exception.class)
     public ConfigUpdateVO update(Long id, ConfigUpdateDTO dto) {
         SysConfig config = QueryGuardUtil.requirePresent(sysConfigMapper.selectById(id), 
-            SystemManageErrorCode.CONFIG_NOT_FOUND, "系统参数 " + id + " 不存在");
+            SystemErrorCode.CONFIG_NOT_FOUND, "系统参数 " + id + " 不存在");
         configConverter.updateConfig(dto, config);
         config.validateValue(objectMapper);
         config.setVersion(dto.version());
@@ -90,11 +89,9 @@ public class SysConfigServiceImpl implements SysConfigService {
     @Transactional(rollbackFor = Exception.class)
     public DeleteResultVO delete(Long id) {
         SysConfig config = QueryGuardUtil.requirePresent(sysConfigMapper.selectById(id), 
-            SystemManageErrorCode.CONFIG_NOT_FOUND, "系统参数 " + id + " 不存在");
+            SystemErrorCode.CONFIG_NOT_FOUND, "系统参数 " + id + " 不存在");
         config.validateIsSystem();
         sysConfigMapper.deleteById(id);
-        // 逻辑删除语义：删除成功后实体侧置位，供 DeleteResultVO 回执
-        config.setIsDeleted(1);
-        return new DeleteResultVO(id, config.getIsDeleted());
+        return new DeleteResultVO(id, 1);
     }
 }

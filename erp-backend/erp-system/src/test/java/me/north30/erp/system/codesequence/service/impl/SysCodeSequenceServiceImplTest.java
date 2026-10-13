@@ -11,7 +11,7 @@ import me.north30.erp.system.codesequence.entity.SysCodeSequence;
 import me.north30.erp.system.codesequence.mapper.SysCodeSequenceMapper;
 import me.north30.erp.system.codesequence.vo.CodeSequenceResetVO;
 import me.north30.erp.system.codesequence.vo.CodeSequenceVO;
-import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.support.MpTableInfoInit;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -185,7 +185,7 @@ class SysCodeSequenceServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.reset(dto))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.SEQUENCE_NOT_FOUND.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.SEQUENCE_NOT_FOUND.getCode()))
                 .hasMessage("编号序列 SALES_ORDER/202609 不存在");
             verify(sysCodeSequenceMapper, never()).updateById(any(SysCodeSequence.class));
         }
@@ -201,7 +201,7 @@ class SysCodeSequenceServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.reset(dto))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.SEQUENCE_RESET_CONFLICT.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.SEQUENCE_RESET_CONFLICT.getCode()))
                 .hasMessage("流水号重置值不得小于当前已用流水号 5");
             verify(sysCodeSequenceMapper, never()).updateById(any(SysCodeSequence.class));
         }

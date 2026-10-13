@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
-import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.common.vo.MutationVO;
 import me.north30.erp.system.dict.DictTestFactory;
 import me.north30.erp.system.dict.converter.DictConverter;
@@ -213,7 +213,7 @@ class DictManagementServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.createType(dto))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.DICT_TYPE_EXISTS.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DICT_TYPE_EXISTS.getCode()))
                 .hasMessage("字典类型 settlement_method 已存在");
             verify(sysDictTypeMapper, never()).insert(any(SysDictType.class));
         }
@@ -256,7 +256,7 @@ class DictManagementServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.updateType(1L, DictTestFactory.typeUpdateDTO("新名称", 1, null, 1)))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.DICT_TYPE_NOT_FOUND.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DICT_TYPE_NOT_FOUND.getCode()))
                 .hasMessage("字典类型 1 不存在");
             verify(sysDictTypeMapper, never()).updateById(any(SysDictType.class));
         }
@@ -310,7 +310,7 @@ class DictManagementServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.deleteType(1L))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.DICT_ITEM_REFERENCED.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DICT_ITEM_REFERENCED.getCode()))
                 .hasMessage("字典类型 settlement_method 下存在 5 个字典项，不可删除");
             verify(sysDictTypeMapper, never()).deleteById(anyLong());
         }
@@ -324,7 +324,7 @@ class DictManagementServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.deleteType(1L))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.DICT_TYPE_NOT_FOUND.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DICT_TYPE_NOT_FOUND.getCode()))
                 .hasMessage("字典类型 1 不存在");
             verifyNoInteractions(sysDictItemService);
         }
@@ -490,13 +490,13 @@ class DictManagementServiceImplTest {
             // Given：requireByDictType 抛出"类型不存在"业务异常（异常语义由类型守卫服务自身实现与测试保证）
             var dto = DictTestFactory.itemCreateDTO("settlement_method", "现金", "CASH", null, 1, 1);
             given(sysDictTypeService.requireByDictType(any()))
-                .willThrow(new BusinessException(SystemManageErrorCode.DICT_TYPE_NOT_FOUND,
+                .willThrow(new BusinessException(SystemErrorCode.DICT_TYPE_NOT_FOUND,
                     "字典类型 settlement_method 不存在"));
 
             // When + Then
             assertThatThrownBy(() -> service.createItem(dto))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.DICT_TYPE_NOT_FOUND.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DICT_TYPE_NOT_FOUND.getCode()))
                 .hasMessage("字典类型 settlement_method 不存在");
             verify(sysDictItemMapper, never()).insert(any(SysDictItem.class));
         }
@@ -513,7 +513,7 @@ class DictManagementServiceImplTest {
             // When + Then
             assertThatThrownBy(() -> service.createItem(dto))
                 .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.DICT_ITEM_EXISTS.getCode()))
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DICT_ITEM_EXISTS.getCode()))
                 .hasMessage("字典项 CASH 已存在");
             verify(sysDictItemMapper, never()).insert(any(SysDictItem.class));
         }

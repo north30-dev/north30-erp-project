@@ -2,7 +2,7 @@ package me.north30.erp.system.dict.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import me.north30.erp.common.exception.BusinessException;
-import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.dict.DictTestFactory;
 import me.north30.erp.system.dict.entity.SysDictType;
 import me.north30.erp.system.dict.mapper.SysDictTypeMapper;
@@ -63,7 +63,7 @@ class SysDictTypeServiceImplTest {
         // When + Then
         assertThatThrownBy(() -> service.requireByDictType("not_exist"))
             .isInstanceOfSatisfying(BusinessException.class,
-                ex -> assertThat(ex.getCode()).isEqualTo(SystemManageErrorCode.DICT_TYPE_NOT_FOUND.getCode()))
+                ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DICT_TYPE_NOT_FOUND.getCode()))
             .hasMessage("字典类型 not_exist 不存在");
     }
 }

@@ -4,7 +4,7 @@ import me.north30.erp.common.constant.RedisKeyConstants;
 import me.north30.erp.common.constant.TtlConstants;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
-import me.north30.erp.common.exception.SystemErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.common.jwt.JwtProperties;
 import me.north30.erp.common.jwt.JwtTokenProvider;
 import me.north30.erp.system.auth.vo.CaptchaVO;

@@ -29,7 +29,7 @@ public class RoleGrantStrategy {
     public void replaceRoleMenus(Long roleId, List<Long> menuIds) {
         sysRoleMenuMapper.delete(new LambdaQueryWrapper<SysRoleMenu>().eq(SysRoleMenu::getRoleId, roleId));
         for (Long menuId : menuIds) {
-            sysRoleMenuMapper.insert(roleConverter.toRoleMenu(roleId, menuId));
+            sysRoleMenuMapper.insert(roleConverter.toSysRoleMenu(roleId, menuId));
         }
     }
 
@@ -56,7 +56,7 @@ public class RoleGrantStrategy {
      */
     public SysRoleDataScope buildDataScope(Long roleId, RoleDataScopeItemDTO item,
                                            String deptIds, String userIds) {
-        SysRoleDataScope scope = roleConverter.toRoleDataScope(roleId, item);
+        SysRoleDataScope scope = roleConverter.toSysRoleDataScope(roleId, item);
         scope.setDeptIds(deptIds);
         scope.setUserIds(userIds);
         scope.setFieldMask(item.fieldMask() == null ? 0 : item.fieldMask());

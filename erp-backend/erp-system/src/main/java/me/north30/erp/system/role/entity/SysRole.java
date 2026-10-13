@@ -5,7 +5,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.mybatis.BaseEntity;
-import me.north30.erp.system.common.enums.RoleMenuErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 
 import java.util.Set;
 
@@ -40,13 +40,35 @@ public class SysRole extends BaseEntity {
 
     /**
      * 变更数据范围档位，非法抛 18026。
-     * <p>仅校验/修改自身状态。</p>
+     * <p>
+     * 仅校验/修改自身状态。
+     * </p>
      */
     public void changeDataScope(Integer dataScope) {
         if (dataScope == null || !VALID_DATA_SCOPES.contains(dataScope)) {
-            throw new BusinessException(RoleMenuErrorCode.ROLE_DATA_SCOPE_INVALID,
-                "数据范围配置非法：data_scope=" + dataScope);
+            throw new BusinessException(SystemErrorCode.ROLE_DATA_SCOPE_INVALID,
+                    "数据范围配置非法：data_scope=" + dataScope);
         }
         this.dataScope = dataScope;
+    }
+
+    /**
+     * 应用创建默认值。
+     * <p>
+     * roleSort 显示顺序默认 0
+     * isBuiltin 是否内置角色默认 0
+     * status 状态默认 1
+     * </p>
+     */
+    public void applyCreateDefault() {
+        if (roleSort == null) {
+            roleSort = 0;
+        }
+        if (isBuiltin == null) {
+            isBuiltin = 0;
+        }
+        if (status == null) {
+            status = 1;
+        }
     }
 }

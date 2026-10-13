@@ -4,9 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import me.north30.erp.common.exception.BusinessException;
-import me.north30.erp.common.exception.SystemErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.common.result.PageResult;
-import me.north30.erp.system.common.enums.UserErrorCode;
 import me.north30.erp.system.dept.entity.SysDept;
 import me.north30.erp.system.dept.mapper.SysDeptMapper;
 import me.north30.erp.system.role.entity.SysUserRole;
@@ -375,7 +374,7 @@ class UserManagementServiceImplTest {
         @Test
         void shouldThrow18006_whenUsernameExists() {
             // Given
-            doThrow(new BusinessException(UserErrorCode.USERNAME_EXISTS, "用户名 zhangsan 已存在"))
+            doThrow(new BusinessException(SystemErrorCode.USERNAME_EXISTS, "用户名 zhangsan 已存在"))
                 .when(sysUserService).requireUsernameAvailable("zhangsan");
 
             // When / Then
@@ -390,7 +389,7 @@ class UserManagementServiceImplTest {
         @Test
         void shouldThrow18007_whenUserCodeExists() {
             // Given：用户名可用放行，用户编号已存在
-            doThrow(new BusinessException(UserErrorCode.USER_CODE_EXISTS, "用户编号 E001 已存在"))
+            doThrow(new BusinessException(SystemErrorCode.USER_CODE_EXISTS, "用户编号 E001 已存在"))
                 .when(sysUserService).requireUserCodeAvailable("E001");
 
             // When / Then

@@ -19,6 +19,13 @@ public record AttachmentBizQueryDTO(
     @NotNull(message = "业务主键不能为空") 
     Long bizId, 
     
-    @Size(max = 64, message = "单据号长度不能超过 64") 
+    @Size(max = 64, message = "单据号长度不能超过 64")
     String bizCode) {
+
+    /**
+     * 业务类型归一化：去除首尾空白（查询条件与落库统一使用）。
+     */
+    public String bizTypeNormalized() {
+        return bizType == null ? null : bizType.trim();
+    }
 }

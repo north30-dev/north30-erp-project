@@ -5,7 +5,7 @@ import me.north30.erp.common.constant.PageConstants;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
-import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.importtask.service.SysImportTaskService;
 import me.north30.erp.system.importtask.vo.ImportResultVO;
 import me.north30.erp.system.importtask.vo.ImportTaskVO;
@@ -38,6 +38,6 @@ public class SysImportTaskServiceImpl implements SysImportTaskService {
         if (!StringUtils.hasText(taskId)) {
             throw new BusinessException(CommonErrorCode.PARAM_ERROR, "导入任务号不能为空");
         }
-        throw new BusinessException(SystemManageErrorCode.IMPORT_TASK_NOT_FOUND);
+        throw new BusinessException(CommonErrorCode.IMPORT_TASK_NOT_FOUND);
     }
 }

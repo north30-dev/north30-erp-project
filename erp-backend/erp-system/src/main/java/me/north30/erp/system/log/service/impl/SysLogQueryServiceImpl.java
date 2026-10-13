@@ -11,7 +11,7 @@ import me.north30.erp.system.log.dto.AuditLogQueryDTO;
 import me.north30.erp.system.log.dto.LoginLogQueryDTO;
 import me.north30.erp.system.log.entity.SysAuditLog;
 import me.north30.erp.system.log.entity.SysLoginLog;
-import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.log.converter.AuditLogConverter;
 import me.north30.erp.system.log.converter.LoginLogConverter;
 import me.north30.erp.system.log.mapper.SysAuditLogMapper;
@@ -77,7 +77,7 @@ public class SysLogQueryServiceImpl implements SysLogQueryService {
     public AuditLogVO getAuditLogDetail(Long id) {
         SysAuditLog entity = sysAuditLogMapper.selectById(id);
         if (entity == null) {
-            throw new BusinessException(SystemManageErrorCode.AUDIT_LOG_NOT_FOUND);
+            throw new BusinessException(SystemErrorCode.AUDIT_LOG_NOT_FOUND);
         }
         AuditLogVO detail = auditLogConverter.toVO(entity);
         return detail.withDiffFields(auditLogDiffStrategy.resolveDiffFields(detail.beforeJson(), detail.afterJson()));

@@ -6,7 +6,7 @@ import lombok.EqualsAndHashCode;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.mybatis.BaseEntity;
-import me.north30.erp.system.common.enums.SystemManageErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
@@ -64,13 +64,13 @@ public class SysConfig extends BaseEntity {
                 try {
                     new BigDecimal(configValue);
                 } catch (NumberFormatException e) {
-                    throw new BusinessException(SystemManageErrorCode.CONFIG_VALUE_TYPE_MISMATCH,
+                    throw new BusinessException(SystemErrorCode.CONFIG_VALUE_TYPE_MISMATCH,
                             "参数值类型错误，期望类型 " + typeName);
                 }
             }
             case 3 -> {
                 if (!"true".equalsIgnoreCase(configValue) && !"false".equalsIgnoreCase(configValue)) {
-                    throw new BusinessException(SystemManageErrorCode.CONFIG_VALUE_TYPE_MISMATCH,
+                    throw new BusinessException(SystemErrorCode.CONFIG_VALUE_TYPE_MISMATCH,
                             "参数值类型错误，期望类型 " + typeName);
                 }
             }
@@ -78,7 +78,7 @@ public class SysConfig extends BaseEntity {
                 try {
                     objectMapper.readTree(configValue);
                 } catch (JacksonException e) {
-                    throw new BusinessException(SystemManageErrorCode.CONFIG_VALUE_TYPE_MISMATCH,
+                    throw new BusinessException(SystemErrorCode.CONFIG_VALUE_TYPE_MISMATCH,
                             "参数值类型错误，期望类型 " + typeName);
                 }
             }
@@ -93,24 +93,20 @@ public class SysConfig extends BaseEntity {
      */
     public void validateIsSystem() {
         if (isSystem != null && isSystem == 1) {
-            throw new BusinessException(SystemManageErrorCode.BUILTIN_CONFIG_UNDELETABLE,
+            throw new BusinessException(SystemErrorCode.BUILTIN_CONFIG_UNDELETABLE,
                     "内置系统参数 " + configKey + " 不可删除");
         }
     }
 
     /**
-     * 初始化是否系统内置参数：0-否 1-是（内置不可删）
+     * 应用创建字段默认值：
+     * isSystem：0-否 1-是（内置不可删）
+     * status：0-停用 1-启用
      */
-    public void initIsSystemParam() {
+    public void applyCreateDefault() {
         if (isSystem == null) {
             isSystem = 0;
         }
-    }
-
-    /**
-     * 初始化状态参数：0-停用 1-启用
-     */
-    public void initStatusParam() {
         if (status == null) {
             status = 1;
         }

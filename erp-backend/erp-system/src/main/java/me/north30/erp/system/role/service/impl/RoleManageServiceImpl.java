@@ -8,7 +8,7 @@ import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.common.util.DateTimeFormatUtil;
-import me.north30.erp.system.common.enums.RoleMenuErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.menu.entity.SysMenu;
 import me.north30.erp.system.menu.service.SysMenuService;
@@ -89,18 +89,12 @@ public class RoleManageServiceImpl implements RoleManageService {
         Long exists = sysRoleMapper.selectCount(
             new LambdaQueryWrapper<SysRole>().eq(SysRole::getRoleCode, dto.roleCode()));
         if (exists != null && exists > 0) {
-            throw new BusinessException(RoleMenuErrorCode.ROLE_CODE_EXISTS,
+            throw new BusinessException(SystemErrorCode.ROLE_CODE_EXISTS,
                 "角色编码 " + dto.roleCode() + " 已存在");
         }
-        SysRole role = roleConverter.toEntity(dto);
+        SysRole role = roleConverter.createSysRole(dto);
         role.changeDataScope(dto.dataScope() == null ? 1 : dto.dataScope());
-        if (role.getRoleSort() == null) {
-            role.setRoleSort(0);
-        }
-        role.setIsBuiltin(0);
-        if (role.getStatus() == null) {
-            role.setStatus(1);
-        }
+        role.applyCreateDefault();
         sysRoleMapper.insert(role);
         return new RoleCreatedVO(role.getId());
     }
@@ -114,7 +108,7 @@ public class RoleManageServiceImpl implements RoleManageService {
         }
         // role_code 不可修改：转换器不映射该字段；null 字段跳过（部分更新语义），
         // 乐观锁按客户端传入 version 校验
-        roleConverter.updateEntity(dto, role);
+        roleConverter.updateSysRole(dto, role);
         int rows = sysRoleMapper.updateById(role);
         if (rows == 0) {
             throw new BusinessException(CommonErrorCode.OPTIMISTIC_LOCK_CONFLICT);
@@ -130,11 +124,11 @@ public class RoleManageServiceImpl implements RoleManageService {
     public DeleteResultVO delete(Long id) {
         SysRole role = sysRoleService.requireRole(id);
         if (role.getIsBuiltin() != null && role.getIsBuiltin() == 1) {
-            throw new BusinessException(RoleMenuErrorCode.ROLE_BUILTIN);
+            throw new BusinessException(SystemErrorCode.ROLE_BUILTIN);
         }
         long userCount = sysUserRoleService.countUsersByRoleId(id);
         if (userCount > 0) {
-            throw new BusinessException(RoleMenuErrorCode.ROLE_REFERENCED_BY_USER,
+            throw new BusinessException(SystemErrorCode.ROLE_REFERENCED_BY_USER,
                 "角色 " + role.getRoleName() + " 已分配给 " + userCount + " 个用户，不可删除");
         }
         sysRoleMapper.deleteById(id);
@@ -153,7 +147,7 @@ public class RoleManageServiceImpl implements RoleManageService {
             // 单次 IN 查询完成存在性校验与权限点计数，避免循环查库
             menus = sysMenuService.listByIds(menuIds);
             if (menus.size() != menuIds.size()) {
-                throw new BusinessException(RoleMenuErrorCode.MENU_NOT_FOUND, "菜单不存在或已删除");
+                throw new BusinessException(SystemErrorCode.MENU_NOT_FOUND, "菜单不存在或已删除");
             }
         }
         roleGrantStrategy.replaceRoleMenus(id, menuIds);
@@ -200,12 +194,12 @@ public class RoleManageServiceImpl implements RoleManageService {
      */
     private void requireScopeValid(RoleDataScopeItemDTO item) {
         if (item.scopeType() == null || !SysRole.VALID_DATA_SCOPES.contains(item.scopeType())) {
-            throw new BusinessException(RoleMenuErrorCode.ROLE_DATA_SCOPE_INVALID,
+            throw new BusinessException(SystemErrorCode.ROLE_DATA_SCOPE_INVALID,
                 "数据范围配置非法：scope_type=" + item.scopeType());
         }
         if (item.scopeType() == 9 && roleAssembleStrategy.isEmpty(item.deptIds())
             && roleAssembleStrategy.isEmpty(item.userIds())) {
-            throw new BusinessException(RoleMenuErrorCode.ROLE_DATA_SCOPE_INVALID,
+            throw new BusinessException(SystemErrorCode.ROLE_DATA_SCOPE_INVALID,
                 "数据范围配置非法：自定义范围必须至少勾选组织或人员");
         }
     }

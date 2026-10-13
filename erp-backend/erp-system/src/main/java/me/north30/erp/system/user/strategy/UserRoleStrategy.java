@@ -3,7 +3,7 @@ package me.north30.erp.system.user.strategy;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.exception.BusinessException;
-import me.north30.erp.system.common.enums.RoleMenuErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.role.entity.SysRole;
 import me.north30.erp.system.role.entity.SysUserRole;
 import me.north30.erp.system.role.mapper.SysRoleMapper;
@@ -38,7 +38,7 @@ public class UserRoleStrategy {
         }
         Long count = sysRoleMapper.selectCount(new LambdaQueryWrapper<SysRole>().in(SysRole::getId, roleIds));
         if (count == null || count != roleIds.size()) {
-            throw new BusinessException(RoleMenuErrorCode.ROLE_NOT_FOUND,
+            throw new BusinessException(SystemErrorCode.ROLE_NOT_FOUND,
                 "角色不存在，请刷新角色列表后重试");
         }
     }

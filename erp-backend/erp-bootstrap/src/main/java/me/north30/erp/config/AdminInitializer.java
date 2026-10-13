@@ -137,7 +137,7 @@ public class AdminInitializer implements ApplicationRunner {
         List<SysRoleMenu> roleMenus = new ArrayList<>();
         List<SysMenu> toGrant = roleCreated ? allMenus : createdMenus;
         for (SysMenu menu : toGrant) {
-            roleMenus.add(roleConverter.toRoleMenu(roleId, menu.getId()));
+            roleMenus.add(roleConverter.toSysRoleMenu(roleId, menu.getId()));
         }
         if (!roleMenus.isEmpty()) {
             sysRoleMenuService.createBatch(roleMenus);

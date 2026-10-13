@@ -33,7 +33,7 @@ public interface RoleConverter {
     @Mapping(target = "dataScope")
     @Mapping(target = "status")
     @Mapping(target = "remark")
-    SysRole toEntity(RoleCreateDTO dto);
+    SysRole createSysRole(RoleCreateDTO dto);
 
     /**
      * 修改角色 DTO 合并到已加载实体（null 字段跳过，实现部分更新语义）。
@@ -46,7 +46,7 @@ public interface RoleConverter {
     @Mapping(target = "status")
     @Mapping(target = "remark")
     @Mapping(target = "version")
-    void updateEntity(RoleUpdateDTO dto, @MappingTarget SysRole role);
+    void updateSysRole(RoleUpdateDTO dto, @MappingTarget SysRole role);
 
     /**
      * 组装角色-菜单关联实体（全删全插场景逐条构建）。
@@ -54,7 +54,7 @@ public interface RoleConverter {
     @BeanMapping(ignoreByDefault = true)
     @Mapping(target = "roleId")
     @Mapping(target = "menuId")
-    SysRoleMenu toRoleMenu(Long roleId, Long menuId);
+    SysRoleMenu toSysRoleMenu(Long roleId, Long menuId);
 
     /**
      * 数据范围明细 DTO → 实体。
@@ -65,5 +65,5 @@ public interface RoleConverter {
     @Mapping(target = "bizObject", source = "item.bizObject")
     @Mapping(target = "filterDimension", source = "item.filterDimension")
     @Mapping(target = "scopeType", source = "item.scopeType")
-    SysRoleDataScope toRoleDataScope(Long roleId, RoleDataScopeItemDTO item);
+    SysRoleDataScope toSysRoleDataScope(Long roleId, RoleDataScopeItemDTO item);
 }

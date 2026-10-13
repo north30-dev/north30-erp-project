@@ -1,9 +1,13 @@
 package me.north30.erp.system.attachment.entity;
 
+import me.north30.erp.common.exception.CommonErrorCode;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.mybatis.BaseEntity;
+import me.north30.erp.system.common.enums.SystemErrorCode;
+import me.north30.erp.system.security.LoginUser;
 
 import java.time.LocalDateTime;
 
@@ -48,4 +52,12 @@ public class SysAttachment extends BaseEntity {
     public boolean isDeleted() {
         return Integer.valueOf(1).equals(this.getIsDeleted());
     }
+
+    public void validateUploadBy(LoginUser loginUser) {
+        if (!loginUser.username().equals(uploadBy)) {
+            throw new BusinessException(CommonErrorCode.DATA_SCOPE_DENIED, "上传人 " + uploadBy + " 与登录用户 " + loginUser.username() + " 不一致");
+        }
+    }
+
+    
 }
