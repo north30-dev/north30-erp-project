@@ -25,7 +25,10 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Spy;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import me.north30.erp.system.common.util.PageParamResolver;
+import me.north30.erp.system.config.service.SysConfigDomainService;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
@@ -42,10 +45,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
- * {@link SysConfigServiceImpl} 纯单元测试：分页归一化、参数值按类型校验、键唯一、乐观锁与内置参数删除约束。
+ * {@link SysConfigApplicationServiceImpl} 纯单元测试：分页归一化、参数值按类型校验、键唯一、乐观锁与内置参数删除约束。
  */
 @ExtendWith(MockitoExtension.class)
-class SysConfigServiceImplTest {
+class SysConfigApplicationServiceImplTest {
 
     @Mock
     private SysConfigMapper sysConfigMapper;
@@ -56,8 +59,12 @@ class SysConfigServiceImplTest {
     @Spy
     private final ConfigConverter configConverter = new ConfigConverterImpl();
 
+    @Spy
+    private final PageParamResolver pageParamResolver =
+        new PageParamResolver(Mockito.mock(SysConfigDomainService.class));
+
     @InjectMocks
-    private SysConfigServiceImpl service;
+    private SysConfigApplicationServiceImpl service;
 
     @Captor
     private ArgumentCaptor<Page<SysConfig>> pageCaptor;
@@ -431,7 +438,7 @@ class SysConfigServiceImplTest {
                 .hasMessage("内置系统参数 inventory.stagnant.days 不可删除");
             verify(sysConfigMapper, never()).deleteById(anyLong());
         }
-        
+
         @Test
         @DisplayName("删除系统参数，参数不存在，抛出异常")
         void shouldThrow_whenConfigNotFound() {

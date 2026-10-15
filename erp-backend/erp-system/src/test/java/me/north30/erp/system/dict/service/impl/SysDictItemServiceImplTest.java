@@ -26,7 +26,10 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import me.north30.erp.system.common.util.PageParamResolver;
+import me.north30.erp.system.config.service.SysConfigDomainService;
 
 import java.util.List;
 
@@ -54,6 +57,10 @@ class SysDictItemServiceImplTest {
 
     @Spy
     private final DictConverter dictConverter = new DictConverterImpl();
+
+    @Spy
+    private final PageParamResolver pageParamResolver =
+        new PageParamResolver(Mockito.mock(SysConfigDomainService.class));
 
     @InjectMocks
     private SysDictItemServiceImpl service;

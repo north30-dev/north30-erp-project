@@ -3,6 +3,7 @@ package me.north30.erp.system.attachment.service.impl;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.system.attachment.AttachmentTestFactory;
+import me.north30.erp.system.attachment.common.AttachmentConfigKeys;
 import me.north30.erp.system.attachment.converter.AttachmentConverterImpl;
 import me.north30.erp.system.attachment.dto.AttachmentBizQueryDTO;
 import me.north30.erp.system.attachment.entity.SysAttachment;
@@ -13,6 +14,7 @@ import me.north30.erp.system.attachment.vo.AttachmentDownloadVO;
 import me.north30.erp.system.attachment.vo.AttachmentVO;
 import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.common.vo.DeleteResultVO;
+import me.north30.erp.system.config.service.SysConfigDomainService;
 import me.north30.erp.system.security.LoginUser;
 import me.north30.erp.system.support.MpTableInfoInit;
 import org.junit.jupiter.api.AfterEach;
@@ -44,6 +46,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -58,6 +61,9 @@ class SysAttachmentServiceImplTest {
 
     @Mock
     private SysAttachmentMapper sysAttachmentMapper;
+
+    @Mock
+    private SysConfigDomainService sysConfigDomainService;
 
     private SysAttachmentServiceImpl service;
 
@@ -78,8 +84,17 @@ class SysAttachmentServiceImplTest {
     void setUp() {
         // @Value 配置参数无法由 Mockito 注入，手动构造策略与被测类（同 MP ServiceImpl 特例口径）
         FileStorageStrategy strategy = new FileStorageStrategy(tempDir.toString());
+        FileValidStrategy validStrategy = new FileValidStrategy(sysAttachmentMapper, sysConfigDomainService);
         service = new SysAttachmentServiceImpl(sysAttachmentMapper, new AttachmentConverterImpl(), strategy,
-            new FileValidStrategy(sysAttachmentMapper));
+            validStrategy);
+        // 上传用例默认走兜底值 20MB / 20 个（lenient：非上传用例不触发该打桩）；
+        // 单独打桩同参数即可覆盖为配置值（Mockito 后打桩优先）
+        lenient().when(sysConfigDomainService.longValue(AttachmentConfigKeys.MAX_FILE_SIZE_MB,
+                AttachmentConfigKeys.DEFAULT_MAX_FILE_SIZE_MB))
+            .thenReturn(AttachmentConfigKeys.DEFAULT_MAX_FILE_SIZE_MB);
+        lenient().when(sysConfigDomainService.longValue(AttachmentConfigKeys.MAX_COUNT_PER_BIZ,
+                AttachmentConfigKeys.DEFAULT_MAX_COUNT_PER_BIZ))
+            .thenReturn(AttachmentConfigKeys.DEFAULT_MAX_COUNT_PER_BIZ);
     }
 
     @AfterEach
@@ -198,9 +213,9 @@ class SysAttachmentServiceImplTest {
         }
 
         @Test
-        @DisplayName("业务对象已有 20 个附件（达到上限）抛出异常")
+        @DisplayName("业务对象附件数达到配置上限（兜底 20 个）抛出异常")
         void shouldThrow_whenCountExceeded() {
-            // Given：业务对象已有 20 个附件（达到上限）
+            // Given：业务对象已有 20 个附件（达到兜底上限；配置 mock 未打桩返回 null → 回落 20）
             MultipartFile file = AttachmentTestFactory.fileNamed("报价单.pdf");
             given(sysAttachmentMapper.selectCount(any())).willReturn(20L);
 
@@ -209,7 +224,40 @@ class SysAttachmentServiceImplTest {
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode())
                         .isEqualTo(CommonErrorCode.ATTACHMENT_COUNT_EXCEEDED.getCode()))
-                .hasMessage("附件数量超出上限");
+                .hasMessage("附件数量超出上限（单据最多 20 个附件）");
+            verify(sysAttachmentMapper, never()).insert(any(SysAttachment.class));
+        }
+
+        @Test
+        @DisplayName("配置收紧单文件大小上限为 5MB 时，6MB 文件被拒且文案动态拼接")
+        void shouldThrow_whenSizeExceedsConfiguredLimit() {
+            // Given：DB 配置单文件上限 5MB
+            MultipartFile file = AttachmentTestFactory.file("big.pdf", 6L * 1024 * 1024);
+            given(sysConfigDomainService.longValue(AttachmentConfigKeys.MAX_FILE_SIZE_MB, 20L)).willReturn(5L);
+
+            // When + Then：错误文案携带配置值而非硬编码 20
+            assertThatThrownBy(() -> service.upload(file, new AttachmentBizQueryDTO("PURCHASE_RECEIPT", 1L, null)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode())
+                        .isEqualTo(CommonErrorCode.ATTACHMENT_SIZE_EXCEEDED.getCode()))
+                .hasMessage("上传文件大小不能超过 5MB");
+            verifyNoInteractions(sysAttachmentMapper);
+        }
+
+        @Test
+        @DisplayName("配置收紧数量上限为 2 个时，第 3 个附件被拒且文案动态拼接")
+        void shouldThrow_whenCountExceedsConfiguredLimit() {
+            // Given：DB 配置数量上限 2 个，业务对象已有 2 个附件
+            MultipartFile file = AttachmentTestFactory.fileNamed("报价单.pdf");
+            given(sysConfigDomainService.longValue(AttachmentConfigKeys.MAX_COUNT_PER_BIZ, 20L)).willReturn(2L);
+            given(sysAttachmentMapper.selectCount(any())).willReturn(2L);
+
+            // When + Then：错误文案携带配置值而非硬编码 20
+            assertThatThrownBy(() -> service.upload(file, new AttachmentBizQueryDTO("PURCHASE_RECEIPT", 1L, null)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode())
+                        .isEqualTo(CommonErrorCode.ATTACHMENT_COUNT_EXCEEDED.getCode()))
+                .hasMessage("附件数量超出上限（单据最多 2 个附件）");
             verify(sysAttachmentMapper, never()).insert(any(SysAttachment.class));
         }
 

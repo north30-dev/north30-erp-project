@@ -10,7 +10,7 @@ import me.north30.erp.common.util.DateTimeFormatUtil;
 import me.north30.erp.common.util.QueryGuardUtil;
 import me.north30.erp.common.util.UpdateGuardUtil;
 import me.north30.erp.system.common.enums.SystemErrorCode;
-import me.north30.erp.system.common.util.PageNormalizer;
+import me.north30.erp.system.common.util.PageParamResolver;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.common.vo.MutationVO;
 import me.north30.erp.system.dict.converter.DictConverter;
@@ -47,12 +47,13 @@ public class SysDictTypeServiceImpl implements SysDictTypeService {
     private final SysDictTypeMapper sysDictTypeMapper;
     private final SysDictItemMapper sysDictItemMapper;
     private final DictConverter dictConverter;
+    private final PageParamResolver pageParamResolver;
 
     @Override
     @Transactional(readOnly = true)
     public PageResult<DictTypeVO> pageType(DictTypeQueryDTO query) {
-        long pageNum = PageNormalizer.normalizePageNum(query.pageNum());
-        long pageSize = PageNormalizer.normalizePageSize(query.pageSize());
+        long pageNum = pageParamResolver.normalizePageNum(query.pageNum());
+        long pageSize = pageParamResolver.normalizePageSize(query.pageSize());
         LambdaQueryWrapper<SysDictType> wrapper = new LambdaQueryWrapper<SysDictType>()
             .like(StringUtils.hasText(query.dictType()), SysDictType::getDictType, query.dictType())
             .like(StringUtils.hasText(query.dictName()), SysDictType::getDictName, query.dictName())

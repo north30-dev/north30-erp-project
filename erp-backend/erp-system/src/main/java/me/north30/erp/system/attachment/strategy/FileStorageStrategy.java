@@ -27,9 +27,6 @@ import java.util.UUID;
 @Component
 public class FileStorageStrategy {
 
-    /** 单文件大小上限 20MB（接口文档 5.9.1） */
-    public static final long MAX_FILE_SIZE = 20L * 1024 * 1024;
-
     /** 文件名长度上限（file_name VARCHAR(200)） */
     private static final int MAX_FILE_NAME_LENGTH = 200;
 

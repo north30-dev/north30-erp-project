@@ -12,7 +12,7 @@ import me.north30.erp.common.result.Result;
 import me.north30.erp.system.config.dto.ConfigCreateDTO;
 import me.north30.erp.system.config.dto.ConfigQueryDTO;
 import me.north30.erp.system.config.dto.ConfigUpdateDTO;
-import me.north30.erp.system.config.service.SysConfigService;
+import me.north30.erp.system.config.service.SysConfigApplicationService;
 import me.north30.erp.system.config.vo.ConfigUpdateVO;
 import me.north30.erp.system.config.vo.ConfigVO;
 import me.north30.erp.system.common.vo.DeleteResultVO;
@@ -42,7 +42,7 @@ public class SysConfigController {
         {"code": 10602, "message": "参数键已存在，请检查后重试", "data": null, "timestamp": "2026-01-01 00:00:00", "traceId": "..."}\
         """;
 
-    private final SysConfigService sysConfigService;
+    private final SysConfigApplicationService sysConfigApplicationService;
 
     /**
      * 5.6.1 系统参数分页查询。
@@ -51,7 +51,7 @@ public class SysConfigController {
     @PreAuthorize("hasAuthority('system:config:list')")
     @Operation(summary = "系统参数分页查询", description = "权限点 system:config:list")
     public Result<PageResult<ConfigVO>> page(@ParameterObject @Valid ConfigQueryDTO query) {
-        return Result.success(sysConfigService.page(query));
+        return Result.success(sysConfigApplicationService.page(query));
     }
 
     /**
@@ -64,7 +64,7 @@ public class SysConfigController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<MutationVO> create(@Valid @RequestBody ConfigCreateDTO dto) {
-        return Result.success(sysConfigService.create(dto));
+        return Result.success(sysConfigApplicationService.create(dto));
     }
 
     /**
@@ -77,7 +77,7 @@ public class SysConfigController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<ConfigUpdateVO> update(@PathVariable Long id, @Valid @RequestBody ConfigUpdateDTO dto) {
-        return Result.success(sysConfigService.update(id, dto));
+        return Result.success(sysConfigApplicationService.update(id, dto));
     }
 
     /**
@@ -90,6 +90,6 @@ public class SysConfigController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<DeleteResultVO> delete(@PathVariable Long id) {
-        return Result.success(sysConfigService.delete(id));
+        return Result.success(sysConfigApplicationService.delete(id));
     }
 }

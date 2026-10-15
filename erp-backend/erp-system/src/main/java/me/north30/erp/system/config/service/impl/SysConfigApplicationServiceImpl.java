@@ -3,7 +3,6 @@ package me.north30.erp.system.config.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
-import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.system.config.converter.ConfigConverter;
@@ -12,9 +11,9 @@ import me.north30.erp.system.config.dto.ConfigQueryDTO;
 import me.north30.erp.system.config.dto.ConfigUpdateDTO;
 import me.north30.erp.system.config.entity.SysConfig;
 import me.north30.erp.system.common.enums.SystemErrorCode;
-import me.north30.erp.system.common.util.PageNormalizer;
+import me.north30.erp.system.common.util.PageParamResolver;
 import me.north30.erp.system.config.mapper.SysConfigMapper;
-import me.north30.erp.system.config.service.SysConfigService;
+import me.north30.erp.system.config.service.SysConfigApplicationService;
 import me.north30.erp.common.util.DateTimeFormatUtil;
 import me.north30.erp.common.util.QueryGuardUtil;
 import me.north30.erp.common.util.UpdateGuardUtil;
@@ -30,23 +29,25 @@ import tools.jackson.databind.ObjectMapper;
 import java.util.List;
 
 /**
- * 系统参数管理服务实现。
+ * 系统参数管理应用服务实现（管理端用例编排）。
  * <p>参数值按 valueType 校验（1-字符串 2-数字 3-布尔 4-JSON）；内置参数（is_system=1）不可删除。
+ * 跨域只读取数统一走 {@link SysConfigDomainService}，不在本层暴露。
  * 参数缓存（system:param:{configKey}）与事务提交后失效逻辑在缓存模块接入时补充。</p>
  */
 @Service
 @RequiredArgsConstructor
-public class SysConfigServiceImpl implements SysConfigService {
+public class SysConfigApplicationServiceImpl implements SysConfigApplicationService {
 
     private final SysConfigMapper sysConfigMapper;
     private final ObjectMapper objectMapper;
     private final ConfigConverter configConverter;
+    private final PageParamResolver pageParamResolver;
 
     @Override
     @Transactional(readOnly = true)
     public PageResult<ConfigVO> page(ConfigQueryDTO dto) {
-        long pageNum = PageNormalizer.normalizePageNum(dto.pageNum());
-        long pageSize = PageNormalizer.normalizePageSize(dto.pageSize());
+        long pageNum = pageParamResolver.normalizePageNum(dto.pageNum());
+        long pageSize = pageParamResolver.normalizePageSize(dto.pageSize());
         LambdaQueryWrapper<SysConfig> wrapper = new LambdaQueryWrapper<SysConfig>()
             .like(StringUtils.hasText(dto.configKey()), SysConfig::getConfigKey, dto.configKey())
             .like(StringUtils.hasText(dto.configName()), SysConfig::getConfigName, dto.configName())
@@ -65,7 +66,7 @@ public class SysConfigServiceImpl implements SysConfigService {
         config.validateValue(objectMapper);
         Long exists = sysConfigMapper.selectCount(
             new LambdaQueryWrapper<SysConfig>().eq(SysConfig::getConfigKey, dto.configKey()));
-        QueryGuardUtil.requireCountZero(exists, 
+        QueryGuardUtil.requireCountZero(exists,
             CommonErrorCode.DUPLICATE_KEY, "参数键 " + dto.configKey() + " 已存在，请检查后重试");
         config.applyCreateDefault();
         sysConfigMapper.insert(config);
@@ -75,7 +76,7 @@ public class SysConfigServiceImpl implements SysConfigService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ConfigUpdateVO update(Long id, ConfigUpdateDTO dto) {
-        SysConfig config = QueryGuardUtil.requirePresent(sysConfigMapper.selectById(id), 
+        SysConfig config = QueryGuardUtil.requirePresent(sysConfigMapper.selectById(id),
             SystemErrorCode.CONFIG_NOT_FOUND, "系统参数 " + id + " 不存在");
         configConverter.updateConfig(dto, config);
         config.validateValue(objectMapper);
@@ -88,7 +89,7 @@ public class SysConfigServiceImpl implements SysConfigService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public DeleteResultVO delete(Long id) {
-        SysConfig config = QueryGuardUtil.requirePresent(sysConfigMapper.selectById(id), 
+        SysConfig config = QueryGuardUtil.requirePresent(sysConfigMapper.selectById(id),
             SystemErrorCode.CONFIG_NOT_FOUND, "系统参数 " + id + " 不存在");
         config.validateIsSystem();
         sysConfigMapper.deleteById(id);

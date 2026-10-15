@@ -10,9 +10,10 @@ import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.common.vo.MutationVO;
 
 /**
- * 系统参数管理服务接口（接口文档 5.6，41-44 号接口）。
+ * 系统参数管理应用服务（管理端用例编排，接口文档 5.6，41-44 号接口）。
+ * <p>跨域只读取数不走本服务，统一走 {@link SysConfigDomainService}。</p>
  */
-public interface SysConfigService {
+public interface SysConfigApplicationService {
 
     /**
      * 系统参数分页查询。

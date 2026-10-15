@@ -49,10 +49,18 @@ public class SysAttachment extends BaseEntity {
     /** 上传时间 */
     private LocalDateTime uploadTime;
 
+    /**
+     * 是否已删除
+     * @return 是否已删除
+     */
     public boolean isDeleted() {
         return Integer.valueOf(1).equals(this.getIsDeleted());
     }
 
+    /**
+     * 校验上传人是否与登录用户一致
+     * @param loginUser 登录用户
+     */
     public void validateUploadBy(LoginUser loginUser) {
         if (!loginUser.username().equals(uploadBy)) {
             throw new BusinessException(CommonErrorCode.DATA_SCOPE_DENIED, "上传人 " + uploadBy + " 与登录用户 " + loginUser.username() + " 不一致");

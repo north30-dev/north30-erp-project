@@ -18,7 +18,7 @@ import me.north30.erp.system.codesequence.dto.CodeSequenceQueryDTO;
 import me.north30.erp.system.codesequence.dto.CodeSequenceResetDTO;
 import me.north30.erp.system.codesequence.entity.SysCodeSequence;
 import me.north30.erp.system.common.enums.SystemErrorCode;
-import me.north30.erp.system.common.util.PageNormalizer;
+import me.north30.erp.system.common.util.PageParamResolver;
 import me.north30.erp.system.codesequence.mapper.SysCodeSequenceMapper;
 import me.north30.erp.system.codesequence.service.SysCodeSequenceService;
 import me.north30.erp.system.codesequence.vo.CodeSequenceResetVO;
@@ -41,12 +41,13 @@ public class SysCodeSequenceServiceImpl implements SysCodeSequenceService {
 
     private final SysCodeSequenceMapper sysCodeSequenceMapper;
     private final CodeSequenceConverter codeSequenceConverter;
+    private final PageParamResolver pageParamResolver;
 
     @Override
     @Transactional(readOnly = true)
     public PageResult<CodeSequenceVO> page(CodeSequenceQueryDTO query) {
-        long pageNum = PageNormalizer.normalizePageNum(query.pageNum());
-        long pageSize = PageNormalizer.normalizePageSize(query.pageSize());
+        long pageNum = pageParamResolver.normalizePageNum(query.pageNum());
+        long pageSize = pageParamResolver.normalizePageSize(query.pageSize());
         LambdaQueryWrapper<SysCodeSequence> wrapper = new LambdaQueryWrapper<SysCodeSequence>()
             .eq(StringUtils.hasText(query.bizType()), SysCodeSequence::getBizType, query.bizType())
             .eq(StringUtils.hasText(query.period()), SysCodeSequence::getPeriod, query.period())

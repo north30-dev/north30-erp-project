@@ -20,7 +20,7 @@ import me.north30.erp.system.log.service.SysLogQueryService;
 import me.north30.erp.system.log.strategy.AuditLogDiffStrategy;
 import me.north30.erp.system.log.vo.AuditLogVO;
 import me.north30.erp.system.log.vo.LoginLogVO;
-import me.north30.erp.system.common.util.PageNormalizer;
+import me.north30.erp.system.common.util.PageParamResolver;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -41,12 +41,13 @@ public class SysLogQueryServiceImpl implements SysLogQueryService {
     private final AuditLogConverter auditLogConverter;
     private final LoginLogConverter loginLogConverter;
     private final AuditLogDiffStrategy auditLogDiffStrategy;
+    private final PageParamResolver pageParamResolver;
 
     @Override
     @Transactional(readOnly = true)
     public PageResult<AuditLogVO> pageAuditLogs(AuditLogQueryDTO query) {
-        long pageNum = PageNormalizer.normalizePageNumStrict(query.pageNum());
-        long pageSize = PageNormalizer.normalizePageSizeStrict(query.pageSize());
+        long pageNum = pageParamResolver.normalizePageNumStrict(query.pageNum());
+        long pageSize = pageParamResolver.normalizePageSizeStrict(query.pageSize());
         // 分页列表裁剪掉 before_json/after_json 大字段，仅详情接口返回
         LambdaQueryWrapper<SysAuditLog> wrapper = new LambdaQueryWrapper<SysAuditLog>()
             .select(SysAuditLog::getId, SysAuditLog::getModule, SysAuditLog::getBizType,
@@ -86,8 +87,8 @@ public class SysLogQueryServiceImpl implements SysLogQueryService {
     @Override
     @Transactional(readOnly = true)
     public PageResult<LoginLogVO> pageLoginLogs(LoginLogQueryDTO query) {
-        long pageNum = PageNormalizer.normalizePageNumStrict(query.pageNum());
-        long pageSize = PageNormalizer.normalizePageSizeStrict(query.pageSize());
+        long pageNum = pageParamResolver.normalizePageNumStrict(query.pageNum());
+        long pageSize = pageParamResolver.normalizePageSizeStrict(query.pageSize());
         LambdaQueryWrapper<SysLoginLog> wrapper = new LambdaQueryWrapper<SysLoginLog>()
             .like(StringUtils.hasText(query.username()), SysLoginLog::getUsername, query.username())
             .eq(query.loginType() != null, SysLoginLog::getLoginType, query.loginType())

@@ -2689,7 +2689,9 @@ INSERT INTO sys_config (id, config_key, config_name, config_value, value_type, c
 (15, 'system.import.max.rows', '单批导入上限（行）', '10000', 2, 'SYSTEM', 1, 1, 'admin', 'admin'),
 (16, 'system.export.max.rows', '单次导出上限（行）', '50000', 2, 'SYSTEM', 1, 1, 'admin', 'admin'),
 (17, 'system.page.default.size', '列表默认每页条数', '20', 2, 'SYSTEM', 1, 1, 'admin', 'admin'),
-(18, 'system.page.max.size', '列表单页上限条数', '200', 2, 'SYSTEM', 1, 1, 'admin', 'admin');
+(18, 'system.page.max.size', '列表单页上限条数', '200', 2, 'SYSTEM', 1, 1, 'admin', 'admin'),
+(19, 'attachment.max.file.size.mb', '附件单文件大小上限（MB）', '20', 2, 'ATTACHMENT', 1, 1, 'admin', 'admin'),
+(20, 'attachment.max.count.per.biz', '单据附件数量上限（个）', '20', 2, 'ATTACHMENT', 1, 1, 'admin', 'admin');
 SELECT setval('sys_config_id_seq', (SELECT MAX(id) FROM sys_config));
 
 -- 4.9 单据编号序列初始行（SYS-07，按当前期间初始化；跨月由 period 变化自动重置）

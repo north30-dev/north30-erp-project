@@ -10,7 +10,7 @@ import me.north30.erp.common.result.PageResult;
 import me.north30.erp.common.util.QueryGuardUtil;
 import me.north30.erp.common.util.UpdateGuardUtil;
 import me.north30.erp.system.common.enums.SystemErrorCode;
-import me.north30.erp.system.common.util.PageNormalizer;
+import me.north30.erp.system.common.util.PageParamResolver;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.common.vo.MutationVO;
 import me.north30.erp.system.dict.converter.DictConverter;
@@ -47,6 +47,7 @@ public class SysDictItemServiceImpl implements SysDictItemService {
     private final SysDictItemMapper sysDictItemMapper;
     private final SysDictTypeService sysDictTypeService;
     private final DictConverter dictConverter;
+    private final PageParamResolver pageParamResolver;
 
     @Override
     @Transactional(readOnly = true)
@@ -54,8 +55,8 @@ public class SysDictItemServiceImpl implements SysDictItemService {
         if (!StringUtils.hasText(query.dictType())) {
             throw new BusinessException(CommonErrorCode.PARAM_ERROR, "字典类型编码不能为空");
         }
-        long pageNum = PageNormalizer.normalizePageNum(query.pageNum());
-        long pageSize = PageNormalizer.normalizePageSize(query.pageSize());
+        long pageNum = pageParamResolver.normalizePageNum(query.pageNum());
+        long pageSize = pageParamResolver.normalizePageSize(query.pageSize());
         String lang = StringUtils.hasText(query.lang()) ? query.lang() : DEFAULT_LANG;
         LambdaQueryWrapper<SysDictItem> wrapper = new LambdaQueryWrapper<SysDictItem>()
             .eq(SysDictItem::getDictType, query.dictType())
