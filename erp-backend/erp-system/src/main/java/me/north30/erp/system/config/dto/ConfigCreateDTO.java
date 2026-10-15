@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /**
@@ -22,6 +23,8 @@ public record ConfigCreateDTO(
 
     @NotBlank(message = "参数键不能为空")
     @Size(max = 100, message = "参数键长度不能超过 100")
+    @Pattern(regexp = "^[a-z][a-z0-9]*(\\.[a-z][a-z0-9-]*)+$",
+        message = "参数键必须为小写域前缀.参数名格式（如 attachment.maxFileSizeMb）")
     String configKey,
 
     @NotBlank(message = "参数名称不能为空")

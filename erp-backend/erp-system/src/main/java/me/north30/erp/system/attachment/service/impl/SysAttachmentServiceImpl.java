@@ -44,8 +44,8 @@ public class SysAttachmentServiceImpl implements SysAttachmentService {
         String bizType = dto.bizTypeNormalized();
         String fileType = fileStorageStrategy.resolveFileType(file.getOriginalFilename());
         // 大小/数量上限走 sys_config 运行时参数，校验逻辑收敛在 FileValidStrategy（兜底 20MB/20 个）
-        fileValidStrategy.requireFileSizeWithinLimit(file);
-        fileValidStrategy.requireAttachmentCountWithinLimit(bizType, dto.bizId());
+        fileValidStrategy.validateFileSize(file);
+        fileValidStrategy.validateAttachmentCount(bizType, dto.bizId());
         String fileName = fileStorageStrategy.sanitizeFileName(file.getOriginalFilename());
         String relativePath = fileStorageStrategy.buildRelativePath(fileType);
         fileStorageStrategy.writeFile(relativePath, file);

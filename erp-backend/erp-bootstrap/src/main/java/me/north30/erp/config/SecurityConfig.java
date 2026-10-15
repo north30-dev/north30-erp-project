@@ -70,7 +70,11 @@ public class SecurityConfig {
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(jwt -> jwt
                     .decoder(jwtTokenProvider.getDecoder())
-                    .jwtAuthenticationConverter(jwtLoginUserConverter::convert)))
+                    .jwtAuthenticationConverter(jwtLoginUserConverter::convert))
+                // 401/403 必须同时挂在这里：token 解析失败由 BearerTokenAuthenticationFilter
+                // 自带失败处理器直接响应，不会走 exceptionHandling 注册的 EntryPoint
+                .authenticationEntryPoint(authenticationEntryPoint())
+                .accessDeniedHandler(accessDeniedHandler()))
             .exceptionHandling(handling -> handling
                 .authenticationEntryPoint(authenticationEntryPoint())
                 .accessDeniedHandler(accessDeniedHandler()));

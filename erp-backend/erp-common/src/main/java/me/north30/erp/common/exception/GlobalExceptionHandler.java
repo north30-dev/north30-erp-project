@@ -5,6 +5,8 @@ import me.north30.erp.common.result.Result;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -73,6 +75,28 @@ public class GlobalExceptionHandler {
         log.warn("约束校验失败：{}", e.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
             .body(Result.failure(CommonErrorCode.PARAM_ERROR.getCode(), e.getMessage()));
+    }
+
+    /**
+     * 方法级鉴权失败（@PreAuthorize/@PostAuthorize 抛出 Access Denied）：返回 HTTP 403。
+     * <p>@EnableMethodSecurity 的拒绝发生在 MVC 层，Advice 可捕获；过滤器层的 403 仍由
+     * SecurityConfig 的 AccessDeniedHandler 负责，二者响应体结构一致。</p>
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Result<Void>> handleAccessDenied(AccessDeniedException e) {
+        log.warn("方法级鉴权拒绝：{}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+            .body(Result.failure(CommonErrorCode.FORBIDDEN.getCode(), CommonErrorCode.FORBIDDEN.getMessage()));
+    }
+
+    /**
+     * 请求体缺失或 JSON 格式非法（未携带 body / Content-Type 不符 / 反序列化失败）：返回 HTTP 400。
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Result<Void>> handleHttpMessageNotReadable(HttpMessageNotReadableException e) {
+        log.warn("请求体不可读：{}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(Result.failure(CommonErrorCode.PARAM_ERROR.getCode(), "请求体缺失或格式错误"));
     }
 
     /**

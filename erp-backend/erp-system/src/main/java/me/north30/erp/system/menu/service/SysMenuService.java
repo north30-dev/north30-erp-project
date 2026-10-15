@@ -41,6 +41,13 @@ public interface SysMenuService {
     boolean createMenu(SysMenu menu);
 
     /**
+     * 更新菜单权限标识（AdminInitializer 幂等续建时同步种子与库内 perms 差异）。
+     * @param menuId 菜单 ID
+     * @param perms 权限标识
+     */
+    void updatePerms(Long menuId, String perms);
+
+    /**
      * 校验菜单存在，不存在抛 19002（@TableLogic 自动过滤已删除行）。
      * @param id 菜单 ID
      * @return 菜单实体

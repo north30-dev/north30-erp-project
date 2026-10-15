@@ -60,7 +60,7 @@ public class FileValidStrategy {
      *
      * @param file 上传文件
      */
-    public void requireFileSizeWithinLimit(MultipartFile file) {
+    public void validateFileSize(MultipartFile file) {
         long maxFileSizeMb = sysConfigDomainService.longValue(AttachmentConfigKeys.MAX_FILE_SIZE_MB,
             AttachmentConfigKeys.DEFAULT_MAX_FILE_SIZE_MB);
         if (file.getSize() > maxFileSizeMb * 1024 * 1024) {
@@ -76,7 +76,7 @@ public class FileValidStrategy {
      * @param bizType 业务单据类型
      * @param bizId 业务单据 ID
      */
-    public void requireAttachmentCountWithinLimit(String bizType, Long bizId) {
+    public void validateAttachmentCount(String bizType, Long bizId) {
         long maxCountPerBiz = sysConfigDomainService.longValue(AttachmentConfigKeys.MAX_COUNT_PER_BIZ,
             AttachmentConfigKeys.DEFAULT_MAX_COUNT_PER_BIZ);
         Long count = sysAttachmentMapper.selectCount(new LambdaQueryWrapper<SysAttachment>()

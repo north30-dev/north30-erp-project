@@ -72,6 +72,17 @@ public class SysMenuServiceImpl implements SysMenuService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updatePerms(Long menuId, String perms) {
+        SysMenu menu = sysMenuMapper.selectById(menuId);
+        if (menu == null) {
+            return;
+        }
+        menu.setPerms(perms);
+        sysMenuMapper.updateById(menu);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public SysMenu requireMenu(Long id) {
         SysMenu menu = sysMenuMapper.selectById(id);
