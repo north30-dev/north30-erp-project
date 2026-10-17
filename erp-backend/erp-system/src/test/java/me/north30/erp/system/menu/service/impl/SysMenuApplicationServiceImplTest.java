@@ -13,7 +13,7 @@ import me.north30.erp.system.menu.dto.MenuCreateDTO;
 import me.north30.erp.system.menu.dto.MenuUpdateDTO;
 import me.north30.erp.system.menu.entity.SysMenu;
 import me.north30.erp.system.menu.mapper.SysMenuMapper;
-import me.north30.erp.system.menu.service.SysMenuService;
+import me.north30.erp.system.menu.service.SysMenuDomainService;
 import me.north30.erp.system.menu.vo.MenuNodeVO;
 import me.north30.erp.system.role.service.SysRoleMenuService;
 import me.north30.erp.system.support.MpTableInfoInit;
@@ -42,16 +42,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
- * {@link MenuManageServiceImpl} 纯单元测试：树组装、类型/父级/perms 校验、乐观锁与删除约束。
+ * {@link SysMenuApplicationServiceImpl} 纯单元测试：树组装、类型/父级/perms 校验、乐观锁与删除约束。
  */
 @ExtendWith(MockitoExtension.class)
-class MenuManageServiceImplTest {
+class SysMenuApplicationServiceImplTest {
 
     @Mock
     private SysMenuMapper sysMenuMapper;
 
     @Mock
-    private SysMenuService sysMenuService;
+    private SysMenuDomainService sysMenuDomainService;
 
     @Mock
     private SysRoleMenuService sysRoleMenuService;
@@ -61,7 +61,7 @@ class MenuManageServiceImplTest {
 
     private MenuTreeUtil menuTreeUtil;
 
-    private MenuManageServiceImpl service;
+    private SysMenuApplicationServiceImpl service;
 
     @Captor
     private ArgumentCaptor<LambdaQueryWrapper<SysMenu>> menuWrapperCaptor;
@@ -78,7 +78,7 @@ class MenuManageServiceImplTest {
     @BeforeEach
     void setUp() {
         menuTreeUtil = new MenuTreeUtil(new MenuConverterImpl());
-        service = new MenuManageServiceImpl(sysMenuMapper, sysMenuService, sysRoleMenuService,
+        service = new SysMenuApplicationServiceImpl(sysMenuMapper, sysMenuDomainService, sysRoleMenuService,
             menuTreeUtil, menuConverter);
     }
 
@@ -284,7 +284,7 @@ class MenuManageServiceImplTest {
             SysMenu menu = MenuTestFactory.dirMenu(1L, "旧名", 0L, 1);
             menu.setUpdateTime(LocalDateTime.of(2026, 9, 28, 10, 0, 0));
             MenuUpdateDTO dto = MenuTestFactory.updateDTO(3, "新名", null, null, "/new", null, null, 2);
-            given(sysMenuService.requireMenu(1L)).willReturn(menu);
+            given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
             given(sysMenuMapper.selectById(1L)).willReturn(menu);
             given(sysMenuMapper.updateById(any(SysMenu.class))).willReturn(1);
 
@@ -306,7 +306,7 @@ class MenuManageServiceImplTest {
         @DisplayName("更新菜单时，抛出异常")
         void shouldThrow_whenMenuNotFound() {
             // Given
-            given(sysMenuService.requireMenu(1L))
+            given(sysMenuDomainService.requireMenu(1L))
                 .willThrow(new BusinessException(SystemErrorCode.MENU_NOT_FOUND));
 
             // When + Then
@@ -322,7 +322,7 @@ class MenuManageServiceImplTest {
         void shouldThrow_whenParentPointsToSelf() {
             // Given
             SysMenu menu = MenuTestFactory.dirMenu(1L, "系统管理", 0L, 1);
-            given(sysMenuService.requireMenu(1L)).willReturn(menu);
+            given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
 
             // When + Then
             assertThatThrownBy(() -> service.update(1L, MenuTestFactory.updateDTO(1, null, 1L, null, null, null, null, null)))
@@ -338,7 +338,7 @@ class MenuManageServiceImplTest {
             // Given：父级沿父链回溯会回到自身（防环）
             SysMenu menu = MenuTestFactory.dirMenu(1L, "根目录", 0L, 1);
             SysMenu child = MenuTestFactory.dirMenu(2L, "子目录", 1L, 1);
-            given(sysMenuService.requireMenu(1L)).willReturn(menu);
+            given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
             given(sysMenuMapper.selectById(2L)).willReturn(child);
 
             // When + Then
@@ -354,7 +354,7 @@ class MenuManageServiceImplTest {
         void shouldThrow_whenNewParentMissing() {
             // Given
             SysMenu menu = MenuTestFactory.dirMenu(1L, "根目录", 0L, 1);
-            given(sysMenuService.requireMenu(1L)).willReturn(menu);
+            given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
             given(sysMenuMapper.selectById(99L)).willReturn(null);
 
             // When + Then
@@ -370,7 +370,7 @@ class MenuManageServiceImplTest {
         void shouldThrow_whenNewParentIsButton() {
             // Given
             SysMenu menu = MenuTestFactory.dirMenu(1L, "根目录", 0L, 1);
-            given(sysMenuService.requireMenu(1L)).willReturn(menu);
+            given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
             given(sysMenuMapper.selectById(9L)).willReturn(MenuTestFactory.buttonMenu(9L, "按钮", 3L, "a:b:c", 1));
 
             // When + Then
@@ -387,7 +387,7 @@ class MenuManageServiceImplTest {
             // Given：修改为已存在的 perms
             SysMenu menu = MenuTestFactory.buttonMenu(1L, "新增按钮", 0L, "old:perm", 1);
             MenuUpdateDTO dto = MenuTestFactory.updateDTO(2, null, null, null, null, null, "dup:perm", null);
-            given(sysMenuService.requireMenu(1L)).willReturn(menu);
+            given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
             given(sysMenuMapper.selectCount(any())).willReturn(1L);
 
             // When + Then
@@ -403,7 +403,7 @@ class MenuManageServiceImplTest {
         void shouldThrow_whenOptimisticLockConflict() {
             // Given：updateById 影响 0 行表示版本冲突
             SysMenu menu = MenuTestFactory.dirMenu(1L, "根目录", 0L, 1);
-            given(sysMenuService.requireMenu(1L)).willReturn(menu);
+            given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
             given(sysMenuMapper.updateById(any(SysMenu.class))).willReturn(0);
 
             // When + Then
@@ -421,7 +421,7 @@ class MenuManageServiceImplTest {
                 "system:user:list", 1);
             menu.setUpdateTime(LocalDateTime.of(2026, 9, 28, 11, 0, 0));
             MenuUpdateDTO dto = MenuTestFactory.updateDTO(2, null, null, 3, null, null, "system:user:create", null);
-            given(sysMenuService.requireMenu(1L)).willReturn(menu);
+            given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
             given(sysMenuMapper.selectById(1L)).willReturn(menu);
             given(sysMenuMapper.selectCount(any())).willReturn(0L);
             given(sysMenuMapper.updateById(any(SysMenu.class))).willReturn(1);
@@ -449,7 +449,7 @@ class MenuManageServiceImplTest {
         void shouldDelete_whenNoChildAndNoRoleRef() {
             // Given：无子节点且未被角色引用
             SysMenu menu = MenuTestFactory.dirMenu(1L, "系统管理", 0L, 1);
-            given(sysMenuService.requireMenu(1L)).willReturn(menu);
+            given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
             given(sysMenuMapper.selectCount(any())).willReturn(0L);
             given(sysRoleMenuService.existsByMenuId(1L)).willReturn(false);
             given(sysMenuMapper.deleteById(1L)).willReturn(1);
@@ -468,7 +468,7 @@ class MenuManageServiceImplTest {
         void shouldThrow_whenHasChildren() {
             // Given：存在子节点
             SysMenu menu = MenuTestFactory.dirMenu(1L, "系统管理", 0L, 1);
-            given(sysMenuService.requireMenu(1L)).willReturn(menu);
+            given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
             given(sysMenuMapper.selectCount(any())).willReturn(2L);
 
             // When + Then
@@ -485,7 +485,7 @@ class MenuManageServiceImplTest {
         void shouldThrow_whenReferencedByRole() {
             // Given：无子节点但已被角色引用
             SysMenu menu = MenuTestFactory.dirMenu(1L, "系统管理", 0L, 1);
-            given(sysMenuService.requireMenu(1L)).willReturn(menu);
+            given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
             given(sysMenuMapper.selectCount(any())).willReturn(0L);
             given(sysRoleMenuService.existsByMenuId(1L)).willReturn(true);
 
@@ -501,7 +501,7 @@ class MenuManageServiceImplTest {
         @DisplayName("删除菜单时，抛出异常")
         void shouldThrow_whenMenuNotFound() {
             // Given
-            given(sysMenuService.requireMenu(1L))
+            given(sysMenuDomainService.requireMenu(1L))
                 .willThrow(new BusinessException(SystemErrorCode.MENU_NOT_FOUND));
 
             // When + Then

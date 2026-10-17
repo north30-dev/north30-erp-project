@@ -9,6 +9,7 @@ import me.north30.erp.common.web.RequestContextUtil;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
@@ -50,6 +51,13 @@ public class AuditLogAspect {
 
     /**
      * 组装并持久化审计日志：始终输出 SLF4J 日志；有 AuditLogStore Bean 时落库（失败仅 WARN）。
+     * 
+     * @param joinPoint 切入点，包含方法参数与返回值
+     * @param auditLog 审计注解，包含模块、操作类型、单据号、方法名等
+     * @param cost 执行耗时（毫秒）
+     * @param success 是否成功执行
+     * @param ex 执行异常（失败时）
+     * @param result 执行结果（成功时）
      */
     private void recordAuditLog(ProceedingJoinPoint joinPoint, AuditLog auditLog, long cost,
                                 boolean success, Throwable ex, Object result) {
@@ -75,6 +83,19 @@ public class AuditLogAspect {
 
     /**
      * 构造审计记录：入参 JSON 记 beforeJson、返回结果 JSON 记 afterJson（密码字段已在 DTO 序列化时排除）。
+     * 
+     * @param joinPoint 切入点，包含方法参数与返回值
+     * @param auditLog 审计注解，包含模块、操作类型、单据号、方法名等
+     * @param cost 执行耗时（毫秒）
+     * @param success 是否成功执行
+     * @param ex 执行异常（失败时）
+     * @param result 执行结果（成功时）
+     * @param operator 当前操作人（或 null）
+     * @param ip 当前请求 IP 地址
+     * @param uri 当前请求 URI
+     * @param request 当前 HTTP 请求
+     * @param method 当前方法名
+     * @return 审计记录
      */
     private AuditLogRecord buildRecord(ProceedingJoinPoint joinPoint, AuditLog auditLog, long cost,
                                        boolean success, Throwable ex, Object result,
@@ -103,11 +124,13 @@ public class AuditLogAspect {
                 errorCode,
                 errorMessage,
                 cost,
-                org.slf4j.MDC.get("traceId"));
+                MDC.get("traceId"));
     }
 
     /**
      * 解析当前操作人：无 CurrentUserProvider Bean 或无登录上下文时返回 null（落库侧兜底 anonymous）。
+     * 
+     * @return 当前操作人（或 null）
      */
     private String resolveOperator() {
         CurrentUserProvider provider = currentUserProvider.getIfAvailable();
@@ -116,6 +139,9 @@ public class AuditLogAspect {
 
     /**
      * 对象转 JSON：序列化失败返回 null（入参中可能含不可序列化对象，不因审计中断业务）。
+     * 
+     * @param value 待序列化的对象
+     * @return 序列化后的 JSON 字符串（或 null）
      */
     private String toJson(Object value) {
         if (value == null) {

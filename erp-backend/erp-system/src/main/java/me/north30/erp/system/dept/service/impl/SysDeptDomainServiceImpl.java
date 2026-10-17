@@ -5,7 +5,7 @@ import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.dept.entity.SysDept;
 import me.north30.erp.system.dept.mapper.SysDeptMapper;
-import me.north30.erp.system.dept.service.SysDeptService;
+import me.north30.erp.system.dept.service.SysDeptDomainService;
 import me.north30.erp.system.user.service.SysUserService;
 
 import org.springframework.stereotype.Service;
@@ -18,7 +18,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
  */
 @Service
 @RequiredArgsConstructor
-public class SysDeptServiceImpl implements SysDeptService {
+public class SysDeptDomainServiceImpl implements SysDeptDomainService {
 
     private final SysDeptMapper sysDeptMapper;
     private final SysUserService sysUserService;

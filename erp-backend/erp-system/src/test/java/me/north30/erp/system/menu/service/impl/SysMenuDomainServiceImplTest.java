@@ -23,16 +23,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
- * {@link SysMenuServiceImpl} 纯单元测试：仅 mock Mapper，不连接数据库。
+ * {@link SysMenuDomainServiceImpl} 纯单元测试：仅 mock Mapper，不连接数据库。
  */
 @ExtendWith(MockitoExtension.class)
-class SysMenuServiceImplTest {
+class SysMenuDomainServiceImplTest {
 
     @Mock
     private SysMenuMapper sysMenuMapper;
 
     @InjectMocks
-    private SysMenuServiceImpl service;
+    private SysMenuDomainServiceImpl service;
 
     @BeforeAll
     static void initMpTableInfo() {

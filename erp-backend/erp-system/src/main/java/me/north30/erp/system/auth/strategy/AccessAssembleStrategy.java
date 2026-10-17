@@ -7,7 +7,7 @@ import me.north30.erp.system.role.entity.SysUserRole;
 import me.north30.erp.system.role.service.SysRoleMenuService;
 import me.north30.erp.system.role.service.SysRoleService;
 import me.north30.erp.system.role.service.SysUserRoleService;
-import me.north30.erp.system.menu.service.SysMenuService;
+import me.north30.erp.system.menu.service.SysMenuDomainService;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
@@ -34,7 +34,7 @@ public class AccessAssembleStrategy {
     private final SysUserRoleService sysUserRoleService;
     private final SysRoleService sysRoleService;
     private final SysRoleMenuService sysRoleMenuService;
-    private final SysMenuService sysMenuService;
+    private final SysMenuDomainService sysMenuDomainService;
 
     /**
      * 查询用户启用角色集合（两次批量查询，无循环查库）。
@@ -53,7 +53,7 @@ public class AccessAssembleStrategy {
      */
     public Set<String> loadPerms(boolean isAdmin, List<SysRole> roles) {
         if (isAdmin) {
-            return new LinkedHashSet<>(sysMenuService.listAllPerms());
+            return new LinkedHashSet<>(sysMenuDomainService.listAllPerms());
         }
         if (CollectionUtils.isEmpty(roles)) {
             return new LinkedHashSet<>();
@@ -64,7 +64,7 @@ public class AccessAssembleStrategy {
             return new LinkedHashSet<>();
         }
         Set<Long> menuIds = new HashSet<>(roleMenus.stream().map(SysRoleMenu::getMenuId).toList());
-        return sysMenuService.listEnabledByIds(menuIds).stream()
+        return sysMenuDomainService.listEnabledByIds(menuIds).stream()
             .map(SysMenu::getPerms)
             .filter(perms -> perms != null && !perms.isBlank())
             .collect(Collectors.toCollection(LinkedHashSet::new));

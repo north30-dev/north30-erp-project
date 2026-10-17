@@ -1,5 +1,7 @@
 package me.north30.erp.system.dept.entity;
 
+import java.util.Objects;
+
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -72,4 +74,37 @@ public class SysDept extends BaseEntity {
         this.deptLevel = level;
         this.ancestors = newParent.getAncestors() + "," + newParent.getId();
     }
+
+    /**
+     * 应用创建默认值：deptSort=0, status=1。
+     * <p>仅校验/修改自身状态：deptSort 与 status 为 null 时设置。</p>
+     * 
+     */
+    public void applyCreateDefault() {
+        if (deptSort == null) {
+            deptSort = 0;
+        }
+        if (status == null) {
+            status = 1;
+        }
+    }
+
+    /**
+     * 是否为顶级组织（parent_id=0）。
+     * <p>仅校验自身状态：parent_id 为 null 时返回 false。</p>
+     * 
+     * @return 是否为顶级组织
+     */
+    public boolean isRoot(){
+        return parentId != null && parentId.equals(ROOT_PARENT_ID);
+    }
+
+    /**
+     * 判断换父目标是否与当前父级不同。
+     * @param newParentId 目标父级 ID（顶级传 0）
+     */
+    public boolean parentChangedTo(Long newParentId) {
+        return !Objects.equals(parentId, newParentId);
+    }
+
 }

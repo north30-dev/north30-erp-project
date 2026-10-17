@@ -3,9 +3,9 @@ package me.north30.erp.system.auth.service.impl;
 import me.north30.erp.system.common.util.MenuTreeUtil;
 import me.north30.erp.system.auth.dto.UserSecurityData;
 import me.north30.erp.system.auth.strategy.AccessAssembleStrategy;
-import me.north30.erp.system.dept.service.SysDeptService;
+import me.north30.erp.system.dept.service.SysDeptDomainService;
 import me.north30.erp.system.menu.converter.MenuConverterImpl;
-import me.north30.erp.system.menu.service.SysMenuService;
+import me.north30.erp.system.menu.service.SysMenuDomainService;
 import me.north30.erp.system.menu.vo.MenuTreeVO;
 import me.north30.erp.system.role.service.SysRoleMenuService;
 import me.north30.erp.system.role.service.SysRoleService;
@@ -55,7 +55,7 @@ class UserAccessServiceImplTest {
     private SysUserService sysUserService;
 
     @Mock
-    private SysDeptService sysDeptService;
+    private SysDeptDomainService sysDeptService;
 
     @Mock
     private SysUserRoleService sysUserRoleService;
@@ -67,7 +67,7 @@ class UserAccessServiceImplTest {
     private SysRoleMenuService sysRoleMenuService;
 
     @Mock
-    private SysMenuService sysMenuService;
+    private SysMenuDomainService sysMenuDomainService;
 
     @Spy
     private final MenuTreeUtil menuTreeUtil = new MenuTreeUtil(new MenuConverterImpl());
@@ -78,8 +78,8 @@ class UserAccessServiceImplTest {
     @BeforeEach
     void setUp() {
         userAccessService = new UserAccessServiceImpl(sysUserService, sysDeptService,
-            sysUserRoleService, sysRoleMenuService, sysMenuService, menuTreeUtil,
-            new AccessAssembleStrategy(sysUserRoleService, sysRoleService, sysRoleMenuService, sysMenuService));
+            sysUserRoleService, sysRoleMenuService, sysMenuDomainService, menuTreeUtil,
+            new AccessAssembleStrategy(sysUserRoleService, sysRoleService, sysRoleMenuService, sysMenuDomainService));
     }
 
     @Nested
@@ -95,7 +95,7 @@ class UserAccessServiceImplTest {
             UserSecurityData data = userAccessService.loadByUserId(USER_ID);
             // Then
             assertThat(data).isNull();
-            verifyNoInteractions(sysUserRoleService, sysRoleService, sysRoleMenuService, sysMenuService);
+            verifyNoInteractions(sysUserRoleService, sysRoleService, sysRoleMenuService, sysMenuDomainService);
         }
 
         @Test
@@ -107,7 +107,7 @@ class UserAccessServiceImplTest {
                 .thenReturn(List.of(userRole(ADMIN_USER_ID, ROLE_ID_A)));
             when(sysRoleService.listByIds(List.of(ROLE_ID_A)))
                 .thenReturn(List.of(role(ROLE_ID_A, "admin", 1, 1)));
-            when(sysMenuService.listAllPerms()).thenReturn(List.of("system:user:list", "system:role:list"));
+            when(sysMenuDomainService.listAllPerms()).thenReturn(List.of("system:user:list", "system:role:list"));
             // When
             UserSecurityData data = userAccessService.loadByUserId(ADMIN_USER_ID);
             // Then
@@ -118,7 +118,7 @@ class UserAccessServiceImplTest {
             assertThat(data.perms()).containsExactly("system:user:list", "system:role:list");
             assertThat(data.widestDataScope()).isEqualTo(1);
             verify(sysRoleMenuService, never()).listByRoleIds(anyCollection());
-            verify(sysMenuService, never()).listEnabledByIds(anyCollection());
+            verify(sysMenuDomainService, never()).listEnabledByIds(anyCollection());
         }
 
         @Test
@@ -132,7 +132,7 @@ class UserAccessServiceImplTest {
                 .thenReturn(List.of(role(ROLE_ID_A, "sales", 1, 2), role(ROLE_ID_B, "stock", 1, 6)));
             when(sysRoleMenuService.listByRoleIds(List.of(ROLE_ID_A, ROLE_ID_B)))
                 .thenReturn(List.of(roleMenu(ROLE_ID_A, 100L), roleMenu(ROLE_ID_B, 101L)));
-            when(sysMenuService.listEnabledByIds(anyCollection())).thenReturn(List.of(
+            when(sysMenuDomainService.listEnabledByIds(anyCollection())).thenReturn(List.of(
                 menu(100L, 0L, 2, "sales:order:list"), menu(101L, 0L, 2, "stock:check:list")));
             // When
             UserSecurityData data = userAccessService.loadByUserId(USER_ID);
@@ -140,9 +140,9 @@ class UserAccessServiceImplTest {
             assertThat(data.roleCodes()).containsExactly("sales", "stock");
             assertThat(data.perms()).containsExactlyInAnyOrder("sales:order:list", "stock:check:list");
             assertThat(data.widestDataScope()).isEqualTo(2);
-            verify(sysMenuService).listEnabledByIds(argThat(ids ->
+            verify(sysMenuDomainService).listEnabledByIds(argThat(ids ->
                 ids != null && ids.size() == 2 && ids.containsAll(Set.of(100L, 101L))));
-            verify(sysMenuService, never()).listAllPerms();
+            verify(sysMenuDomainService, never()).listAllPerms();
         }
 
         @Test
@@ -156,7 +156,7 @@ class UserAccessServiceImplTest {
                 .thenReturn(List.of(role(ROLE_ID_A, "sales", 1, 2), role(ROLE_ID_B, "stock", 0, 2)));
             when(sysRoleMenuService.listByRoleIds(List.of(ROLE_ID_A)))
                 .thenReturn(List.of(roleMenu(ROLE_ID_A, 100L)));
-            when(sysMenuService.listEnabledByIds(anyCollection()))
+            when(sysMenuDomainService.listEnabledByIds(anyCollection()))
                 .thenReturn(List.of(menu(100L, 0L, 2, "sales:order:list")));
             // When
             UserSecurityData data = userAccessService.loadByUserId(USER_ID);
@@ -180,7 +180,7 @@ class UserAccessServiceImplTest {
             assertThat(data.roleCodes()).isEmpty();
             assertThat(data.perms()).isEmpty();
             assertThat(data.widestDataScope()).isEqualTo(6);
-            verifyNoInteractions(sysRoleMenuService, sysMenuService);
+            verifyNoInteractions(sysRoleMenuService, sysMenuDomainService);
         }
 
         @Test
@@ -334,7 +334,7 @@ class UserAccessServiceImplTest {
         @DisplayName("admin 用户：全量启用菜单过滤按钮后组树，不查角色关联")
         void shouldBuildFullTree_whenAdmin() {
             // Given
-            when(sysMenuService.listEnabled()).thenReturn(List.of(
+            when(sysMenuDomainService.listEnabled()).thenReturn(List.of(
                 menu(1L, 0L, 1, null), menu(2L, 1L, 2, null), menu(3L, 1L, 3, null)));
             // When
             List<MenuTreeVO> tree = userAccessService.listMenuTree(USER_ID, true);
@@ -354,7 +354,7 @@ class UserAccessServiceImplTest {
                 .thenReturn(List.of(userRole(USER_ID, ROLE_ID_A)));
             when(sysRoleMenuService.listByRoleIds(List.of(ROLE_ID_A)))
                 .thenReturn(List.of(roleMenu(ROLE_ID_A, 2L)));
-            when(sysMenuService.listEnabled())
+            when(sysMenuDomainService.listEnabled())
                 .thenReturn(List.of(menu(1L, 0L, 1, null), menu(2L, 1L, 2, null)));
             // When
             List<MenuTreeVO> tree = userAccessService.listMenuTree(USER_ID, false);
@@ -375,7 +375,7 @@ class UserAccessServiceImplTest {
                 .thenReturn(List.of(userRole(USER_ID, ROLE_ID_A)));
             when(sysRoleMenuService.listByRoleIds(List.of(ROLE_ID_A)))
                 .thenReturn(List.of(roleMenu(ROLE_ID_A, 1L), roleMenu(ROLE_ID_A, 3L)));
-            when(sysMenuService.listEnabled())
+            when(sysMenuDomainService.listEnabled())
                 .thenReturn(List.of(menu(1L, 0L, 1, null), menu(3L, 1L, 3, null)));
             // When
             List<MenuTreeVO> tree = userAccessService.listMenuTree(USER_ID, false);
@@ -393,7 +393,7 @@ class UserAccessServiceImplTest {
                 .thenReturn(List.of(userRole(USER_ID, ROLE_ID_A)));
             when(sysRoleMenuService.listByRoleIds(List.of(ROLE_ID_A)))
                 .thenReturn(List.of(roleMenu(ROLE_ID_A, 5L)));
-            when(sysMenuService.listEnabled()).thenReturn(List.of(menu(5L, 7L, 2, null)));
+            when(sysMenuDomainService.listEnabled()).thenReturn(List.of(menu(5L, 7L, 2, null)));
             // When
             List<MenuTreeVO> tree = userAccessService.listMenuTree(USER_ID, false);
             // Then
@@ -406,12 +406,12 @@ class UserAccessServiceImplTest {
             // Given
             when(sysUserRoleService.listByUserId(USER_ID)).thenReturn(List.of());
             when(sysRoleMenuService.listByRoleIds(List.of())).thenReturn(List.of());
-            when(sysMenuService.listEnabled()).thenReturn(List.of());
+            when(sysMenuDomainService.listEnabled()).thenReturn(List.of());
             // When
             List<MenuTreeVO> tree = userAccessService.listMenuTree(USER_ID, false);
             // Then
             assertThat(tree).isEmpty();
-            verify(sysMenuService).listEnabled();
+            verify(sysMenuDomainService).listEnabled();
         }
     }
 
@@ -423,13 +423,13 @@ class UserAccessServiceImplTest {
         @DisplayName("admin 用户：返回全量权限点且不查角色-菜单关联")
         void shouldReturnAllPerms_whenAdmin() {
             // Given
-            when(sysMenuService.listAllPerms()).thenReturn(List.of("system:user:list", "system:role:list"));
+            when(sysMenuDomainService.listAllPerms()).thenReturn(List.of("system:user:list", "system:role:list"));
             // When
             Set<String> perms = userAccessService.listPerms(ADMIN_USER_ID, true);
             // Then
             assertThat(perms).containsExactlyInAnyOrder("system:user:list", "system:role:list");
             verifyNoInteractions(sysUserRoleService, sysRoleMenuService);
-            verify(sysMenuService, never()).listEnabledByIds(anyCollection());
+            verify(sysMenuDomainService, never()).listEnabledByIds(anyCollection());
         }
 
         @Test
@@ -442,7 +442,7 @@ class UserAccessServiceImplTest {
             Set<String> perms = userAccessService.listPerms(USER_ID, false);
             // Then
             assertThat(perms).isEmpty();
-            verifyNoInteractions(sysRoleMenuService, sysMenuService);
+            verifyNoInteractions(sysRoleMenuService, sysMenuDomainService);
         }
 
         @Test
@@ -455,15 +455,15 @@ class UserAccessServiceImplTest {
                 .thenReturn(List.of(role(ROLE_ID_A, "sales", 1, 2)));
             when(sysRoleMenuService.listByRoleIds(List.of(ROLE_ID_A)))
                 .thenReturn(List.of(roleMenu(ROLE_ID_A, 100L), roleMenu(ROLE_ID_A, 101L)));
-            when(sysMenuService.listEnabledByIds(anyCollection())).thenReturn(List.of(
+            when(sysMenuDomainService.listEnabledByIds(anyCollection())).thenReturn(List.of(
                 menu(100L, 0L, 2, "sales:order:list"), menu(101L, 0L, 2, null)));
             // When
             Set<String> perms = userAccessService.listPerms(USER_ID, false);
             // Then
             assertThat(perms).containsExactly("sales:order:list");
-            verify(sysMenuService).listEnabledByIds(argThat(ids ->
+            verify(sysMenuDomainService).listEnabledByIds(argThat(ids ->
                 ids != null && ids.size() == 2 && ids.containsAll(Set.of(100L, 101L))));
-            verify(sysMenuService, never()).listAllPerms();
+            verify(sysMenuDomainService, never()).listAllPerms();
         }
     }
 }

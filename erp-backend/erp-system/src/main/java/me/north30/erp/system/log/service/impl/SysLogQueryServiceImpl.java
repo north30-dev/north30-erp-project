@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.common.util.DateTimeFormatUtil;
+import me.north30.erp.common.util.QueryGuardUtil;
 import me.north30.erp.system.log.dto.AuditLogQueryDTO;
 import me.north30.erp.system.log.dto.LoginLogQueryDTO;
 import me.north30.erp.system.log.entity.SysAuditLog;
@@ -76,10 +77,8 @@ public class SysLogQueryServiceImpl implements SysLogQueryService {
     @Override
     @Transactional(readOnly = true)
     public AuditLogVO getAuditLogDetail(Long id) {
-        SysAuditLog entity = sysAuditLogMapper.selectById(id);
-        if (entity == null) {
-            throw new BusinessException(SystemErrorCode.AUDIT_LOG_NOT_FOUND);
-        }
+        SysAuditLog entity = QueryGuardUtil.requirePresent(sysAuditLogMapper.selectById(id),
+            SystemErrorCode.AUDIT_LOG_NOT_FOUND);
         AuditLogVO detail = auditLogConverter.toVO(entity);
         return detail.withDiffFields(auditLogDiffStrategy.resolveDiffFields(detail.beforeJson(), detail.afterJson()));
     }

@@ -11,7 +11,7 @@ import me.north30.erp.common.result.Result;
 import me.north30.erp.system.dept.dto.DeptCreateDTO;
 import me.north30.erp.system.dept.dto.DeptTreeQueryDTO;
 import me.north30.erp.system.dept.dto.DeptUpdateDTO;
-import me.north30.erp.system.dept.service.SysDeptManageService;
+import me.north30.erp.system.dept.service.SysDeptApplicationService;
 import me.north30.erp.system.dept.vo.DeptMutationVO;
 import me.north30.erp.system.dept.vo.DeptTreeVO;
 import org.springdoc.core.annotations.ParameterObject;
@@ -41,7 +41,7 @@ public class SysDeptController {
         {"code": 18026, "message": "组织编码已存在", "data": null, "timestamp": "2026-01-01 00:00:00", "traceId": "..."}\
         """;
 
-    private final SysDeptManageService sysDeptManageService;
+    private final SysDeptApplicationService sysDeptApplicationService;
 
     /**
      * 5.4.1 组织部门树查询。
@@ -50,7 +50,7 @@ public class SysDeptController {
     @PreAuthorize("hasAuthority('system:dept:list')")
     @Operation(summary = "组织部门树查询", description = "权限点 system:dept:list；一次查全量后内存组树，按 deptSort 排序")
     public Result<List<DeptTreeVO>> tree(@ParameterObject DeptTreeQueryDTO query) {
-        return Result.success(sysDeptManageService.listTree(query));
+        return Result.success(sysDeptApplicationService.listTree(query));
     }
 
     /**
@@ -63,7 +63,7 @@ public class SysDeptController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<DeptMutationVO> create(@Valid @RequestBody DeptCreateDTO dto) {
-        return Result.success(sysDeptManageService.create(dto));
+        return Result.success(sysDeptApplicationService.create(dto));
     }
 
     /**
@@ -76,7 +76,7 @@ public class SysDeptController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<DeptMutationVO> update(@PathVariable Long id, @Valid @RequestBody DeptUpdateDTO dto) {
-        return Result.success(sysDeptManageService.update(id, dto));
+        return Result.success(sysDeptApplicationService.update(id, dto));
     }
 
     /**
@@ -89,6 +89,6 @@ public class SysDeptController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<DeptMutationVO> delete(@PathVariable Long id) {
-        return Result.success(sysDeptManageService.delete(id));
+        return Result.success(sysDeptApplicationService.delete(id));
     }
 }

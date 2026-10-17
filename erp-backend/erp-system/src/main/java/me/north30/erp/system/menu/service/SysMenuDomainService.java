@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * 菜单与权限点服务接口。
  */
-public interface SysMenuService {
+public interface SysMenuDomainService {
 
     /**
      * 按菜单名称查询（初始化幂等用）。

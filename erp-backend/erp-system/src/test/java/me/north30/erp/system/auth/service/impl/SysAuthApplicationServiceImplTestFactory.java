@@ -16,9 +16,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * AuthServiceImpl 测试数据静态工厂：统一构造账号、请求 DTO、签发令牌与安全数据等测试数据。
+ * SysAuthApplicationServiceImpl 测试数据静态工厂：统一构造账号、请求 DTO、签发令牌与安全数据等测试数据。
  */
-public final class AuthServiceImplTestFactory {
+public final class SysAuthApplicationServiceImplTestFactory {
 
     /** 被测用户 ID */
     public static final Long USER_ID = 1L;
@@ -59,7 +59,7 @@ public final class AuthServiceImplTestFactory {
     /** refresh token 有效期（秒，默认 7 天） */
     public static final long REFRESH_TTL_SECONDS = 604800L;
 
-    private AuthServiceImplTestFactory() {
+    private SysAuthApplicationServiceImplTestFactory() {
     }
 
     /**

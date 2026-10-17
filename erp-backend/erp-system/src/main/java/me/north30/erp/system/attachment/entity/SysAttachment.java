@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.mybatis.BaseEntity;
-import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.security.LoginUser;
 
 import java.time.LocalDateTime;

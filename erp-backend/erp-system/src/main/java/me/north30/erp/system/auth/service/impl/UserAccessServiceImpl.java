@@ -7,8 +7,8 @@ import me.north30.erp.system.role.entity.SysRole;
 import me.north30.erp.system.role.entity.SysRoleMenu;
 import me.north30.erp.system.role.entity.SysUserRole;
 import me.north30.erp.system.user.entity.SysUser;
-import me.north30.erp.system.dept.service.SysDeptService;
-import me.north30.erp.system.menu.service.SysMenuService;
+import me.north30.erp.system.dept.service.SysDeptDomainService;
+import me.north30.erp.system.menu.service.SysMenuDomainService;
 import me.north30.erp.system.role.service.SysRoleMenuService;
 import me.north30.erp.system.role.service.SysUserRoleService;
 import me.north30.erp.system.user.service.SysUserService;
@@ -39,10 +39,10 @@ import java.util.stream.Collectors;
 public class UserAccessServiceImpl implements UserAccessService {
 
     private final SysUserService sysUserService;
-    private final SysDeptService sysDeptService;
+    private final SysDeptDomainService sysDeptService;
     private final SysUserRoleService sysUserRoleService;
     private final SysRoleMenuService sysRoleMenuService;
-    private final SysMenuService sysMenuService;
+    private final SysMenuDomainService sysMenuDomainService;
     private final MenuTreeUtil menuTreeUtil;
     private final AccessAssembleStrategy accessAssembleStrategy;
 
@@ -110,7 +110,7 @@ public class UserAccessServiceImpl implements UserAccessService {
         List<SysMenu> menus;
         if (isAdmin) {
             // admin：全量启用菜单（过滤按钮），内存组树
-            menus = sysMenuService.listEnabled().stream()
+            menus = sysMenuDomainService.listEnabled().stream()
                 .filter(menu -> menu.getMenuType() != null && menu.getMenuType() != 3)
                 .toList();
         } else {
@@ -122,7 +122,7 @@ public class UserAccessServiceImpl implements UserAccessService {
                 .map(SysRoleMenu::getMenuId)
                 .toList());
             // 一次查出全量启用菜单，内存补齐父级链（角色可能只勾选叶子菜单），避免循环查库 N+1
-            Map<Long, SysMenu> enabledById = sysMenuService.listEnabled().stream()
+            Map<Long, SysMenu> enabledById = sysMenuDomainService.listEnabled().stream()
                 .collect(Collectors.toMap(SysMenu::getId, Function.identity()));
             Set<Long> resultIds = accessAssembleStrategy.expandWithAncestors(menuIds, enabledById);
             menus = enabledById.values().stream()

@@ -11,7 +11,7 @@ import me.north30.erp.common.util.DateTimeFormatUtil;
 import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.menu.entity.SysMenu;
-import me.north30.erp.system.menu.service.SysMenuService;
+import me.north30.erp.system.menu.service.SysMenuDomainService;
 import me.north30.erp.system.role.converter.RoleConverter;
 import me.north30.erp.system.role.dto.RoleAssignMenuDTO;
 import me.north30.erp.system.role.dto.RoleCreateDTO;
@@ -57,7 +57,7 @@ public class RoleManageServiceImpl implements RoleManageService {
     private final SysRoleMapper sysRoleMapper;
     private final SysRoleService sysRoleService;
     private final SysUserRoleService sysUserRoleService;
-    private final SysMenuService sysMenuService;
+    private final SysMenuDomainService sysMenuDomainService;
     private final SysRoleDataScopeMapper sysRoleDataScopeMapper;
     private final RoleQueryStrategy roleQueryStrategy;
     private final RoleGrantStrategy roleGrantStrategy;
@@ -145,7 +145,7 @@ public class RoleManageServiceImpl implements RoleManageService {
         List<SysMenu> menus = List.of();
         if (!menuIds.isEmpty()) {
             // 单次 IN 查询完成存在性校验与权限点计数，避免循环查库
-            menus = sysMenuService.listByIds(menuIds);
+            menus = sysMenuDomainService.listByIds(menuIds);
             if (menus.size() != menuIds.size()) {
                 throw new BusinessException(SystemErrorCode.MENU_NOT_FOUND, "菜单不存在或已删除");
             }

@@ -14,7 +14,7 @@ import me.north30.erp.common.result.Result;
 import me.north30.erp.system.menu.dto.MenuCreateDTO;
 import me.north30.erp.system.menu.dto.MenuTreeQueryDTO;
 import me.north30.erp.system.menu.dto.MenuUpdateDTO;
-import me.north30.erp.system.menu.service.MenuManageService;
+import me.north30.erp.system.menu.service.SysMenuApplicationService;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.menu.vo.MenuCreatedVO;
 import me.north30.erp.system.menu.vo.MenuNodeVO;
@@ -47,7 +47,7 @@ public class SysMenuController {
         {"code": 18022, "message": "权限标识已存在", "data": null, "timestamp": "2026-01-01 00:00:00", "traceId": "..."}\
         """;
 
-    private final MenuManageService menuManageService;
+    private final SysMenuApplicationService sysMenuApplicationService;
 
     /**
      * 5.3.1 菜单树查询（一次查全部再内存组树）。
@@ -56,7 +56,7 @@ public class SysMenuController {
     @PreAuthorize("hasAuthority('system:menu:list')")
     @Operation(summary = "菜单树查询", description = "权限点 system:menu:list；一次查全部后内存组树")
     public Result<List<MenuNodeVO>> tree(@ParameterObject MenuTreeQueryDTO query) {
-        return Result.success(menuManageService.tree(query));
+        return Result.success(sysMenuApplicationService.tree(query));
     }
 
     /**
@@ -70,7 +70,7 @@ public class SysMenuController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<MenuCreatedVO> create(@Valid @RequestBody MenuCreateDTO dto) {
-        return Result.success(menuManageService.create(dto));
+        return Result.success(sysMenuApplicationService.create(dto));
     }
 
     /**
@@ -84,7 +84,7 @@ public class SysMenuController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<MenuUpdatedVO> update(@PathVariable Long id, @Valid @RequestBody MenuUpdateDTO dto) {
-        return Result.success(menuManageService.update(id, dto));
+        return Result.success(sysMenuApplicationService.update(id, dto));
     }
 
     /**
@@ -98,6 +98,6 @@ public class SysMenuController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<DeleteResultVO> delete(@PathVariable Long id) {
-        return Result.success(menuManageService.delete(id));
+        return Result.success(sysMenuApplicationService.delete(id));
     }
 }

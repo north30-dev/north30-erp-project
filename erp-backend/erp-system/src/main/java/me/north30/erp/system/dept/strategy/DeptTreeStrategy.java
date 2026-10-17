@@ -5,7 +5,7 @@ import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.dept.entity.SysDept;
 import me.north30.erp.system.dept.mapper.SysDeptMapper;
-import me.north30.erp.system.dept.service.SysDeptService;
+import me.north30.erp.system.dept.service.SysDeptDomainService;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayDeque;
@@ -29,7 +29,7 @@ public class DeptTreeStrategy {
     private static final long ROOT_PARENT_ID = 0L;
 
     private final SysDeptMapper sysDeptMapper;
-    private final SysDeptService sysDeptService;
+    private final SysDeptDomainService sysDeptService;
 
     /**
      * 解析父级组织：parentId 为空或 0 表示顶级，返回 null；否则必须存在。

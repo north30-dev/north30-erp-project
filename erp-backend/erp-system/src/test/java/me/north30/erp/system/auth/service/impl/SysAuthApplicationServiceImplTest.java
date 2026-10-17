@@ -43,32 +43,32 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.ACCESS_JTI;
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.ACCESS_TOKEN_VALUE;
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.ACCESS_TTL_SECONDS;
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.CAPTCHA_CODE;
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.CAPTCHA_KEY;
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.DEPT_ID;
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.ENCODED_PASSWORD;
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.RAW_PASSWORD;
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.REFRESH_JTI;
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.REFRESH_TOKEN_VALUE;
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.REFRESH_TTL_SECONDS;
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.USER_ID;
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.USERNAME;
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.accessToken;
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.adminUser;
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.changePasswordDTO;
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.disabledUser;
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.loginDTO;
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.loginUser;
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.menuTreeVO;
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.passwordExpiredUser;
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.refreshJwt;
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.refreshToken;
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.refreshTokenDTO;
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.securityData;
-import static me.north30.erp.system.auth.service.impl.AuthServiceImplTestFactory.user;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.ACCESS_JTI;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.ACCESS_TOKEN_VALUE;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.ACCESS_TTL_SECONDS;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.CAPTCHA_CODE;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.CAPTCHA_KEY;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.DEPT_ID;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.ENCODED_PASSWORD;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.RAW_PASSWORD;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.REFRESH_JTI;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.REFRESH_TOKEN_VALUE;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.REFRESH_TTL_SECONDS;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.USER_ID;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.USERNAME;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.accessToken;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.adminUser;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.changePasswordDTO;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.disabledUser;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.loginDTO;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.loginUser;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.menuTreeVO;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.passwordExpiredUser;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.refreshJwt;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.refreshToken;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.refreshTokenDTO;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.securityData;
+import static me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImplTestFactory.user;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -84,10 +84,10 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * AuthServiceImpl 单元测试：登录认证、验证码、刷新令牌、登出、当前用户信息与改密的正常/异常/降级路径。
+ * SysAuthApplicationServiceImpl 单元测试：登录认证、验证码、刷新令牌、登出、当前用户信息与改密的正常/异常/降级路径。
  */
 @ExtendWith(MockitoExtension.class)
-class AuthServiceImplTest {
+class SysAuthApplicationServiceImplTest {
 
     @Mock
     private StringRedisTemplate stringRedisTemplate;
@@ -107,11 +107,11 @@ class AuthServiceImplTest {
     @Mock
     private SysLoginLogService sysLoginLogService;
 
-    private AuthServiceImpl authService;
+    private SysAuthApplicationServiceImpl authService;
 
     @BeforeEach
     void setUp() {
-        authService = new AuthServiceImpl(stringRedisTemplate, jwtTokenProvider, passwordEncoder,
+        authService = new SysAuthApplicationServiceImpl(stringRedisTemplate, jwtTokenProvider, passwordEncoder,
             userAccessService, new LoginLogStrategy(sysLoginLogService),
             new UserSessionRevokeStrategy(stringRedisTemplate));
     }

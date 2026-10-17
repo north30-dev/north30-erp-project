@@ -15,8 +15,8 @@ import me.north30.erp.system.menu.dto.MenuTreeQueryDTO;
 import me.north30.erp.system.menu.dto.MenuUpdateDTO;
 import me.north30.erp.system.menu.entity.SysMenu;
 import me.north30.erp.system.menu.mapper.SysMenuMapper;
-import me.north30.erp.system.menu.service.MenuManageService;
-import me.north30.erp.system.menu.service.SysMenuService;
+import me.north30.erp.system.menu.service.SysMenuApplicationService;
+import me.north30.erp.system.menu.service.SysMenuDomainService;
 import me.north30.erp.system.menu.vo.MenuCreatedVO;
 import me.north30.erp.system.menu.vo.MenuNodeVO;
 import me.north30.erp.system.menu.vo.MenuUpdatedVO;
@@ -35,13 +35,13 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class MenuManageServiceImpl implements MenuManageService {
+public class SysMenuApplicationServiceImpl implements SysMenuApplicationService {
 
     /** 顶级菜单父 ID */
     private static final long ROOT_PARENT_ID = 0L;
 
     private final SysMenuMapper sysMenuMapper;
-    private final SysMenuService sysMenuService;
+    private final SysMenuDomainService sysMenuDomainService;
     private final SysRoleMenuService sysRoleMenuService;
     private final MenuTreeUtil menuTreeUtil;
     private final MenuConverter menuConverter;
@@ -80,7 +80,7 @@ public class MenuManageServiceImpl implements MenuManageService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public MenuUpdatedVO update(Long id, MenuUpdateDTO dto) {
-        SysMenu menu = sysMenuService.requireMenu(id);
+        SysMenu menu = sysMenuDomainService.requireMenu(id);
         if (dto.parentId() != null) {
             validateParent(id, dto.parentId());
         }
@@ -104,7 +104,7 @@ public class MenuManageServiceImpl implements MenuManageService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public DeleteResultVO delete(Long id) {
-        SysMenu menu = sysMenuService.requireMenu(id);
+        SysMenu menu = sysMenuDomainService.requireMenu(id);
         Long childCount = sysMenuMapper.selectCount(
             new LambdaQueryWrapper<SysMenu>().eq(SysMenu::getParentId, id));
         if (childCount != null && childCount > 0) {

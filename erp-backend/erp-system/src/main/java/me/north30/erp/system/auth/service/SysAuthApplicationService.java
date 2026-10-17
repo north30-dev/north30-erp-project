@@ -15,9 +15,9 @@ import me.north30.erp.system.auth.vo.UserPermsVO;
 import java.util.List;
 
 /**
- * 认证授权服务接口（接口文档第四章 /api/auth 8 接口）。
+ * 认证授权应用服务接口（接口文档第四章 /api/auth 8 接口）。
  */
-public interface AuthService {
+public interface SysAuthApplicationService {
 
     /** 4.1 获取图形验证码（免认证） */
     CaptchaVO createCaptcha();

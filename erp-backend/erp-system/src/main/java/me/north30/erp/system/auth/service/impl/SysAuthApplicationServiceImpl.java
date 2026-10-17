@@ -22,7 +22,7 @@ import me.north30.erp.system.security.LoginUser;
 import me.north30.erp.system.security.SecurityUtils;
 import me.north30.erp.system.user.strategy.PasswordStrategy;
 import me.north30.erp.system.user.strategy.UserSessionRevokeStrategy;
-import me.north30.erp.system.auth.service.AuthService;
+import me.north30.erp.system.auth.service.SysAuthApplicationService;
 import me.north30.erp.system.auth.service.UserAccessService;
 import me.north30.erp.system.auth.dto.UserSecurityData;
 import me.north30.erp.system.common.util.CaptchaUtil;
@@ -49,7 +49,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 认证授权服务实现。
+ * 认证授权应用服务实现。
  * <p>令牌失效机制（详细设计 2.5/ADR-11）：Redis 会话白名单 + 短 TTL；
  * 数据库写操作与 Redis 操作分离，事务提交后再写缓存；Redis 不可用时降级仅验签并 WARN。
  * 用户/部门/角色/菜单/权限点/数据范围取数编排统一收敛至 {@link UserAccessService}，
@@ -58,7 +58,7 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class AuthServiceImpl implements AuthService {
+public class SysAuthApplicationServiceImpl implements SysAuthApplicationService {
 
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 

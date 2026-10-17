@@ -11,7 +11,7 @@ import me.north30.erp.system.dept.dto.DeptCreateDTO;
 import me.north30.erp.system.dept.dto.DeptUpdateDTO;
 import me.north30.erp.system.dept.entity.SysDept;
 import me.north30.erp.system.dept.mapper.SysDeptMapper;
-import me.north30.erp.system.dept.service.SysDeptService;
+import me.north30.erp.system.dept.service.SysDeptDomainService;
 import me.north30.erp.system.dept.strategy.DeptTreeStrategy;
 import me.north30.erp.system.dept.vo.DeptTreeVO;
 import me.north30.erp.system.support.MpTableInfoInit;
@@ -41,17 +41,17 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
- * {@link SysDeptManageServiceImpl} 纯单元测试：树查询、编码唯一、层级上限、
+ * {@link SysDeptApplicationServiceImpl} 纯单元测试：树查询、编码唯一、层级上限、
  * 父级环检测、级联重算与删除约束。
  */
 @ExtendWith(MockitoExtension.class)
-class SysDeptManageServiceImplTest {
+class SysDeptApplicationServiceImplTest {
 
     @Mock
     private SysDeptMapper sysDeptMapper;
 
     @Mock
-    private SysDeptService sysDeptService;
+    private SysDeptDomainService sysDeptService;
 
     @Spy
     private final DeptTreeUtil deptTreeUtil = new DeptTreeUtil(new DeptConverterImpl());
@@ -61,7 +61,7 @@ class SysDeptManageServiceImplTest {
 
     private DeptTreeStrategy deptTreeStrategy;
 
-    private SysDeptManageServiceImpl service;
+    private SysDeptApplicationServiceImpl service;
 
     @Captor
     private ArgumentCaptor<SysDept> deptCaptor;
@@ -75,7 +75,7 @@ class SysDeptManageServiceImplTest {
     @BeforeEach
     void setUp() {
         deptTreeStrategy = new DeptTreeStrategy(sysDeptMapper, sysDeptService);
-        service = new SysDeptManageServiceImpl(sysDeptMapper, sysDeptService, deptTreeStrategy,
+        service = new SysDeptApplicationServiceImpl(sysDeptMapper, sysDeptService, deptTreeStrategy,
             deptTreeUtil, deptConverter);
     }
 

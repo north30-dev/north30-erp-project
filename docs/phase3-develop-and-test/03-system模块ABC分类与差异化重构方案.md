@@ -3,6 +3,7 @@
 > **状态：定稿（2026-10-11）**。
 > 背景：system 模块已完成小 DDD 重构（Entity 局部充血 + strategy + 跨域 Mapper 收敛，见《system模块小DDD重构方案》），但存在两极问题：部分域过度设计（A 类域套了编排层/策略模板），部分域欠收敛（user 域跨域 Mapper 硬违规、Manage 层残留内联校验，见《02-system模块分层校验收敛方案》）。
 > 命名决策（2026-10-11 定稿）：编排层统一命名 **ApplicationService**，领域基础服务统一命名 **DomainService**，保留 Sys 前缀。
+> **进度更新（2026-10-17 核）**：P2 全部完成（dict 回退 2026-10-11；config 于 2026-10-15 升级 B 类双层 **SysConfigApplicationService** + **SysConfigDomainService**）；P0/P1 之 **dept 域已完成**（改名 + 守卫进 DomainService + 充血 + Strategy 收敛，见 §二 dept 执行记录，改动尚在工作区未提交）；**config 命名已完成**。P1 之 **auth、menu 域改名已完成**（2026-10-17）。**剩余**：user/role/menu 的 P0 收敛未执行（user 域仍直插 `SysDeptMapper`，role `requireScopeValid`、menu 三个私有校验仍在），user/role 的 P1 改名未执行。
 
 ## 一、模块分类表
 
@@ -30,6 +31,7 @@
 1. 编排层命名不统一：`UserManagementService` / `RoleManageService` / `MenuManageService` / `SysDeptManageService` 四种拼法并存 → 统一改名 `SysXxxApplicationService`；
 2. 领域基础服务与编排层职责边界靠约定无命名区分 → `SysXxxService` 改名 `SysXxxDomainService`；
 3. Manage 层残留内联事实校验与私有校验方法（02 方案 §3 已逐条列明）。
+4. **进度（2026-10-17）**：dept 已按 1/2/3 全部完成（含守卫与充血收敛）；user/role/menu 三条均未执行，auth 仅待改名。
 
 **user**
 - 问题：跨域硬违规——直插 `SysDeptMapper` 查组织存在性（18024）；update/delete 内联管理员保护；`UserRoleStrategy.countByUserId` 绕过 role 域 Service；changeStatus 双层兜底待二选一。
@@ -42,14 +44,17 @@
 **menu**
 - 问题：`checkPermsUnique`/`requireParent`/`validateParent` 三个私有校验未收敛进 `SysMenuService`；"按钮下禁建子"规则重复两处。
 - 方向：02 方案 §3.3（`requirePermsAvailable`/`requireValidParent`）；改名 `SysMenuApplicationService` + `SysMenuDomainService`。
+- **执行记录（2026-10-17，仅改名）**：`MenuManageService`→`SysMenuApplicationService`、`MenuManageServiceImpl`→`SysMenuApplicationServiceImpl`、`SysMenuService`→`SysMenuDomainService`、`SysMenuServiceImpl`→`SysMenuDomainServiceImpl`，Controller 字段与跨域消费方（role `RoleManageServiceImpl`、auth `AccessAssembleStrategy`/`UserAccessServiceImpl`）及 bootstrap `AdminInitializer` 字段同步改 `sysMenuApplicationService`/`sysMenuDomainService`，测试类两两同名改名；全量 385 单测通过、各模块编译通过。**P0 守卫收敛（三个私有校验）仍待执行**——纯改名，零行为变更。
 
 **dept**
 - 问题：create/update/delete 内联编码唯一与存在性校验，绕过本域 Service 守卫。
 - 方向：02 方案 §3.4（`requireDeptCodeAvailable`/`requireDept`）；DeptTreeStrategy 环检测不动；改名 `SysDeptApplicationService` + `SysDeptDomainService`。
+- **执行记录（2026-10-16，改动在工作区未提交）**：已改名 `SysDeptApplicationService`/`SysDeptDomainService`；守卫收敛为 `SysDeptDomainService.requireDept`/`requireDeptCodeAvailable`/`requireDeptHasNoChildren`/`requireDeptHasNoUsers`；层级上限与祖级路径计算下沉 `SysDept.applyParent` 充血；换父校验（父级解析、环检测、下级级联重算）下沉 `DeptTreeStrategy.loadDeptMap`/`requireParentInMap`/`cascadeRefreshDescendants`（一次查全量组织建索引，消除重复查询 N+1），`SysDeptApplicationServiceImpl` 编排收敛为单行调用。
 
 **auth**
 - 问题：整体健康（会话清理已收敛至 UserSessionRevokeStrategy、LoginLogStrategy 已抽取）；UserAccessServiceImpl 作为读模型装配器定位清晰。
 - 方向：仅随命名统一改为 `SysAuthApplicationService`（auth 无对外跨域消费方，不设 DomainService，避免空壳）。
+- **执行记录（2026-10-17）**：`AuthService`→`SysAuthApplicationService`、`AuthServiceImpl`→`SysAuthApplicationServiceImpl`，Controller 字段与两个测试类同步改名（`sysAuthApplicationService` 对齐 dept/config 命名约定），全仓无 `AuthService*` 残留；`UserAccessService` 定位不变（聚合读模型装配器）。全量 385 单测通过。
 
 ### A 类域（单层 Service，去掉多余分层）
 
@@ -70,7 +75,9 @@
 
 **log / attachment / importtask / codesequence**
 - log：AuditLogDiffStrategy 纯函数保留（有真实复用价值）；其余不动。
+  - **待办（2026-10-16 评估，未执行）**：① `AuditLogStoreImpl` 是 common `AuditLogStore` 端口的出站适配器（由 common `AuditLogAspect` 调用），应从 `log/service/impl` 移至 `log/store`（或 `adapter`）包，避免与域 Service 命名链混淆；② `AuditLogStoreImpl` 内 20 行 set 链下沉 `SysAuditLog` 充血方法（当前 `SysAuditLog` 无充血）；③ `SysLogQueryService` 横向跨审计/登录两表查询的拆分评估。降级用 try-catch（审计落库失败不阻断业务）保留不动。
 - attachment：FileStorageStrategy 保留（IO 治理 + 未来换 OSS 的替换点）；`SysAttachmentServiceImpl` 内联判空按既定结论删除（Controller @Valid 已覆盖）。
+  - 已完成（2026-10-15）：`upload` 内 12 行 set 链收敛进 `AttachmentConverter.creatSysAttachment`（MapStruct）；配置化改造完成——新增 `AttachmentConfigKeys`（`attachment.max.file.size.mb`/`attachment.max.count.per.biz`），经 `SysConfigDomainService.longValue` 实时读参数，删除 `FileStorageStrategy.MAX_FILE_SIZE` 硬编码。
 - importtask / codesequence：完全不动（43/98 行，低于一切重构阈值）。
 
 ## 三、跨模块依赖分析
@@ -95,14 +102,14 @@
 
 | 级别 | 域 | 动作 |
 |---|---|---|
-| **P0**（进行中/有硬违规） | user、role、menu、dept | 02 方案 Commit ①②：跨域 Mapper 收敛 + 守卫进 DomainService + Entity 充血 + Strategy 下沉 |
-| **P1**（被多域依赖，改名影响面大） | 全体 B 类 + auth | 命名统一：`SysXxxManagementService`→`SysXxxApplicationService`（4 个）、`SysXxxService`→`SysXxxDomainService`（B 类 5 个）；单独 refactor commit，Controller/测试成套改 |
+| **P0**（部分完成） | **dept ✅**（2026-10-16）；**user、role、menu ⏳** | 02 方案 Commit ①②：跨域 Mapper 收敛 + 守卫进 DomainService + Entity 充血 + Strategy 下沉。dept 已完成；user（仍直插 `SysDeptMapper`）、role（`requireScopeValid` 未下沉）、menu（`checkPermsUnique`/`requireParent`/`validateParent` 未收敛）待执行 |
+| **P1**（被多域依赖，改名影响面大） | **dept ✅、config ✅、auth ✅、menu ✅**；**user、role ⏳** | 命名统一：`SysXxxManage(ment)Service`→`SysXxxApplicationService`、`SysXxxService`→`SysXxxDomainService`；dept（2026-10-16）、config（2026-10-15）、auth、menu（2026-10-17）已完成；user/role 待改名（纯改名 commit，编译期可验证，Controller/测试成套改） |
 | **P2**（过度设计回退，中等收益） | dict | 撤销 ManagementService 双层，Controller 直调单层 Service（**已完成 2026-10-11：dict 回退执行**）；config 当时已单层，后于 **2026-10-15 升级为 B 类双层**（App+Domain，见 §二 config 升级记录） |
 | **P3**（简单且稳定，不动） | log、attachment、importtask、codesequence | 仅 attachment 按既定结论删 2 处死代码/内联判空，其余零改动 |
 
 ## 五、实施顺序建议
 
-1. P0（02 方案两步 commit，行为不变）；
-2. P1（纯改名 commit，编译期可验证）；
-3. ~~P2（dict/config 回退 + A 类 Entity 缺省兜底/格式校验下沉 `fillDefaults()` 等，删代码与搬方法为主）~~（**已完成 2026-10-11**）；
-4. 每步 `mvn clean compile` + 全量 338 单测。
+1. P0（02 方案两步 commit，行为不变）——**dept 已完成（2026-10-16，工作区待提交）；user/role/menu 待执行**；
+2. P1（纯改名 commit，编译期可验证）——**dept/config 已完成；user/role/menu/auth 待执行**（建议作为下一步轻量任务：改名 + Controller/测试成套跟随，编译期自校验）；
+3. ~~P2（dict/config 回退 + A 类 Entity 缺省兜底/格式校验下沉 `fillDefaults()` 等，删代码与搬方法为主）~~（**已完成 2026-10-11**；config 后于 2026-10-15 升级 B 类双层）；
+4. 每步 `mvn clean compile`，并执行 `mvn clean test -pl erp-system -am`（**注意必须带 `-am`**，否则会踩 stale erp-common 产物导致假失败），保持全量单测通过。

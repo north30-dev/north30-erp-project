@@ -6,7 +6,7 @@ import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.common.vo.DeleteResultVO;
-import me.north30.erp.system.menu.service.SysMenuService;
+import me.north30.erp.system.menu.service.SysMenuDomainService;
 import me.north30.erp.system.role.converter.RoleConverter;
 import me.north30.erp.system.role.converter.RoleConverterImpl;
 import me.north30.erp.system.role.dto.RoleAssignMenuDTO;
@@ -71,7 +71,7 @@ class RoleManageServiceImplTest {
     private SysUserRoleService sysUserRoleService;
 
     @Mock
-    private SysMenuService sysMenuService;
+    private SysMenuDomainService sysMenuDomainService;
 
     @Mock
     private SysRoleMenuMapper sysRoleMenuMapper;
@@ -95,7 +95,7 @@ class RoleManageServiceImplTest {
         RoleGrantStrategy roleGrantStrategy =
             new RoleGrantStrategy(sysRoleMenuMapper, sysRoleDataScopeMapper, roleConverter);
         service = new RoleManageServiceImpl(sysRoleMapper, sysRoleService, sysUserRoleService,
-            sysMenuService, sysRoleDataScopeMapper, new RoleQueryStrategy(), roleGrantStrategy,
+            sysMenuDomainService, sysRoleDataScopeMapper, new RoleQueryStrategy(), roleGrantStrategy,
             new RoleAssembleStrategy(), roleConverter);
     }
 
@@ -480,7 +480,7 @@ class RoleManageServiceImplTest {
         void shouldAssignDistinctMenus_andCountPermOnly() {
             // Given：perms 为 null 或空白不计入权限点数
             when(sysRoleService.requireRole(5L)).thenReturn(RoleTestFactory.sysRole());
-            when(sysMenuService.listByIds(any())).thenReturn(List.of(
+            when(sysMenuDomainService.listByIds(any())).thenReturn(List.of(
                 RoleTestFactory.sysMenu(1L, "sales:list"),
                 RoleTestFactory.sysMenu(2L, null),
                 RoleTestFactory.sysMenu(3L, "   ")));
@@ -520,7 +520,7 @@ class RoleManageServiceImplTest {
             assertThat(vo.permCount()).isZero();
             verify(sysRoleMenuMapper).delete(any(LambdaQueryWrapper.class));
             verify(sysRoleMenuMapper, never()).insert(any(SysRoleMenu.class));
-            verifyNoInteractions(sysMenuService);
+            verifyNoInteractions(sysMenuDomainService);
         }
 
         @Test
@@ -528,7 +528,7 @@ class RoleManageServiceImplTest {
         void shouldThrow18019_whenAnyMenuMissing() {
             // Given：IN 查询命中数 1 < 传入 2，说明存在不存在或已删除的菜单
             when(sysRoleService.requireRole(5L)).thenReturn(RoleTestFactory.sysRole());
-            when(sysMenuService.listByIds(any())).thenReturn(List.of(RoleTestFactory.sysMenu(1L, "sales:list")));
+            when(sysMenuDomainService.listByIds(any())).thenReturn(List.of(RoleTestFactory.sysMenu(1L, "sales:list")));
 
             // When / Then
             assertThatThrownBy(() -> service.assignMenus(5L, new RoleAssignMenuDTO(List.of(1L, 2L))))
@@ -550,7 +550,7 @@ class RoleManageServiceImplTest {
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(18014))
                 .hasMessage("角色 5 不存在");
-            verifyNoInteractions(sysMenuService, sysRoleMenuMapper);
+            verifyNoInteractions(sysMenuDomainService, sysRoleMenuMapper);
         }
     }
 

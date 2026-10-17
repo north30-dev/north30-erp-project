@@ -11,7 +11,7 @@ import me.north30.erp.common.result.Result;
 import me.north30.erp.system.auth.dto.ChangePasswordDTO;
 import me.north30.erp.system.auth.dto.LoginDTO;
 import me.north30.erp.system.auth.dto.RefreshTokenDTO;
-import me.north30.erp.system.auth.service.AuthService;
+import me.north30.erp.system.auth.service.SysAuthApplicationService;
 import me.north30.erp.system.auth.vo.CaptchaVO;
 import me.north30.erp.system.auth.vo.ChangePasswordVO;
 import me.north30.erp.system.auth.vo.CurrentUserVO;
@@ -44,7 +44,7 @@ public class AuthController {
         {"code": 18001, "message": "用户名或密码错误", "data": null, "timestamp": "2026-01-01 00:00:00", "traceId": "..."}\
         """;
 
-    private final AuthService authService;
+    private final SysAuthApplicationService sysAuthApplicationService;
 
     /**
      * 4.1 获取图形验证码（免认证）。
@@ -52,7 +52,7 @@ public class AuthController {
     @PostMapping("/captcha")
     @Operation(summary = "获取图形验证码", description = "匿名接口（白名单），验证码有效期见返回值 expiresSeconds")
     public Result<CaptchaVO> captcha() {
-        return Result.success(authService.createCaptcha());
+        return Result.success(sysAuthApplicationService.createCaptcha());
     }
 
     /**
@@ -64,7 +64,7 @@ public class AuthController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<LoginVO> login(@Valid @RequestBody LoginDTO dto) {
-        return Result.success(authService.login(dto));
+        return Result.success(sysAuthApplicationService.login(dto));
     }
 
     /**
@@ -76,7 +76,7 @@ public class AuthController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<RefreshTokenVO> refresh(@Valid @RequestBody RefreshTokenDTO dto) {
-        return Result.success(authService.refreshToken(dto));
+        return Result.success(sysAuthApplicationService.refreshToken(dto));
     }
 
     /**
@@ -85,7 +85,7 @@ public class AuthController {
     @PostMapping("/logout")
     @Operation(summary = "用户登出", description = "登录态接口；access 会话与 refresh 标记一并失效，refresh jti 加入失效集合")
     public Result<LogoutVO> logout() {
-        return Result.success(authService.logout());
+        return Result.success(sysAuthApplicationService.logout());
     }
 
     /**
@@ -94,7 +94,7 @@ public class AuthController {
     @GetMapping("/me")
     @Operation(summary = "获取当前用户信息", description = "登录态接口；手机号脱敏返回（保留前 3 后 4）")
     public Result<CurrentUserVO> me() {
-        return Result.success(authService.currentUser());
+        return Result.success(sysAuthApplicationService.currentUser());
     }
 
     /**
@@ -103,7 +103,7 @@ public class AuthController {
     @GetMapping("/menus")
     @Operation(summary = "获取当前用户菜单树", description = "登录态接口；admin 返回全量菜单树，普通用户按角色菜单并集组树")
     public Result<List<MenuTreeVO>> menus() {
-        return Result.success(authService.currentUserMenus());
+        return Result.success(sysAuthApplicationService.currentUserMenus());
     }
 
     /**
@@ -112,7 +112,7 @@ public class AuthController {
     @GetMapping("/perms")
     @Operation(summary = "获取当前用户权限点集合", description = "登录态接口；返回权限点与角色编码集合，供前端按钮级控制")
     public Result<UserPermsVO> perms() {
-        return Result.success(authService.currentUserPerms());
+        return Result.success(sysAuthApplicationService.currentUserPerms());
     }
 
     /**
@@ -124,6 +124,6 @@ public class AuthController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<ChangePasswordVO> password(@Valid @RequestBody ChangePasswordDTO dto) {
-        return Result.success(authService.changePassword(dto));
+        return Result.success(sysAuthApplicationService.changePassword(dto));
     }
 }

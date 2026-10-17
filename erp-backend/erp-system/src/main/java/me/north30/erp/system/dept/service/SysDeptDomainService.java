@@ -5,7 +5,7 @@ import me.north30.erp.system.dept.entity.SysDept;
 /**
  * 组织/部门服务接口。
  */
-public interface SysDeptService {
+public interface SysDeptDomainService {
 
     /**
      * 按主键查询。

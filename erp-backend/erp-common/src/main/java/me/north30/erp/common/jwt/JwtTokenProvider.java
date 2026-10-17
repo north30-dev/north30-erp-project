@@ -110,6 +110,8 @@ public class JwtTokenProvider {
 
     /**
      * 资源服务器使用的解码器（SecurityConfig 接入 oauth2ResourceServer）。
+     * 
+     * @return NimbusJwtDecoder 实例
      */
     public NimbusJwtDecoder getDecoder() {
         return decoder;
@@ -117,6 +119,13 @@ public class JwtTokenProvider {
 
     /**
      * 统一签发：生成 jti（UUID）、组装标准 claim 并用 HS256 编码。
+     * 
+     * @param userId 用户 ID（sub）
+     * @param username 用户名
+     * @param type 令牌类型（access/refresh）
+     * @param refreshJti 配对 refresh token 的 jti（access token 携带）
+     * @param ttl 令牌有效期
+     * @return 已签发令牌信息
      */
     private IssuedToken issue(Long userId, String username, String type, String refreshJti, Duration ttl) {
         Instant now = Instant.now();

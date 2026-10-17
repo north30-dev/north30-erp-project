@@ -8,7 +8,7 @@ import me.north30.erp.system.role.entity.SysRole;
 import me.north30.erp.system.role.entity.SysRoleMenu;
 import me.north30.erp.system.user.converter.UserConverter;
 import me.north30.erp.system.user.entity.SysUser;
-import me.north30.erp.system.menu.service.SysMenuService;
+import me.north30.erp.system.menu.service.SysMenuDomainService;
 import me.north30.erp.system.role.service.SysRoleMenuService;
 import me.north30.erp.system.role.service.SysRoleService;
 import me.north30.erp.system.role.service.SysUserRoleService;
@@ -51,7 +51,7 @@ public class AdminInitializer implements ApplicationRunner {
 
     private final SysUserService sysUserService;
     private final SysRoleService sysRoleService;
-    private final SysMenuService sysMenuService;
+    private final SysMenuDomainService sysMenuDomainService;
     private final SysUserRoleService sysUserRoleService;
     private final SysRoleMenuService sysRoleMenuService;
     private final PasswordEncoder passwordEncoder;
@@ -214,7 +214,7 @@ public class AdminInitializer implements ApplicationRunner {
      */
     private void ensureTree(Long parentId, List<MenuSeed> seeds, List<SysMenu> allMenus, List<SysMenu> createdMenus) {
         for (MenuSeed seed : seeds) {
-            SysMenu menu = sysMenuService.getByMenuName(seed.name());
+            SysMenu menu = sysMenuDomainService.getByMenuName(seed.name());
             if (menu == null) {
                 menu = new SysMenu();
                 menu.setMenuName(seed.name());
@@ -227,10 +227,10 @@ public class AdminInitializer implements ApplicationRunner {
                 menu.setMenuSort(seed.sort());
                 menu.setVisible(seed.type() == TYPE_BUTTON ? 0 : 1);
                 menu.setStatus(1);
-                sysMenuService.createMenu(menu);
+                sysMenuDomainService.createMenu(menu);
                 createdMenus.add(menu);
             } else if (seed.perms() != null && !seed.perms().equals(menu.getPerms())) {
-                sysMenuService.updatePerms(menu.getId(), seed.perms());
+                sysMenuDomainService.updatePerms(menu.getId(), seed.perms());
             }
             allMenus.add(menu);
             ensureTree(menu.getId(), seed.children(), allMenus, createdMenus);

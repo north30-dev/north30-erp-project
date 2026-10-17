@@ -13,7 +13,7 @@ import me.north30.erp.system.menu.vo.MenuUpdatedVO;
 /**
  * 菜单与权限点管理服务接口（接口文档 5.3，4 个接口）。
  */
-public interface MenuManageService {
+public interface SysMenuApplicationService {
 
     /**
      * 菜单树查询（一次查全部再内存组树，禁止 N+1）。

@@ -24,10 +24,10 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 /**
- * {@link SysDeptServiceImpl} 纯单元测试：存在性、编码唯一与删除前置守卫。
+ * {@link SysDeptDomainServiceImpl} 纯单元测试：存在性、编码唯一与删除前置守卫。
  */
 @ExtendWith(MockitoExtension.class)
-class SysDeptServiceImplTest {
+class SysDeptDomainServiceImplTest {
 
     @Mock
     private SysDeptMapper sysDeptMapper;
@@ -36,7 +36,7 @@ class SysDeptServiceImplTest {
     private SysUserService sysUserService;
 
     @InjectMocks
-    private SysDeptServiceImpl service;
+    private SysDeptDomainServiceImpl service;
 
     @BeforeAll
     static void initMpTableInfo() {

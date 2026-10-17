@@ -6,7 +6,6 @@ import lombok.extern.slf4j.Slf4j;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.util.DateTimeFormatUtil;
-import me.north30.erp.common.util.QueryGuardUtil;
 import me.north30.erp.common.util.UpdateGuardUtil;
 import me.north30.erp.system.common.util.DeptTreeUtil;
 import me.north30.erp.system.dept.converter.DeptConverter;
@@ -15,8 +14,8 @@ import me.north30.erp.system.dept.dto.DeptTreeQueryDTO;
 import me.north30.erp.system.dept.dto.DeptUpdateDTO;
 import me.north30.erp.system.dept.entity.SysDept;
 import me.north30.erp.system.dept.mapper.SysDeptMapper;
-import me.north30.erp.system.dept.service.SysDeptManageService;
-import me.north30.erp.system.dept.service.SysDeptService;
+import me.north30.erp.system.dept.service.SysDeptApplicationService;
+import me.north30.erp.system.dept.service.SysDeptDomainService;
 import me.north30.erp.system.dept.strategy.DeptTreeStrategy;
 import me.north30.erp.system.dept.vo.DeptMutationVO;
 import me.north30.erp.system.dept.vo.DeptTreeVO;
@@ -36,19 +35,13 @@ import java.util.Objects;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class SysDeptManageServiceImpl implements SysDeptManageService {
-
-    /** 顶级组织父 ID */
-    private static final long ROOT_PARENT_ID = 0L;
-
-    /** 默认启用状态 */
-    private static final int STATUS_ENABLED = 1;
+public class SysDeptApplicationServiceImpl implements SysDeptApplicationService {
 
     /** 逻辑删除标记 */
     private static final int DELETED = 1;
 
     private final SysDeptMapper sysDeptMapper;
-    private final SysDeptService sysDeptService;
+    private final SysDeptDomainService sysDeptService;
     private final DeptTreeStrategy deptTreeStrategy;
     private final DeptTreeUtil deptTreeUtil;
     private final DeptConverter deptConverter;
@@ -71,12 +64,7 @@ public class SysDeptManageServiceImpl implements SysDeptManageService {
         sysDeptService.requireDeptCodeAvailable(dto.deptCode());
         SysDept dept = deptConverter.createDept(dto);
         dept.applyParent(deptTreeStrategy.resolveParent(dto.parentId()));
-        if (dept.getDeptSort() == null) {
-            dept.setDeptSort(0);
-        }
-        if (dept.getStatus() == null) {
-            dept.setStatus(STATUS_ENABLED);
-        }
+        dept.applyCreateDefault();
         sysDeptMapper.insert(dept);
         return new DeptMutationVO(dept.getId(), dept.getAncestors(), dept.getDeptLevel(),
             DateTimeFormatUtil.format(dept.getUpdateTime()), null);
@@ -85,9 +73,9 @@ public class SysDeptManageServiceImpl implements SysDeptManageService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public DeptMutationVO update(Long id, DeptUpdateDTO dto) {
-        SysDept current = sysDeptService.requireDept(id);
-        boolean parentChanged = !Objects.equals(current.getParentId(), dto.parentId());
-        SysDept dept = current;
+        SysDept dept = sysDeptService.requireDept(id);
+        boolean parentChanged = dept.parentChangedTo(dto.parentId());
+    
         if (parentChanged) {
             if (Objects.equals(dto.parentId(), id)) {
                 throw new BusinessException(CommonErrorCode.PARAM_ERROR, "上级组织不可选择自身");
@@ -96,7 +84,8 @@ public class SysDeptManageServiceImpl implements SysDeptManageService {
             Map<Long, SysDept> deptMap = deptTreeStrategy.loadDeptMap();
             dept = deptMap.get(id);
             SysDept newParent = null;
-            if (dto.parentId() != null && dto.parentId() != ROOT_PARENT_ID) {
+            // 新父级为顶级（0）时无父级可解析；否则解析父级并做环检测
+            if (dto.parentId() != null && dto.parentId() != 0L) {
                 newParent = deptTreeStrategy.requireParentInMap(deptMap, dto.parentId());
                 if (deptTreeStrategy.inAncestorChain(deptMap, id, newParent.getId())) {
                     throw new BusinessException(CommonErrorCode.PARAM_ERROR, "上级组织不可选择自身或自身下级组织");

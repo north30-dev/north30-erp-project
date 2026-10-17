@@ -6,7 +6,7 @@ import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.menu.entity.SysMenu;
 import me.north30.erp.system.menu.mapper.SysMenuMapper;
-import me.north30.erp.system.menu.service.SysMenuService;
+import me.north30.erp.system.menu.service.SysMenuDomainService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -19,7 +19,7 @@ import java.util.List;
  */
 @Service
 @RequiredArgsConstructor
-public class SysMenuServiceImpl implements SysMenuService {
+public class SysMenuDomainServiceImpl implements SysMenuDomainService {
 
     private final SysMenuMapper sysMenuMapper;
 
