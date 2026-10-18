@@ -3,6 +3,7 @@ package me.north30.erp.system.menu.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import me.north30.erp.common.util.UpdateGuardUtil;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.util.DateTimeFormatUtil;
@@ -91,10 +92,7 @@ public class SysMenuApplicationServiceImpl implements SysMenuApplicationService 
         menu.clearRouteFieldsIfButton();
         // 乐观锁按客户端传入 version 校验
         menu.setVersion(dto.version());
-        int rows = sysMenuMapper.updateById(menu);
-        if (rows == 0) {
-            throw new BusinessException(CommonErrorCode.OPTIMISTIC_LOCK_CONFLICT);
-        }
+        UpdateGuardUtil.checkOptimisticLockConflict(sysMenuMapper.updateById(menu));
         SysMenu latest = sysMenuMapper.selectById(id);
         return new MenuUpdatedVO(latest != null && latest.getUpdateTime() != null
             ? DateTimeFormatUtil.format(latest.getUpdateTime())

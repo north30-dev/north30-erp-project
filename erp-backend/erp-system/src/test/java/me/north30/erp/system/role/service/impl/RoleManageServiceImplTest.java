@@ -2,6 +2,7 @@ package me.north30.erp.system.role.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.springframework.dao.OptimisticLockingFailureException;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.system.common.enums.SystemErrorCode;
@@ -374,8 +375,7 @@ class RoleManageServiceImplTest {
 
             // When / Then
             assertThatThrownBy(() -> service.update(5L, new RoleUpdateDTO("销售主管", null, null, null, null, 5)))
-                .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(10601))
+                .isInstanceOf(OptimisticLockingFailureException.class)
                 .hasMessage("数据已被其他操作修改，请重试");
         }
 

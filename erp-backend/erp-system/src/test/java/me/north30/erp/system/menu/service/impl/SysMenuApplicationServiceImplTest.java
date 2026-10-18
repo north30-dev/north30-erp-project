@@ -28,6 +28,7 @@ import org.mockito.Captor;
 import org.mockito.Spy;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.OptimisticLockingFailureException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -408,8 +409,7 @@ class SysMenuApplicationServiceImplTest {
 
             // When + Then
             assertThatThrownBy(() -> service.update(1L, MenuTestFactory.updateDTO(5)))
-                .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.OPTIMISTIC_LOCK_CONFLICT.getCode()))
+                .isInstanceOf(OptimisticLockingFailureException.class)
                 .hasMessage("数据已被其他操作修改，请重试");
         }
 

@@ -15,7 +15,7 @@ import java.util.List;
  * @param email 邮箱
  * @param warehouseIds 仓库 ID 列表
  * @param roles 角色列表
- * @param dataScope 数据范围（0：全部，1：本部门，2：本部门及以下部门）
+ * @param dataScope 数据范围（1-全部 2-本组织及下级 3-本组织 4-本部门及下级 5-本部门 6-仅本人 9-自定义，取用户角色中最宽档位）
  * @param lastLoginTime 最后登录时间
  * @param lastLoginIp 最后登录 IP
  */

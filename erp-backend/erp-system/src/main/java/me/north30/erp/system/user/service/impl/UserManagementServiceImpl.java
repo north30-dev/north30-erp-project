@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import me.north30.erp.common.audit.AuditLog;
 import me.north30.erp.common.audit.AuditModuleEnum;
 import me.north30.erp.common.audit.OperateTypeEnum;
+import me.north30.erp.common.util.UpdateGuardUtil;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
@@ -167,9 +168,7 @@ public class UserManagementServiceImpl implements UserManagementService {
         entity.setWarehouseIds(dto.warehouseIds() != null ? WarehouseIdCodecUtil.join(dto.warehouseIds()) : null);
         // 带乐观锁版本条件更新，冲突时更新行数为 0；显式设置更新时间（strictUpdateFill 不覆盖已设值）
         entity.setUpdateTime(LocalDateTime.now());
-        if (sysUserMapper.updateById(entity) <= 0) {
-            throw new BusinessException(CommonErrorCode.OPTIMISTIC_LOCK_CONFLICT);
-        }
+        UpdateGuardUtil.checkOptimisticLockConflict(sysUserMapper.updateById(entity));
         return DateTimeFormatUtil.format(entity.getUpdateTime());
     }
 
@@ -220,9 +219,7 @@ public class UserManagementServiceImpl implements UserManagementService {
         patch.setId(id);
         patch.setStatus(user.getStatus());
         patch.setVersion(dto.version());
-        if (sysUserMapper.updateById(patch) <= 0) {
-            throw new BusinessException(CommonErrorCode.OPTIMISTIC_LOCK_CONFLICT);
-        }
+        UpdateGuardUtil.checkOptimisticLockConflict(sysUserMapper.updateById(patch));
         boolean sessionRevoked = false;
         if (dto.status() == 0) {
             // 停用后该用户全部在线会话立即失效（删除 system:session:{userId}:* 与 refresh 标记；

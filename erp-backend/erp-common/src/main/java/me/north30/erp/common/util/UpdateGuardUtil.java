@@ -1,6 +1,7 @@
 package me.north30.erp.common.util;
 
-import me.north30.erp.common.exception.BusinessException;
+import org.springframework.dao.OptimisticLockingFailureException;
+
 import me.north30.erp.common.exception.CommonErrorCode;
 
 /**
@@ -13,7 +14,7 @@ public class UpdateGuardUtil {
 
     public static void checkOptimisticLockConflict(int updateCount) {
         if (updateCount == 0) {
-            throw new BusinessException(CommonErrorCode.OPTIMISTIC_LOCK_CONFLICT);
+            throw new OptimisticLockingFailureException(CommonErrorCode.OPTIMISTIC_LOCK_CONFLICT.getMessage());
         }
         
     }

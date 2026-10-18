@@ -25,6 +25,8 @@ import org.mockito.Spy;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.OptimisticLockingFailureException;
+
 import me.north30.erp.system.common.util.PageParamResolver;
 import me.north30.erp.system.config.service.SysConfigDomainService;
 
@@ -224,8 +226,7 @@ class SysCodeSequenceServiceImplTest {
 
             // When + Then
             assertThatThrownBy(() -> service.reset(dto))
-                .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.OPTIMISTIC_LOCK_CONFLICT.getCode()))
+                .isInstanceOf(OptimisticLockingFailureException.class)
                 .hasMessage("数据已被其他操作修改，请重试");
         }
     }

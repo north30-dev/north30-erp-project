@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import me.north30.erp.common.util.UpdateGuardUtil;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
@@ -18,6 +19,7 @@ import me.north30.erp.system.role.dto.RoleCreateDTO;
 import me.north30.erp.system.role.dto.RoleDataScopeItemDTO;
 import me.north30.erp.system.role.dto.RoleDataScopeSaveDTO;
 import me.north30.erp.system.role.dto.RolePageQueryDTO;
+import me.north30.erp.system.role.enums.DataScopeEnum;
 import me.north30.erp.system.role.dto.RoleUpdateDTO;
 import me.north30.erp.system.role.entity.SysRole;
 import me.north30.erp.system.role.entity.SysRoleDataScope;
@@ -109,10 +111,7 @@ public class RoleManageServiceImpl implements RoleManageService {
         // role_code 不可修改：转换器不映射该字段；null 字段跳过（部分更新语义），
         // 乐观锁按客户端传入 version 校验
         roleConverter.updateSysRole(dto, role);
-        int rows = sysRoleMapper.updateById(role);
-        if (rows == 0) {
-            throw new BusinessException(CommonErrorCode.OPTIMISTIC_LOCK_CONFLICT);
-        }
+        UpdateGuardUtil.checkOptimisticLockConflict(sysRoleMapper.updateById(role));
         SysRole latest = sysRoleMapper.selectById(id);
         return new RoleUpdatedVO(latest != null && latest.getUpdateTime() != null
             ? DateTimeFormatUtil.format(latest.getUpdateTime())
@@ -193,11 +192,11 @@ public class RoleManageServiceImpl implements RoleManageService {
      * 校验数据范围明细：档位合法且自定义范围至少勾选组织或人员。
      */
     private void requireScopeValid(RoleDataScopeItemDTO item) {
-        if (item.scopeType() == null || !SysRole.VALID_DATA_SCOPES.contains(item.scopeType())) {
+        if (!DataScopeEnum.isValid(item.scopeType())) {
             throw new BusinessException(SystemErrorCode.ROLE_DATA_SCOPE_INVALID,
                 "数据范围配置非法：scope_type=" + item.scopeType());
         }
-        if (item.scopeType() == 9 && roleAssembleStrategy.isEmpty(item.deptIds())
+        if (item.scopeType() == DataScopeEnum.CUSTOM.getCode() && roleAssembleStrategy.isEmpty(item.deptIds())
             && roleAssembleStrategy.isEmpty(item.userIds())) {
             throw new BusinessException(SystemErrorCode.ROLE_DATA_SCOPE_INVALID,
                 "数据范围配置非法：自定义范围必须至少勾选组织或人员");

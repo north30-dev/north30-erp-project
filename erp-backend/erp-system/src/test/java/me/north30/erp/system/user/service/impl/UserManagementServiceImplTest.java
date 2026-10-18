@@ -41,6 +41,7 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.nio.charset.StandardCharsets;
@@ -502,8 +503,7 @@ class UserManagementServiceImplTest {
 
             // When / Then
             assertThatThrownBy(() -> service.update(10L, dto))
-                .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(10601))
+                .isInstanceOf(OptimisticLockingFailureException.class)
                 .hasMessage("数据已被其他操作修改，请重试");
         }
 
@@ -715,8 +715,7 @@ class UserManagementServiceImplTest {
 
             // When / Then
             assertThatThrownBy(() -> service.changeStatus(10L, new UserStatusDTO(1, 2)))
-                .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(10601))
+                .isInstanceOf(OptimisticLockingFailureException.class)
                 .hasMessage("数据已被其他操作修改，请重试");
             verifyNoInteractions(userSessionRevokeStrategy);
         }

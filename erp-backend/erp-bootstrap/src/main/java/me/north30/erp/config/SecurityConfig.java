@@ -2,6 +2,7 @@ package me.north30.erp.config;
 
 import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.jwt.JwtTokenProvider;
@@ -34,19 +35,12 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 
     private final ObjectMapper objectMapper;
     private final JwtTokenProvider jwtTokenProvider;
     private final JwtLoginUserConverter jwtLoginUserConverter;
-
-    public SecurityConfig(ObjectMapper objectMapper,
-                          JwtTokenProvider jwtTokenProvider,
-                          JwtLoginUserConverter jwtLoginUserConverter) {
-        this.objectMapper = objectMapper;
-        this.jwtTokenProvider = jwtTokenProvider;
-        this.jwtLoginUserConverter = jwtLoginUserConverter;
-    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {

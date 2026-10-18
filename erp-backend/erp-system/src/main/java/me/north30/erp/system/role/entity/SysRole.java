@@ -6,8 +6,7 @@ import lombok.EqualsAndHashCode;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.mybatis.BaseEntity;
 import me.north30.erp.system.common.enums.SystemErrorCode;
-
-import java.util.Set;
+import me.north30.erp.system.role.enums.DataScopeEnum;
 
 /**
  * 角色表（sys_role）。
@@ -16,9 +15,6 @@ import java.util.Set;
 @EqualsAndHashCode(callSuper = true)
 @TableName("sys_role")
 public class SysRole extends BaseEntity {
-
-    /** 数据范围合法档位：1-全部 2-本组织及下级 3-本组织 4-本部门及下级 5-本部门 6-仅本人 9-自定义 */
-    public static final Set<Integer> VALID_DATA_SCOPES = Set.of(1, 2, 3, 4, 5, 6, 9);
 
     /** 角色编码（如 admin、sales_manager） */
     private String roleCode;
@@ -45,7 +41,7 @@ public class SysRole extends BaseEntity {
      * </p>
      */
     public void changeDataScope(Integer dataScope) {
-        if (dataScope == null || !VALID_DATA_SCOPES.contains(dataScope)) {
+        if (!DataScopeEnum.isValid(dataScope)) {
             throw new BusinessException(SystemErrorCode.ROLE_DATA_SCOPE_INVALID,
                     "数据范围配置非法：data_scope=" + dataScope);
         }
