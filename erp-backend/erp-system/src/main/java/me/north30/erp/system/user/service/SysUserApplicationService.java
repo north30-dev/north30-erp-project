@@ -17,7 +17,7 @@ import me.north30.erp.system.user.vo.UserVO;
 /**
  * 用户管理服务（接口文档 5.1 用户管理 9 个用例，写操作统一 @AuditLog 审计）。
  */
-public interface UserManagementService {
+public interface SysUserApplicationService {
 
     /**
      * 用户分页查询（5.1.1）。

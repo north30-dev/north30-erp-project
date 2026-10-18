@@ -16,7 +16,7 @@ import me.north30.erp.system.role.vo.RoleVO;
 /**
  * 角色管理服务接口（接口文档 5.2，7 个接口）。
  */
-public interface RoleManageService {
+public interface SysRoleApplicationService {
 
     /**
      * 角色分页查询（含派生 userCount）。

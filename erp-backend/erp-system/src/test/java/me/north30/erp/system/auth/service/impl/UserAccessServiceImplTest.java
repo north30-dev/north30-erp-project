@@ -8,10 +8,10 @@ import me.north30.erp.system.menu.converter.MenuConverterImpl;
 import me.north30.erp.system.menu.service.SysMenuDomainService;
 import me.north30.erp.system.menu.vo.MenuTreeVO;
 import me.north30.erp.system.role.service.SysRoleMenuService;
-import me.north30.erp.system.role.service.SysRoleService;
+import me.north30.erp.system.role.service.SysRoleDomainService;
 import me.north30.erp.system.role.service.SysUserRoleService;
 import me.north30.erp.system.user.entity.SysUser;
-import me.north30.erp.system.user.service.SysUserService;
+import me.north30.erp.system.user.service.SysUserDomainService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -52,7 +52,7 @@ import static org.mockito.Mockito.when;
 class UserAccessServiceImplTest {
 
     @Mock
-    private SysUserService sysUserService;
+    private SysUserDomainService sysUserDomainService;
 
     @Mock
     private SysDeptDomainService sysDeptService;
@@ -61,7 +61,7 @@ class UserAccessServiceImplTest {
     private SysUserRoleService sysUserRoleService;
 
     @Mock
-    private SysRoleService sysRoleService;
+    private SysRoleDomainService sysRoleDomainService;
 
     @Mock
     private SysRoleMenuService sysRoleMenuService;
@@ -77,9 +77,9 @@ class UserAccessServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        userAccessService = new UserAccessServiceImpl(sysUserService, sysDeptService,
+        userAccessService = new UserAccessServiceImpl(sysUserDomainService, sysDeptService,
             sysUserRoleService, sysRoleMenuService, sysMenuDomainService, menuTreeUtil,
-            new AccessAssembleStrategy(sysUserRoleService, sysRoleService, sysRoleMenuService, sysMenuDomainService));
+            new AccessAssembleStrategy(sysUserRoleService, sysRoleDomainService, sysRoleMenuService, sysMenuDomainService));
     }
 
     @Nested
@@ -90,22 +90,22 @@ class UserAccessServiceImplTest {
         @DisplayName("用户不存在：返回 null 且不触发角色/菜单取数")
         void shouldReturnNull_whenUserNotExists() {
             // Given
-            when(sysUserService.getById(USER_ID)).thenReturn(null);
+            when(sysUserDomainService.getById(USER_ID)).thenReturn(null);
             // When
             UserSecurityData data = userAccessService.loadByUserId(USER_ID);
             // Then
             assertThat(data).isNull();
-            verifyNoInteractions(sysUserRoleService, sysRoleService, sysRoleMenuService, sysMenuDomainService);
+            verifyNoInteractions(sysUserRoleService, sysRoleDomainService, sysRoleMenuService, sysMenuDomainService);
         }
 
         @Test
         @DisplayName("admin 用户：返回全量权限点，且不查角色-菜单关联")
         void shouldReturnAllPermsAndWidestScope_whenAdmin() {
             // Given
-            when(sysUserService.getById(ADMIN_USER_ID)).thenReturn(adminUser());
+            when(sysUserDomainService.getById(ADMIN_USER_ID)).thenReturn(adminUser());
             when(sysUserRoleService.listByUserId(ADMIN_USER_ID))
                 .thenReturn(List.of(userRole(ADMIN_USER_ID, ROLE_ID_A)));
-            when(sysRoleService.listByIds(List.of(ROLE_ID_A)))
+            when(sysRoleDomainService.listByIds(List.of(ROLE_ID_A)))
                 .thenReturn(List.of(role(ROLE_ID_A, "admin", 1, 1)));
             when(sysMenuDomainService.listAllPerms()).thenReturn(List.of("system:user:list", "system:role:list"));
             // When
@@ -125,10 +125,10 @@ class UserAccessServiceImplTest {
         @DisplayName("普通用户多角色：权限点按角色并集，数据范围取最宽档位（2 优于 6）")
         void shouldUnionPermsAndWidestScope_whenNormalUser() {
             // Given
-            when(sysUserService.getById(USER_ID)).thenReturn(user());
+            when(sysUserDomainService.getById(USER_ID)).thenReturn(user());
             when(sysUserRoleService.listByUserId(USER_ID))
                 .thenReturn(List.of(userRole(USER_ID, ROLE_ID_A), userRole(USER_ID, ROLE_ID_B)));
-            when(sysRoleService.listByIds(List.of(ROLE_ID_A, ROLE_ID_B)))
+            when(sysRoleDomainService.listByIds(List.of(ROLE_ID_A, ROLE_ID_B)))
                 .thenReturn(List.of(role(ROLE_ID_A, "sales", 1, 2), role(ROLE_ID_B, "stock", 1, 6)));
             when(sysRoleMenuService.listByRoleIds(List.of(ROLE_ID_A, ROLE_ID_B)))
                 .thenReturn(List.of(roleMenu(ROLE_ID_A, 100L), roleMenu(ROLE_ID_B, 101L)));
@@ -149,10 +149,10 @@ class UserAccessServiceImplTest {
         @DisplayName("角色含停用状态：仅保留启用角色，权限点与角色编码均过滤")
         void shouldExcludeDisabledRoles_whenLoad() {
             // Given
-            when(sysUserService.getById(USER_ID)).thenReturn(user());
+            when(sysUserDomainService.getById(USER_ID)).thenReturn(user());
             when(sysUserRoleService.listByUserId(USER_ID))
                 .thenReturn(List.of(userRole(USER_ID, ROLE_ID_A), userRole(USER_ID, ROLE_ID_B)));
-            when(sysRoleService.listByIds(List.of(ROLE_ID_A, ROLE_ID_B)))
+            when(sysRoleDomainService.listByIds(List.of(ROLE_ID_A, ROLE_ID_B)))
                 .thenReturn(List.of(role(ROLE_ID_A, "sales", 1, 2), role(ROLE_ID_B, "stock", 0, 2)));
             when(sysRoleMenuService.listByRoleIds(List.of(ROLE_ID_A)))
                 .thenReturn(List.of(roleMenu(ROLE_ID_A, 100L)));
@@ -171,9 +171,9 @@ class UserAccessServiceImplTest {
         @DisplayName("用户无角色：角色为空、权限点为空、数据范围按仅本人（6）")
         void shouldReturnSelfScope_whenNoRoles() {
             // Given
-            when(sysUserService.getById(USER_ID)).thenReturn(user());
+            when(sysUserDomainService.getById(USER_ID)).thenReturn(user());
             when(sysUserRoleService.listByUserId(USER_ID)).thenReturn(List.of());
-            when(sysRoleService.listByIds(List.of())).thenReturn(List.of());
+            when(sysRoleDomainService.listByIds(List.of())).thenReturn(List.of());
             // When
             UserSecurityData data = userAccessService.loadByUserId(USER_ID);
             // Then
@@ -187,10 +187,10 @@ class UserAccessServiceImplTest {
         @DisplayName("角色数据范围未配置（null）：数据范围回退为 9-自定义")
         void shouldFallbackCustomScope_whenRoleDataScopeMissing() {
             // Given
-            when(sysUserService.getById(USER_ID)).thenReturn(user());
+            when(sysUserDomainService.getById(USER_ID)).thenReturn(user());
             when(sysUserRoleService.listByUserId(USER_ID))
                 .thenReturn(List.of(userRole(USER_ID, ROLE_ID_A)));
-            when(sysRoleService.listByIds(List.of(ROLE_ID_A)))
+            when(sysRoleDomainService.listByIds(List.of(ROLE_ID_A)))
                 .thenReturn(List.of(role(ROLE_ID_A, "custom", 1, null)));
             when(sysRoleMenuService.listByRoleIds(List.of(ROLE_ID_A))).thenReturn(List.of());
             // When
@@ -211,12 +211,12 @@ class UserAccessServiceImplTest {
         void shouldDelegateToUserService_whenGetByUsername() {
             // Given
             SysUser stubUser = user();
-            when(sysUserService.getByUsername("zhangsan")).thenReturn(stubUser);
+            when(sysUserDomainService.getByUsername("zhangsan")).thenReturn(stubUser);
             // When
             SysUser result = userAccessService.getByUsername("zhangsan");
             // Then
             assertThat(result).isSameAs(stubUser);
-            verify(sysUserService).getByUsername("zhangsan");
+            verify(sysUserDomainService).getByUsername("zhangsan");
         }
     }
 
@@ -229,12 +229,12 @@ class UserAccessServiceImplTest {
         void shouldDelegateToUserService_whenGetUserById() {
             // Given
             SysUser stubUser = user();
-            when(sysUserService.getById(USER_ID)).thenReturn(stubUser);
+            when(sysUserDomainService.getById(USER_ID)).thenReturn(stubUser);
             // When
             SysUser result = userAccessService.getUserById(USER_ID);
             // Then
             assertThat(result).isSameAs(stubUser);
-            verify(sysUserService).getById(USER_ID);
+            verify(sysUserDomainService).getById(USER_ID);
         }
     }
 
@@ -250,7 +250,7 @@ class UserAccessServiceImplTest {
             // When
             userAccessService.updateLastLogin(USER_ID, "192.168.1.10", loginTime);
             // Then
-            verify(sysUserService).updateLastLogin(USER_ID, "192.168.1.10", loginTime);
+            verify(sysUserDomainService).updateLastLogin(USER_ID, "192.168.1.10", loginTime);
         }
     }
 
@@ -266,7 +266,7 @@ class UserAccessServiceImplTest {
             // When
             userAccessService.updateUser(stubUser);
             // Then
-            verify(sysUserService).updateUser(stubUser);
+            verify(sysUserDomainService).updateUser(stubUser);
         }
     }
 
@@ -317,7 +317,7 @@ class UserAccessServiceImplTest {
             // Given
             when(sysUserRoleService.listByUserId(USER_ID))
                 .thenReturn(List.of(userRole(USER_ID, ROLE_ID_A), userRole(USER_ID, ROLE_ID_B)));
-            when(sysRoleService.listByIds(List.of(ROLE_ID_A, ROLE_ID_B)))
+            when(sysRoleDomainService.listByIds(List.of(ROLE_ID_A, ROLE_ID_B)))
                 .thenReturn(List.of(role(ROLE_ID_A, "sales", 1, 2), role(ROLE_ID_B, "stock", 0, 2)));
             // When
             List<String> roleCodes = userAccessService.listRoleCodes(USER_ID);
@@ -364,7 +364,7 @@ class UserAccessServiceImplTest {
             assertThat(tree.get(0).children())
                 .extracting(MenuTreeVO::menuId)
                 .containsExactly(2L);
-            verify(sysRoleService, never()).listByIds(anyCollection());
+            verify(sysRoleDomainService, never()).listByIds(anyCollection());
         }
 
         @Test
@@ -437,7 +437,7 @@ class UserAccessServiceImplTest {
         void shouldReturnEmpty_whenNoRoles() {
             // Given
             when(sysUserRoleService.listByUserId(USER_ID)).thenReturn(List.of());
-            when(sysRoleService.listByIds(List.of())).thenReturn(List.of());
+            when(sysRoleDomainService.listByIds(List.of())).thenReturn(List.of());
             // When
             Set<String> perms = userAccessService.listPerms(USER_ID, false);
             // Then
@@ -451,7 +451,7 @@ class UserAccessServiceImplTest {
             // Given
             when(sysUserRoleService.listByUserId(USER_ID))
                 .thenReturn(List.of(userRole(USER_ID, ROLE_ID_A)));
-            when(sysRoleService.listByIds(List.of(ROLE_ID_A)))
+            when(sysRoleDomainService.listByIds(List.of(ROLE_ID_A)))
                 .thenReturn(List.of(role(ROLE_ID_A, "sales", 1, 2)));
             when(sysRoleMenuService.listByRoleIds(List.of(ROLE_ID_A)))
                 .thenReturn(List.of(roleMenu(ROLE_ID_A, 100L), roleMenu(ROLE_ID_A, 101L)));

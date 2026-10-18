@@ -17,7 +17,7 @@ import me.north30.erp.system.role.dto.RoleCreateDTO;
 import me.north30.erp.system.role.dto.RoleDataScopeSaveDTO;
 import me.north30.erp.system.role.dto.RolePageQueryDTO;
 import me.north30.erp.system.role.dto.RoleUpdateDTO;
-import me.north30.erp.system.role.service.RoleManageService;
+import me.north30.erp.system.role.service.SysRoleApplicationService;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.role.vo.RoleCreatedVO;
 import me.north30.erp.system.role.vo.RoleDataScopeVO;
@@ -50,7 +50,7 @@ public class SysRoleController {
         {"code": 18015, "message": "角色编码已存在", "data": null, "timestamp": "2026-01-01 00:00:00", "traceId": "..."}\
         """;
 
-    private final RoleManageService roleManageService;
+    private final SysRoleApplicationService sysRoleApplicationService;
     /**
      * 5.2.1 角色分页查询。
      */
@@ -58,7 +58,7 @@ public class SysRoleController {
     @PreAuthorize("hasAuthority('system:role:list')")
     @Operation(summary = "角色分页查询", description = "权限点 system:role:list；userCount 为派生字段（按页批量统计）")
     public Result<PageResult<RoleVO>> page(@ParameterObject @Valid RolePageQueryDTO query) {
-        return Result.success(roleManageService.page(query));
+        return Result.success(sysRoleApplicationService.page(query));
     }
 
     /**
@@ -72,7 +72,7 @@ public class SysRoleController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<RoleCreatedVO> create(@Valid @RequestBody RoleCreateDTO dto) {
-        return Result.success(roleManageService.create(dto));
+        return Result.success(sysRoleApplicationService.create(dto));
     }
 
     /**
@@ -86,7 +86,7 @@ public class SysRoleController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<RoleUpdatedVO> update(@PathVariable Long id, @Valid @RequestBody RoleUpdateDTO dto) {
-        return Result.success(roleManageService.update(id, dto));
+        return Result.success(sysRoleApplicationService.update(id, dto));
     }
 
     /**
@@ -100,7 +100,7 @@ public class SysRoleController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<DeleteResultVO> delete(@PathVariable Long id) {
-        return Result.success(roleManageService.delete(id));
+        return Result.success(sysRoleApplicationService.delete(id));
     }
 
     /**
@@ -114,7 +114,7 @@ public class SysRoleController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<RoleMenuAssignedVO> assignMenus(@PathVariable Long id, @Valid @RequestBody RoleAssignMenuDTO dto) {
-        return Result.success(roleManageService.assignMenus(id, dto));
+        return Result.success(sysRoleApplicationService.assignMenus(id, dto));
     }
 
     /**
@@ -129,7 +129,7 @@ public class SysRoleController {
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<RoleDataScopeVO> saveDataScopes(@PathVariable Long id,
                                                   @Valid @RequestBody RoleDataScopeSaveDTO dto) {
-        return Result.success(roleManageService.saveDataScopes(id, dto));
+        return Result.success(sysRoleApplicationService.saveDataScopes(id, dto));
     }
 
     /**
@@ -139,6 +139,6 @@ public class SysRoleController {
     @PreAuthorize("hasAuthority('system:role:detail')")
     @Operation(summary = "查询角色数据范围", description = "权限点 system:role:detail；角色不存在返回 422/18014")
     public Result<RoleDataScopeVO> listDataScopes(@PathVariable Long id) {
-        return Result.success(roleManageService.listDataScopes(id));
+        return Result.success(sysRoleApplicationService.listDataScopes(id));
     }
 }

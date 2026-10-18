@@ -6,7 +6,7 @@ import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.dept.entity.SysDept;
 import me.north30.erp.system.dept.mapper.SysDeptMapper;
 import me.north30.erp.system.dept.service.SysDeptDomainService;
-import me.north30.erp.system.user.service.SysUserService;
+import me.north30.erp.system.user.service.SysUserDomainService;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +21,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 public class SysDeptDomainServiceImpl implements SysDeptDomainService {
 
     private final SysDeptMapper sysDeptMapper;
-    private final SysUserService sysUserService;
+    private final SysUserDomainService sysUserDomainService;
 
     @Override
     @Transactional(readOnly = true)
@@ -63,7 +63,7 @@ public class SysDeptDomainServiceImpl implements SysDeptDomainService {
     @Override
     @Transactional(readOnly = true)
     public void requireDeptHasNoUsers(SysDept dept) {
-        if (sysUserService.countByDeptId(dept.getId()) > 0) {
+        if (sysUserDomainService.countByDeptId(dept.getId()) > 0) {
             throw new BusinessException(SystemErrorCode.DEPT_HAS_CHILDREN_OR_USERS,
                 "组织 " + dept.getDeptName() + " 存在下级组织或绑定用户，不可删除");
         }

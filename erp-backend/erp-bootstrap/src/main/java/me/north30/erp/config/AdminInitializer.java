@@ -10,9 +10,9 @@ import me.north30.erp.system.user.converter.UserConverter;
 import me.north30.erp.system.user.entity.SysUser;
 import me.north30.erp.system.menu.service.SysMenuDomainService;
 import me.north30.erp.system.role.service.SysRoleMenuService;
-import me.north30.erp.system.role.service.SysRoleService;
+import me.north30.erp.system.role.service.SysRoleDomainService;
 import me.north30.erp.system.role.service.SysUserRoleService;
-import me.north30.erp.system.user.service.SysUserService;
+import me.north30.erp.system.user.service.SysUserDomainService;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -49,8 +49,8 @@ public class AdminInitializer implements ApplicationRunner {
     /** 菜单类型：按钮 */
     private static final int TYPE_BUTTON = 3;
 
-    private final SysUserService sysUserService;
-    private final SysRoleService sysRoleService;
+    private final SysUserDomainService sysUserDomainService;
+    private final SysRoleDomainService sysRoleDomainService;
     private final SysMenuDomainService sysMenuDomainService;
     private final SysUserRoleService sysUserRoleService;
     private final SysRoleMenuService sysRoleMenuService;
@@ -92,13 +92,13 @@ public class AdminInitializer implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         // 账号/角色幂等短路，但菜单树同步必须始终执行（种子新增权限点或修正 perms 时，
         // 老库依赖 ensureTree 幂等续建，admin 权限取全表 perms 并集，不同步会导致接口 403）
-        SysRole role = sysRoleService.getByRoleCode(ADMIN_ROLE_CODE);
+        SysRole role = sysRoleDomainService.getByRoleCode(ADMIN_ROLE_CODE);
         if (role == null) {
             role = createAdminRole();
         }
         Long roleId = role.getId();
 
-        SysUser user = sysUserService.getByUsername(ADMIN_USERNAME);
+        SysUser user = sysUserDomainService.getByUsername(ADMIN_USERNAME);
         boolean userCreated = false;
         if (user == null) {
             user = createAdminUser();
@@ -135,7 +135,7 @@ public class AdminInitializer implements ApplicationRunner {
         role.setDataScope(1);
         role.setIsBuiltin(1);
         role.setStatus(1);
-        sysRoleService.createRole(role);
+        sysRoleDomainService.createRole(role);
         return role;
     }
 
@@ -153,7 +153,7 @@ public class AdminInitializer implements ApplicationRunner {
         user.setIsAdmin(1);
         user.setLoginFailCount(0);
         user.setPasswordUpdateTime(LocalDateTime.now());
-        sysUserService.createUser(user);
+        sysUserDomainService.createUser(user);
         return user;
     }
 

@@ -34,7 +34,7 @@ public final class LogTestFactory {
      * 构建字段齐全的成功审计记录。
      */
     public static AuditLogRecord fullRecord() {
-        return record("PURCHASE", "PURCHASE_ORDER", "PO202609001", "UPDATE", "SysRoleServiceImpl.update",
+        return record("PURCHASE", "PURCHASE_ORDER", "PO202609001", "UPDATE", "SysRoleDomainServiceImpl.update",
             "admin", LocalDateTime.of(2026, 9, 28, 10, 0, 0), "192.168.1.10",
             "/api/purchase/orders/1/approve", "POST", "{\"status\":0}", "{\"status\":1}",
             1, null, null, 25L, "trace-001");

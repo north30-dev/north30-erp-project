@@ -6,7 +6,7 @@ import me.north30.erp.system.dept.DeptTestFactory;
 import me.north30.erp.system.dept.entity.SysDept;
 import me.north30.erp.system.dept.mapper.SysDeptMapper;
 import me.north30.erp.system.support.MpTableInfoInit;
-import me.north30.erp.system.user.service.SysUserService;
+import me.north30.erp.system.user.service.SysUserDomainService;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -33,7 +33,7 @@ class SysDeptDomainServiceImplTest {
     private SysDeptMapper sysDeptMapper;
 
     @Mock
-    private SysUserService sysUserService;
+    private SysUserDomainService sysUserDomainService;
 
     @InjectMocks
     private SysDeptDomainServiceImpl service;
@@ -178,7 +178,7 @@ class SysDeptDomainServiceImplTest {
         void shouldPass_whenNoUsers() {
             // Given
             SysDept dept = DeptTestFactory.rootDept(1L, "ORG001", "总部", 1, 1);
-            given(sysUserService.countByDeptId(1L)).willReturn(0L);
+            given(sysUserDomainService.countByDeptId(1L)).willReturn(0L);
 
             // When + Then：不抛异常
             service.requireDeptHasNoUsers(dept);
@@ -189,7 +189,7 @@ class SysDeptDomainServiceImplTest {
         void shouldThrow_whenHasUsers() {
             // Given
             SysDept dept = DeptTestFactory.rootDept(1L, "ORG001", "总部", 1, 1);
-            given(sysUserService.countByDeptId(1L)).willReturn(3L);
+            given(sysUserDomainService.countByDeptId(1L)).willReturn(3L);
 
             // When + Then
             assertThatThrownBy(() -> service.requireDeptHasNoUsers(dept))

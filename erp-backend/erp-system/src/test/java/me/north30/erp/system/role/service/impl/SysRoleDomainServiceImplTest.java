@@ -19,16 +19,16 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * {@link SysRoleServiceImpl} 纯 Mockito 单元测试。
+ * {@link SysRoleDomainServiceImpl} 纯 Mockito 单元测试。
  */
 @ExtendWith(MockitoExtension.class)
-class SysRoleServiceImplTest {
+class SysRoleDomainServiceImplTest {
 
     @Mock
     private SysRoleMapper sysRoleMapper;
 
     @InjectMocks
-    private SysRoleServiceImpl service;
+    private SysRoleDomainServiceImpl service;
 
     @BeforeAll
     static void setUpTableInfo() {

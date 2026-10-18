@@ -6,7 +6,7 @@ import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.role.entity.SysRole;
 import me.north30.erp.system.role.mapper.SysRoleMapper;
-import me.north30.erp.system.role.service.SysRoleService;
+import me.north30.erp.system.role.service.SysRoleDomainService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,7 +18,7 @@ import java.util.List;
  */
 @Service
 @RequiredArgsConstructor
-public class SysRoleServiceImpl implements SysRoleService {
+public class SysRoleDomainServiceImpl implements SysRoleDomainService {
 
     private final SysRoleMapper sysRoleMapper;
 

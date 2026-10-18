@@ -11,7 +11,7 @@ import me.north30.erp.system.dept.service.SysDeptDomainService;
 import me.north30.erp.system.menu.service.SysMenuDomainService;
 import me.north30.erp.system.role.service.SysRoleMenuService;
 import me.north30.erp.system.role.service.SysUserRoleService;
-import me.north30.erp.system.user.service.SysUserService;
+import me.north30.erp.system.user.service.SysUserDomainService;
 import me.north30.erp.system.auth.service.UserAccessService;
 import me.north30.erp.system.auth.dto.UserSecurityData;
 import me.north30.erp.system.auth.strategy.AccessAssembleStrategy;
@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class UserAccessServiceImpl implements UserAccessService {
 
-    private final SysUserService sysUserService;
+    private final SysUserDomainService sysUserDomainService;
     private final SysDeptDomainService sysDeptService;
     private final SysUserRoleService sysUserRoleService;
     private final SysRoleMenuService sysRoleMenuService;
@@ -49,7 +49,7 @@ public class UserAccessServiceImpl implements UserAccessService {
     @Override
     @Transactional(readOnly = true)
     public UserSecurityData loadByUserId(Long userId) {
-        SysUser user = sysUserService.getById(userId);
+        SysUser user = sysUserDomainService.getById(userId);
         if (user == null) {
             return null;
         }
@@ -65,25 +65,25 @@ public class UserAccessServiceImpl implements UserAccessService {
     @Override
     @Transactional(readOnly = true)
     public SysUser getByUsername(String username) {
-        return sysUserService.getByUsername(username);
+        return sysUserDomainService.getByUsername(username);
     }
 
     @Override
     @Transactional(readOnly = true)
     public SysUser getUserById(Long userId) {
-        return sysUserService.getById(userId);
+        return sysUserDomainService.getById(userId);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateLastLogin(Long userId, String loginIp, LocalDateTime loginTime) {
-        sysUserService.updateLastLogin(userId, loginIp, loginTime);
+        sysUserDomainService.updateLastLogin(userId, loginIp, loginTime);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateUser(SysUser user) {
-        sysUserService.updateUser(user);
+        sysUserDomainService.updateUser(user);
     }
 
     @Override

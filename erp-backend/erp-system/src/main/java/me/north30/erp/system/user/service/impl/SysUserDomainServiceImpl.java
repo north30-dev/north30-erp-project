@@ -6,7 +6,7 @@ import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.user.entity.SysUser;
 import me.north30.erp.system.user.mapper.SysUserMapper;
-import me.north30.erp.system.user.service.SysUserService;
+import me.north30.erp.system.user.service.SysUserDomainService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
  */
 @Service
 @RequiredArgsConstructor
-public class SysUserServiceImpl implements SysUserService {
+public class SysUserDomainServiceImpl implements SysUserDomainService {
 
     private final SysUserMapper sysUserMapper;
 

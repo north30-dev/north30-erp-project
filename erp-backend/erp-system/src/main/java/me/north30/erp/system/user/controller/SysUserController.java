@@ -15,7 +15,7 @@ import me.north30.erp.system.user.dto.UserQueryDTO;
 import me.north30.erp.system.user.dto.UserResetPasswordDTO;
 import me.north30.erp.system.user.dto.UserStatusDTO;
 import me.north30.erp.system.user.dto.UserUpdateDTO;
-import me.north30.erp.system.user.service.UserManagementService;
+import me.north30.erp.system.user.service.SysUserApplicationService;
 import me.north30.erp.system.user.vo.UserAssignRolesVO;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.user.vo.UserDetailVO;
@@ -44,7 +44,7 @@ import java.time.format.DateTimeFormatter;
 /**
  * 用户管理接口（/api/system/users，接口文档第五章 5.1 用户管理）。
  * <p>权限点通过 @PreAuthorize 方法级鉴权（SecurityConfig 已启用 @EnableMethodSecurity）；
- * 写操作的业务校验与审计落库在 UserManagementService 中完成。</p>
+ * 写操作的业务校验与审计落库在 SysUserApplicationService 中完成。</p>
  */
 @Tag(name = "用户管理", description = "/api/system/users，接口文档 5.1")
 @RestController
@@ -60,7 +60,7 @@ public class SysUserController {
     /** 导出文件名时间后缀格式 */
     private static final DateTimeFormatter FILENAME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
-    private final UserManagementService userManagementService;
+    private final SysUserApplicationService sysUserApplicationService;
 
     /**
      * 5.1.1 用户分页查询（system:user:list）。
@@ -69,7 +69,7 @@ public class SysUserController {
     @PreAuthorize("hasAuthority('system:user:list')")
     @Operation(summary = "用户分页查询", description = "权限点 system:user:list")
     public Result<PageResult<UserVO>> page(@ParameterObject @Valid UserQueryDTO query) {
-        return Result.success(userManagementService.page(query));
+        return Result.success(sysUserApplicationService.page(query));
     }
 
     /**
@@ -82,7 +82,7 @@ public class SysUserController {
     @GetMapping("/export")
     @PreAuthorize("hasAuthority('system:user:export')")
     public ResponseEntity<byte[]> export(@ParameterObject @Valid UserQueryDTO query) {
-        byte[] csv = userManagementService.exportCsv(query);
+        byte[] csv = sysUserApplicationService.exportCsv(query);
         String filename = "用户列表_" + FILENAME_FORMATTER.format(LocalDateTime.now()) + ".csv";
         String encoded = URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");
         return ResponseEntity.ok()
@@ -98,7 +98,7 @@ public class SysUserController {
     @PreAuthorize("hasAuthority('system:user:detail')")
     @Operation(summary = "用户详情", description = "权限点 system:user:detail；不存在返回 422/18005")
     public Result<UserDetailVO> detail(@PathVariable Long id) {
-        return Result.success(userManagementService.getDetail(id));
+        return Result.success(sysUserApplicationService.getDetail(id));
     }
 
     /**
@@ -111,7 +111,7 @@ public class SysUserController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<Long> create(@Valid @RequestBody UserCreateDTO dto) {
-        return Result.success(userManagementService.create(dto));
+        return Result.success(sysUserApplicationService.create(dto));
     }
 
     /**
@@ -124,7 +124,7 @@ public class SysUserController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<String> update(@PathVariable Long id, @Valid @RequestBody UserUpdateDTO dto) {
-        return Result.success(userManagementService.update(id, dto));
+        return Result.success(sysUserApplicationService.update(id, dto));
     }
 
     /**
@@ -137,7 +137,7 @@ public class SysUserController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<DeleteResultVO> delete(@PathVariable Long id) {
-        return Result.success(userManagementService.delete(id));
+        return Result.success(sysUserApplicationService.delete(id));
     }
 
     /**
@@ -150,7 +150,7 @@ public class SysUserController {
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<UserStatusVO> changeStatus(@PathVariable Long id, @Valid @RequestBody UserStatusDTO dto) {
-        return Result.success(userManagementService.changeStatus(id, dto));
+        return Result.success(sysUserApplicationService.changeStatus(id, dto));
     }
 
     /**
@@ -164,7 +164,7 @@ public class SysUserController {
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<UserResetPasswordVO> resetPassword(@PathVariable Long id,
                                                      @Valid @RequestBody UserResetPasswordDTO dto) {
-        return Result.success(userManagementService.resetPassword(id, dto));
+        return Result.success(sysUserApplicationService.resetPassword(id, dto));
     }
 
     /**
@@ -178,6 +178,6 @@ public class SysUserController {
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<UserAssignRolesVO> assignRoles(@PathVariable Long id,
                                                  @Valid @RequestBody UserAssignRolesDTO dto) {
-        return Result.success(userManagementService.assignRoles(id, dto));
+        return Result.success(sysUserApplicationService.assignRoles(id, dto));
     }
 }

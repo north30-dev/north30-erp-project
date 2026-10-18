@@ -19,16 +19,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * {@link SysUserServiceImpl} 纯 Mockito 单元测试。
+ * {@link SysUserDomainServiceImpl} 纯 Mockito 单元测试。
  */
 @ExtendWith(MockitoExtension.class)
-class SysUserServiceImplTest {
+class SysUserDomainServiceImplTest {
 
     @Mock
     private SysUserMapper sysUserMapper;
 
     @InjectMocks
-    private SysUserServiceImpl service;
+    private SysUserDomainServiceImpl service;
 
     @BeforeAll
     static void setUpTableInfo() {

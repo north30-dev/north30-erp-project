@@ -58,7 +58,7 @@ class AuditLogStoreImplTest {
             assertThat(entity.getBizType()).isEqualTo("PURCHASE_ORDER");
             assertThat(entity.getBizCode()).isEqualTo("PO202609001");
             assertThat(entity.getOperateType()).isEqualTo("UPDATE");
-            assertThat(entity.getOperateDesc()).isEqualTo("SysRoleServiceImpl.update");
+            assertThat(entity.getOperateDesc()).isEqualTo("SysRoleDomainServiceImpl.update");
             assertThat(entity.getOperateBy()).isEqualTo("admin");
             assertThat(entity.getOperateTime()).isEqualTo(LocalDateTime.of(2026, 9, 28, 10, 0, 0));
             assertThat(entity.getOperateIp()).isEqualTo("192.168.1.10");

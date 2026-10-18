@@ -5,7 +5,7 @@ import me.north30.erp.system.role.entity.SysRole;
 import me.north30.erp.system.role.entity.SysRoleMenu;
 import me.north30.erp.system.role.entity.SysUserRole;
 import me.north30.erp.system.role.service.SysRoleMenuService;
-import me.north30.erp.system.role.service.SysRoleService;
+import me.north30.erp.system.role.service.SysRoleDomainService;
 import me.north30.erp.system.role.service.SysUserRoleService;
 import me.north30.erp.system.menu.service.SysMenuDomainService;
 import org.springframework.stereotype.Component;
@@ -32,7 +32,7 @@ public class AccessAssembleStrategy {
     private static final List<Integer> DATA_SCOPE_ORDER = List.of(1, 2, 3, 4, 5, 6, 9);
 
     private final SysUserRoleService sysUserRoleService;
-    private final SysRoleService sysRoleService;
+    private final SysRoleDomainService sysRoleDomainService;
     private final SysRoleMenuService sysRoleMenuService;
     private final SysMenuDomainService sysMenuDomainService;
 
@@ -43,7 +43,7 @@ public class AccessAssembleStrategy {
         List<Long> roleIds = sysUserRoleService.listByUserId(userId).stream()
             .map(SysUserRole::getRoleId)
             .toList();
-        return sysRoleService.listByIds(roleIds).stream()
+        return sysRoleDomainService.listByIds(roleIds).stream()
             .filter(role -> role.getStatus() != null && role.getStatus() == 1)
             .toList();
     }

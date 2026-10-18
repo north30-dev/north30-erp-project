@@ -26,8 +26,8 @@ import me.north30.erp.system.user.dto.UserStatusDTO;
 import me.north30.erp.system.user.dto.UserUpdateDTO;
 import me.north30.erp.system.user.entity.SysUser;
 import me.north30.erp.system.user.mapper.SysUserMapper;
-import me.north30.erp.system.user.service.SysUserService;
-import me.north30.erp.system.user.service.UserManagementService;
+import me.north30.erp.system.user.service.SysUserDomainService;
+import me.north30.erp.system.user.service.SysUserApplicationService;
 import me.north30.erp.system.user.strategy.PasswordStrategy;
 import me.north30.erp.system.user.strategy.UserAssembleStrategy;
 import me.north30.erp.system.user.strategy.UserQueryStrategy;
@@ -59,7 +59,7 @@ import java.util.Objects;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class UserManagementServiceImpl implements UserManagementService {
+public class SysUserApplicationServiceImpl implements SysUserApplicationService {
 
     /** 权限变更生效提示（接口文档 5.1.8 固定文案） */
     private static final String PERMISSION_REFRESH_TIP = "权限变更将在 5 分钟内或重新登录后生效";
@@ -68,7 +68,7 @@ public class UserManagementServiceImpl implements UserManagementService {
     private final SysDeptMapper sysDeptMapper;
     private final PasswordEncoder passwordEncoder;
     private final UserConverter userConverter;
-    private final SysUserService sysUserService;
+    private final SysUserDomainService sysUserDomainService;
     private final UserQueryStrategy userQueryStrategy;
     private final UserAssembleStrategy userAssembleStrategy;
     private final UserRoleStrategy userRoleStrategy;
@@ -99,7 +99,7 @@ public class UserManagementServiceImpl implements UserManagementService {
     @Override
     @Transactional(readOnly = true)
     public UserDetailVO getDetail(Long id) {
-        SysUser user = sysUserService.requireUser(id);
+        SysUser user = sysUserDomainService.requireUser(id);
         List<Long> roleIds = userRoleStrategy.listRoleIdsByUserId(id);
         Map<Long, String> roleCodeMap = userAssembleStrategy.loadRoleCodeMap(roleIds);
         List<String> roles = roleIds.stream().map(roleCodeMap::get).filter(Objects::nonNull).toList();
@@ -119,8 +119,8 @@ public class UserManagementServiceImpl implements UserManagementService {
     @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.CREATE)
     public Long create(UserCreateDTO dto) {
         // 1. username/user_code 全局唯一校验（接口文档 5.1.3：18006/18007）
-        sysUserService.requireUsernameAvailable(dto.username());
-        sysUserService.requireUserCodeAvailable(dto.userCode());
+        sysUserDomainService.requireUsernameAvailable(dto.username());
+        sysUserDomainService.requireUserCodeAvailable(dto.userCode());
         // 2. 组织存在性校验（18024）；角色集合去重去空后校验存在性（18014）
         if (dto.deptId() != null && sysDeptMapper.selectById(dto.deptId()) == null) {
             throw new BusinessException(SystemErrorCode.DEPT_NOT_FOUND, "组织 " + dto.deptId() + " 不存在");
@@ -155,7 +155,7 @@ public class UserManagementServiceImpl implements UserManagementService {
     @Transactional(rollbackFor = Exception.class)
     @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     public String update(Long id, UserUpdateDTO dto) {
-        SysUser user = sysUserService.requireUser(id);
+        SysUser user = sysUserDomainService.requireUser(id);
         // 停用内置管理员视为受保护操作（18012）；update 语义是资料更新，不走 changeStatus 实体方法
         if (user.isAdmin() && dto.status() != null && dto.status() == 0) {
             throw new BusinessException(SystemErrorCode.ADMIN_PROTECTED);
@@ -182,7 +182,7 @@ public class UserManagementServiceImpl implements UserManagementService {
     @Transactional(rollbackFor = Exception.class)
     @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.DELETE)
     public DeleteResultVO delete(Long id) {
-        SysUser user = sysUserService.requireUser(id);
+        SysUser user = sysUserDomainService.requireUser(id);
         // 内置管理员不可删除（18012）
         if (user.isAdmin()) {
             throw new BusinessException(SystemErrorCode.ADMIN_PROTECTED);
@@ -208,7 +208,7 @@ public class UserManagementServiceImpl implements UserManagementService {
     @Transactional(rollbackFor = Exception.class)
     @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     public UserStatusVO changeStatus(Long id, UserStatusDTO dto) {
-        SysUser user = sysUserService.requireUser(id);
+        SysUser user = sysUserDomainService.requireUser(id);
         // 非法状态值 → 10001（注解校验兜底，服务层再守卫一次）
         if (dto.status() == null || (dto.status() != 0 && dto.status() != 1)) {
             throw new BusinessException(CommonErrorCode.PARAM_ERROR, "状态取值非法，仅支持 0-停用 1-启用");
@@ -241,7 +241,7 @@ public class UserManagementServiceImpl implements UserManagementService {
     @Transactional(rollbackFor = Exception.class)
     @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     public UserResetPasswordVO resetPassword(Long id, UserResetPasswordDTO dto) {
-        sysUserService.requireUser(id);
+        sysUserDomainService.requireUser(id);
         // 缺省时服务端生成随机口令；指定口令则校验复杂度（18009）
         String initialPassword = StringUtils.hasText(dto.newPassword()) ? dto.newPassword() : PasswordStrategy.generate();
         PasswordStrategy.checkOrThrow(initialPassword);
@@ -266,7 +266,7 @@ public class UserManagementServiceImpl implements UserManagementService {
     @Transactional(rollbackFor = Exception.class)
     @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     public UserAssignRolesVO assignRoles(Long id, UserAssignRolesDTO dto) {
-        sysUserService.requireUser(id);
+        sysUserDomainService.requireUser(id);
         List<Long> roleIds = dto.roleIds() == null ? List.of()
             : dto.roleIds().stream().filter(Objects::nonNull).distinct().toList();
         userRoleStrategy.requireAllExist(roleIds);

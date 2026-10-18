@@ -26,8 +26,8 @@ import me.north30.erp.system.role.entity.SysRoleDataScope;
 import me.north30.erp.system.role.entity.SysUserRole;
 import me.north30.erp.system.role.mapper.SysRoleDataScopeMapper;
 import me.north30.erp.system.role.mapper.SysRoleMapper;
-import me.north30.erp.system.role.service.RoleManageService;
-import me.north30.erp.system.role.service.SysRoleService;
+import me.north30.erp.system.role.service.SysRoleApplicationService;
+import me.north30.erp.system.role.service.SysRoleDomainService;
 import me.north30.erp.system.role.service.SysUserRoleService;
 import me.north30.erp.system.role.strategy.RoleAssembleStrategy;
 import me.north30.erp.system.role.strategy.RoleGrantStrategy;
@@ -54,10 +54,10 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class RoleManageServiceImpl implements RoleManageService {
+public class SysRoleApplicationServiceImpl implements SysRoleApplicationService {
 
     private final SysRoleMapper sysRoleMapper;
-    private final SysRoleService sysRoleService;
+    private final SysRoleDomainService sysRoleDomainService;
     private final SysUserRoleService sysUserRoleService;
     private final SysMenuDomainService sysMenuDomainService;
     private final SysRoleDataScopeMapper sysRoleDataScopeMapper;
@@ -104,7 +104,7 @@ public class RoleManageServiceImpl implements RoleManageService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public RoleUpdatedVO update(Long id, RoleUpdateDTO dto) {
-        SysRole role = sysRoleService.requireRole(id);
+        SysRole role = sysRoleDomainService.requireRole(id);
         if (dto.dataScope() != null) {
             role.changeDataScope(dto.dataScope());
         }
@@ -121,7 +121,7 @@ public class RoleManageServiceImpl implements RoleManageService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public DeleteResultVO delete(Long id) {
-        SysRole role = sysRoleService.requireRole(id);
+        SysRole role = sysRoleDomainService.requireRole(id);
         if (role.getIsBuiltin() != null && role.getIsBuiltin() == 1) {
             throw new BusinessException(SystemErrorCode.ROLE_BUILTIN);
         }
@@ -139,7 +139,7 @@ public class RoleManageServiceImpl implements RoleManageService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public RoleMenuAssignedVO assignMenus(Long id, RoleAssignMenuDTO dto) {
-        sysRoleService.requireRole(id);
+        sysRoleDomainService.requireRole(id);
         List<Long> menuIds = dto.menuIds().stream().distinct().toList();
         List<SysMenu> menus = List.of();
         if (!menuIds.isEmpty()) {
@@ -159,7 +159,7 @@ public class RoleManageServiceImpl implements RoleManageService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public RoleDataScopeVO saveDataScopes(Long id, RoleDataScopeSaveDTO dto) {
-        sysRoleService.requireRole(id);
+        sysRoleDomainService.requireRole(id);
         for (RoleDataScopeItemDTO item : dto.scopes()) {
             requireScopeValid(item);
         }
@@ -174,7 +174,7 @@ public class RoleManageServiceImpl implements RoleManageService {
     @Override
     @Transactional(readOnly = true)
     public RoleDataScopeVO listDataScopes(Long id) {
-        SysRole role = sysRoleService.requireRole(id);
+        SysRole role = sysRoleDomainService.requireRole(id);
         List<RoleDataScopeItemVO> scopes = sysRoleDataScopeMapper.selectList(
                 new LambdaQueryWrapper<SysRoleDataScope>().eq(SysRoleDataScope::getRoleId, id)).stream()
             .map(scope -> new RoleDataScopeItemVO(scope.getBizObject(), scope.getFilterDimension(),
