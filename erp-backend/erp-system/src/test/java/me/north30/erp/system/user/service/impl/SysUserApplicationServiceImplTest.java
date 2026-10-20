@@ -8,9 +8,11 @@ import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.system.dept.entity.SysDept;
 import me.north30.erp.system.dept.mapper.SysDeptMapper;
-import me.north30.erp.system.role.entity.SysUserRole;
+import me.north30.erp.system.dept.service.SysDeptDomainService;
 import me.north30.erp.system.role.mapper.SysRoleMapper;
 import me.north30.erp.system.role.mapper.SysUserRoleMapper;
+import me.north30.erp.system.role.service.SysRoleDomainService;
+import me.north30.erp.system.role.service.SysUserRoleService;
 import me.north30.erp.system.user.converter.UserConverter;
 import me.north30.erp.system.user.converter.UserConverterImpl;
 import me.north30.erp.system.user.dto.UserAssignRolesDTO;
@@ -80,6 +82,15 @@ class SysUserApplicationServiceImplTest {
     private SysDeptMapper sysDeptMapper;
 
     @Mock
+    private SysDeptDomainService sysDeptDomainService;
+
+    @Mock
+    private SysRoleDomainService sysRoleDomainService;
+
+    @Mock
+    private SysUserRoleService sysUserRoleService;
+
+    @Mock
     private SysUserDomainService sysUserDomainService;
 
     @Mock
@@ -101,13 +112,14 @@ class SysUserApplicationServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        // 真实策略实例 + mock Mapper：查询条件/装配/角色关联逻辑走真实代码路径
+        // 查询/装配策略用真实实例 + mock Mapper（保持 Wrapper 断言能力）；
+        // 角色关联策略构造依赖 role 域 Service mock；部门存在性/取数走部门域 Service mock
         UserQueryStrategy userQueryStrategy = new UserQueryStrategy(sysDeptMapper);
         UserAssembleStrategy userAssembleStrategy =
             new UserAssembleStrategy(sysDeptMapper, sysUserRoleMapper, sysRoleMapper, userConverter);
         UserRoleStrategy userRoleStrategy =
-            new UserRoleStrategy(sysRoleMapper, sysUserRoleMapper, userConverter);
-        service = new SysUserApplicationServiceImpl(sysUserMapper, sysDeptMapper, passwordEncoder,
+            new UserRoleStrategy(sysRoleDomainService, sysUserRoleService);
+        service = new SysUserApplicationServiceImpl(sysUserMapper, sysDeptDomainService, passwordEncoder,
             userConverter, sysUserDomainService, userQueryStrategy, userAssembleStrategy,
             userRoleStrategy, userSessionRevokeStrategy);
     }
@@ -267,15 +279,11 @@ class SysUserApplicationServiceImplTest {
         void shouldReturnDetailWithDistinctRolesAndMaskedPhone() {
             // Given
             when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
-            when(sysUserRoleMapper.selectList(any())).thenReturn(List.of(
-                UserTestFactory.sysUserRole(10L, 20L),
-                UserTestFactory.sysUserRole(10L, 21L),
-                UserTestFactory.sysUserRole(10L, null),
-                UserTestFactory.sysUserRole(10L, 20L)));
+            when(sysUserRoleService.listRoleIdsByUserId(10L)).thenReturn(List.of(20L, 21L));
             when(sysRoleMapper.selectByIds(any())).thenReturn(List.of(
                 UserTestFactory.sysRole(20L, "admin"),
                 UserTestFactory.sysRole(21L, "operator")));
-            when(sysDeptMapper.selectById(3L)).thenReturn(UserTestFactory.sysDept());
+            when(sysDeptDomainService.getById(3L)).thenReturn(UserTestFactory.sysDept());
 
             // When
             UserDetailVO vo = service.getDetail(10L);
@@ -307,7 +315,7 @@ class SysUserApplicationServiceImplTest {
             user.setPhone(null);
             user.setWarehouseIds(null);
             when(sysUserDomainService.requireUser(10L)).thenReturn(user);
-            when(sysUserRoleMapper.selectList(any())).thenReturn(List.of());
+            when(sysUserRoleService.listRoleIdsByUserId(10L)).thenReturn(List.of());
 
             // When
             UserDetailVO vo = service.getDetail(10L);
@@ -318,7 +326,7 @@ class SysUserApplicationServiceImplTest {
             assertThat(vo.roleIds()).isEmpty();
             assertThat(vo.roles()).isEmpty();
             assertThat(vo.warehouseIds()).isNull();
-            verifyNoInteractions(sysDeptMapper, sysRoleMapper);
+            verifyNoInteractions(sysDeptDomainService, sysRoleMapper);
         }
 
         @Test
@@ -341,8 +349,9 @@ class SysUserApplicationServiceImplTest {
         @Test
         void shouldCreateUserWithEncodedPasswordAndDefaultValues() {
             // Given
-            when(sysDeptMapper.selectById(3L)).thenReturn(UserTestFactory.sysDept());
-            when(sysRoleMapper.selectCount(any())).thenReturn(2L);
+            when(sysDeptDomainService.requireDept(3L)).thenReturn(UserTestFactory.sysDept());
+            when(sysRoleDomainService.listByIds(any())).thenReturn(List.of(
+                UserTestFactory.sysRole(1L, "admin"), UserTestFactory.sysRole(2L, "keeper")));
             when(passwordEncoder.encode("Passw0rd!")).thenReturn("encodedPwd");
             when(sysUserMapper.insert(any(SysUser.class))).thenAnswer(inv -> {
                 inv.<SysUser>getArgument(0).setId(100L);
@@ -366,10 +375,8 @@ class SysUserApplicationServiceImplTest {
                     && Integer.valueOf(1).equals(user.getStatus())
                     && Integer.valueOf(0).equals(user.getIsAdmin())
                     && user.getPasswordUpdateTime() != null));
-            verify(sysUserRoleMapper).insert(argThat((SysUserRole userRole) ->
-                Long.valueOf(100L).equals(userRole.getUserId()) && Long.valueOf(1L).equals(userRole.getRoleId())));
-            verify(sysUserRoleMapper).insert(argThat((SysUserRole userRole) ->
-                Long.valueOf(100L).equals(userRole.getUserId()) && Long.valueOf(2L).equals(userRole.getRoleId())));
+            verify(sysUserRoleService).createForUser(100L, 1L);
+            verify(sysUserRoleService).createForUser(100L, 2L);
         }
 
         @Test
@@ -413,13 +420,14 @@ class SysUserApplicationServiceImplTest {
                     ex -> assertThat(ex.getCode()).isEqualTo(18009))
                 .hasMessage("新密码须不少于 8 位且包含大写字母、小写字母、数字、特殊字符中的至少 3 类");
             verify(sysUserMapper, never()).insert(any(SysUser.class));
-            verifyNoInteractions(passwordEncoder, sysDeptMapper, sysRoleMapper);
+            verifyNoInteractions(passwordEncoder, sysDeptDomainService, sysRoleDomainService);
         }
 
         @Test
         void shouldThrow18024_whenDeptNotFound() {
             // Given
-            when(sysDeptMapper.selectById(99L)).thenReturn(null);
+            when(sysDeptDomainService.requireDept(99L)).thenThrow(
+                new BusinessException(SystemErrorCode.DEPT_NOT_FOUND, "组织 99 不存在"));
             UserCreateDTO dto = new UserCreateDTO("E001", "zhangsan", "Passw0rd!", "张三", 99L,
                 null, null, null, null, null, null, null);
 
@@ -429,13 +437,13 @@ class SysUserApplicationServiceImplTest {
                     ex -> assertThat(ex.getCode()).isEqualTo(18024))
                 .hasMessage("组织 99 不存在");
             verify(sysUserMapper, never()).insert(any(SysUser.class));
-            verifyNoInteractions(sysRoleMapper);
+            verifyNoInteractions(sysRoleDomainService);
         }
 
         @Test
         void shouldThrow18014_whenAnyRoleMissing() {
-            // Given：角色数计数 1 < 传入 2，说明存在不存在的角色
-            when(sysRoleMapper.selectCount(any())).thenReturn(1L);
+            // Given：IN 查询命中 1 < 传入 2，说明存在不存在的角色
+            when(sysRoleDomainService.listByIds(any())).thenReturn(List.of(UserTestFactory.sysRole(1L, "admin")));
             UserCreateDTO dto = new UserCreateDTO("E001", "zhangsan", "Passw0rd!", "张三", null,
                 null, null, null, null, null, List.of(1L, 2L), null);
 
@@ -455,7 +463,7 @@ class SysUserApplicationServiceImplTest {
         void shouldUpdateWithVersionAndReturnFormattedTime() {
             // Given
             when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
-            when(sysDeptMapper.selectById(3L)).thenReturn(UserTestFactory.sysDept());
+            when(sysDeptDomainService.requireDept(3L)).thenReturn(UserTestFactory.sysDept());
             when(sysUserMapper.updateById(any(SysUser.class))).thenReturn(1);
             UserUpdateDTO dto = new UserUpdateDTO("李四", 3L, List.of(1L, 2L),
                 "13900001111", "ls@north30.com", 2, 0, "更新备注", 5);
@@ -491,7 +499,7 @@ class SysUserApplicationServiceImplTest {
                     ex -> assertThat(ex.getCode()).isEqualTo(18012))
                 .hasMessage("内置超级管理员不可删除或停用");
             verify(sysUserMapper, never()).updateById(any(SysUser.class));
-            verifyNoInteractions(sysDeptMapper);
+            verifyNoInteractions(sysDeptDomainService);
         }
 
         @Test
@@ -511,7 +519,8 @@ class SysUserApplicationServiceImplTest {
         void shouldThrow18024_whenDeptNotFound() {
             // Given
             when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
-            when(sysDeptMapper.selectById(99L)).thenReturn(null);
+            when(sysDeptDomainService.requireDept(99L)).thenThrow(
+                new BusinessException(SystemErrorCode.DEPT_NOT_FOUND, "组织 99 不存在"));
             UserUpdateDTO dto = new UserUpdateDTO(null, 99L, null, null, null, null, null, null, 5);
 
             // When / Then
@@ -544,7 +553,7 @@ class SysUserApplicationServiceImplTest {
         void shouldDeleteUserLogically_whenNoRoleAssigned() {
             // Given
             when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
-            when(sysUserRoleMapper.selectCount(any())).thenReturn(0L);
+            when(sysUserRoleService.countByUserId(10L)).thenReturn(0L);
 
             // When
             DeleteResultVO vo = service.delete(10L);
@@ -566,14 +575,14 @@ class SysUserApplicationServiceImplTest {
                     ex -> assertThat(ex.getCode()).isEqualTo(18012))
                 .hasMessage("内置超级管理员不可删除或停用");
             verify(sysUserMapper, never()).deleteById(10L);
-            verifyNoInteractions(sysUserRoleMapper);
+            verifyNoInteractions(sysUserRoleService);
         }
 
         @Test
         void shouldThrow18013_whenUserHasAssignedRoles() {
             // Given
             when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
-            when(sysUserRoleMapper.selectCount(any())).thenReturn(2L);
+            when(sysUserRoleService.countByUserId(10L)).thenReturn(2L);
 
             // When / Then
             assertThatThrownBy(() -> service.delete(10L))
@@ -581,20 +590,6 @@ class SysUserApplicationServiceImplTest {
                     ex -> assertThat(ex.getCode()).isEqualTo(18013))
                 .hasMessage("用户 zhangsan 已分配角色，不可删除（请先解除角色分配或选择停用）");
             verify(sysUserMapper, never()).deleteById(10L);
-        }
-
-        @Test
-        void shouldDelete_whenRoleCountIsNull() {
-            // Given：策略对计数 null 的边界按 0 处理（非引用即允许删除）
-            when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
-            when(sysUserRoleMapper.selectCount(any())).thenReturn(null);
-
-            // When
-            DeleteResultVO vo = service.delete(10L);
-
-            // Then
-            assertThat(vo.id()).isEqualTo(10L);
-            verify(sysUserMapper).deleteById(10L);
         }
 
         @Test
@@ -803,7 +798,8 @@ class SysUserApplicationServiceImplTest {
         void shouldReplaceRolesWithDistinctIds_whenAssign() {
             // Given
             when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
-            when(sysRoleMapper.selectCount(any())).thenReturn(2L);
+            when(sysRoleDomainService.listByIds(any())).thenReturn(List.of(
+                UserTestFactory.sysRole(2L, "keeper"), UserTestFactory.sysRole(3L, "operator")));
 
             // When
             UserAssignRolesVO vo = service.assignRoles(10L, new UserAssignRolesDTO(List.of(2L, 2L, 3L)));
@@ -811,15 +807,9 @@ class SysUserApplicationServiceImplTest {
             // Then
             assertThat(vo.roleIds()).containsExactly(2L, 3L);
             assertThat(vo.permissionRefreshTip()).isEqualTo("权限变更将在 5 分钟内或重新登录后生效");
-            verify(sysUserRoleMapper).delete(argThat(wrapper -> {
-                LambdaQueryWrapper<SysUserRole> condition = (LambdaQueryWrapper<SysUserRole>) wrapper;
-                condition.getSqlSegment();
-                return condition.getParamNameValuePairs().containsValue(10L);
-            }));
-            verify(sysUserRoleMapper).insert(argThat((SysUserRole userRole) ->
-                Long.valueOf(10L).equals(userRole.getUserId()) && Long.valueOf(2L).equals(userRole.getRoleId())));
-            verify(sysUserRoleMapper).insert(argThat((SysUserRole userRole) ->
-                Long.valueOf(10L).equals(userRole.getUserId()) && Long.valueOf(3L).equals(userRole.getRoleId())));
+            verify(sysUserRoleService).deleteByUserId(10L);
+            verify(sysUserRoleService).createForUser(10L, 2L);
+            verify(sysUserRoleService).createForUser(10L, 3L);
         }
 
         @Test
@@ -832,9 +822,9 @@ class SysUserApplicationServiceImplTest {
 
             // Then
             assertThat(vo.roleIds()).isEmpty();
-            verify(sysUserRoleMapper).delete(any(LambdaQueryWrapper.class));
-            verify(sysUserRoleMapper, never()).insert(any(SysUserRole.class));
-            verify(sysRoleMapper, never()).selectCount(any());
+            verify(sysUserRoleService).deleteByUserId(10L);
+            verify(sysUserRoleService, never()).createForUser(any(), any());
+            verify(sysRoleDomainService, never()).listByIds(any());
         }
 
         @Test
@@ -848,22 +838,22 @@ class SysUserApplicationServiceImplTest {
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(18005))
                 .hasMessage("用户 99 不存在");
-            verifyNoInteractions(sysUserRoleMapper, sysRoleMapper);
+            verifyNoInteractions(sysUserRoleService, sysRoleDomainService);
         }
 
         @Test
         void shouldThrow18014_whenAnyRoleMissing() {
-            // Given
+            // Given：IN 查询命中 1 < 传入 2，说明存在不存在的角色
             when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
-            when(sysRoleMapper.selectCount(any())).thenReturn(1L);
+            when(sysRoleDomainService.listByIds(any())).thenReturn(List.of(UserTestFactory.sysRole(1L, "admin")));
 
             // When / Then
             assertThatThrownBy(() -> service.assignRoles(10L, new UserAssignRolesDTO(List.of(1L, 2L))))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(18014))
                 .hasMessage("角色不存在，请刷新角色列表后重试");
-            verify(sysUserRoleMapper, never()).delete(any(LambdaQueryWrapper.class));
-            verify(sysUserRoleMapper, never()).insert(any(SysUserRole.class));
+            verify(sysUserRoleService, never()).deleteByUserId(any());
+            verify(sysUserRoleService, never()).createForUser(any(), any());
         }
     }
 

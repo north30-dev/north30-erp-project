@@ -49,6 +49,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -256,8 +257,7 @@ class SysRoleApplicationServiceImplTest {
         @Test
         @DisplayName("创建角色，返回分配的 ID")
         void shouldCreateRoleWithDefaultValues_andReturnAssignedId() {
-            // Given
-            when(sysRoleMapper.selectCount(any())).thenReturn(0L);
+            // Given：编码唯一性由 sysRoleDomainService.requireRoleCodeAvailable 守卫（mock 默认放行）
             when(sysRoleMapper.insert(any(SysRole.class))).thenAnswer(inv -> {
                 inv.<SysRole>getArgument(0).setId(88L);
                 return 1;
@@ -282,7 +282,8 @@ class SysRoleApplicationServiceImplTest {
         @DisplayName("创建角色，角色编码已存在时抛出异常")
         void shouldThrow18015_whenRoleCodeExists() {
             // Given
-            when(sysRoleMapper.selectCount(any())).thenReturn(1L);
+            doThrow(new BusinessException(SystemErrorCode.ROLE_CODE_EXISTS, "角色编码 R001 已存在"))
+                .when(sysRoleDomainService).requireRoleCodeAvailable("R001");
 
             // When / Then
             assertThatThrownBy(() -> service.create(RoleTestFactory.validRoleCreateDTO()))
@@ -295,8 +296,7 @@ class SysRoleApplicationServiceImplTest {
         @Test
         @DisplayName("创建角色，数据范围配置非法时抛出异常")
         void shouldThrow18018_whenDataScopeIllegal() {
-            // Given
-            when(sysRoleMapper.selectCount(any())).thenReturn(0L);
+            // Given：data_scope 值域由实体 changeDataScope 守卫，编码唯一性守卫默认放行
             RoleCreateDTO dto = new RoleCreateDTO("R001", "操作员", null, 7, null, null);
 
             // When / Then

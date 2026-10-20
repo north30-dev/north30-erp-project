@@ -38,6 +38,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -178,12 +179,9 @@ class SysMenuApplicationServiceImplTest {
         @Test   
         @DisplayName("创建按钮时，清空 path/component 字段")
         void shouldClearRouteAndComponent_whenCreateButton() {
-            // Given：按钮类型即使传了 path/component 也应被清空，父级为页面型菜单
+            // Given：按钮类型即使传了 path/component 也应被清空，父级/perms 守卫由 domainService mock 放行
             MenuCreateDTO dto = MenuTestFactory.createDTO("新增用户", 3L, 3, "/user/create", "user/create.vue",
                 "system:user:create", 1, null);
-            given(sysMenuMapper.selectById(3L)).willReturn(
-                MenuTestFactory.pageMenu(3L, "用户管理", 1L, "system/user/index", "system:user:list", 1));
-            given(sysMenuMapper.selectCount(any())).willReturn(0L);
             given(sysMenuMapper.insert(any(SysMenu.class))).willAnswer(invocation -> {
                 invocation.getArgument(0, SysMenu.class).setId(101L);
                 return 1;
@@ -203,9 +201,10 @@ class SysMenuApplicationServiceImplTest {
         @Test   
         @DisplayName("创建子菜单时，上级菜单不存在抛出异常")
         void shouldThrow_whenParentMissing() {
-            // Given
+            // Given：父级守卫收敛进 SysMenuDomainService，mock 抛出领域异常
             MenuCreateDTO dto = MenuTestFactory.dirCreateDTO("孤儿目录", 99L, "/orphan", 1);
-            given(sysMenuMapper.selectById(99L)).willReturn(null);
+            willThrow(new BusinessException(SystemErrorCode.MENU_NOT_FOUND, "上级菜单不存在或已删除"))
+                .given(sysMenuDomainService).requireValidParent(null, 99L);
 
             // When + Then
             assertThatThrownBy(() -> service.create(dto))
@@ -218,9 +217,10 @@ class SysMenuApplicationServiceImplTest {
         @Test   
         @DisplayName("创建按钮时，抛出异常")
         void shouldThrow_whenParentIsButton() {
-            // Given：按钮下不可再建子节点（最多三级）
+            // Given：按钮下不可再建子节点（最多三级），父级守卫收敛进 SysMenuDomainService
             MenuCreateDTO dto = MenuTestFactory.dirCreateDTO("四级节点", 9L, "/too-deep", 1);
-            given(sysMenuMapper.selectById(9L)).willReturn(MenuTestFactory.buttonMenu(9L, "按钮", 3L, "a:b:c", 1));
+            willThrow(new BusinessException(SystemErrorCode.MENU_LEVEL_EXCEEDED))
+                .given(sysMenuDomainService).requireValidParent(null, 9L);
 
             // When + Then
             assertThatThrownBy(() -> service.create(dto))
@@ -261,9 +261,10 @@ class SysMenuApplicationServiceImplTest {
         @Test   
         @DisplayName("创建菜单时，抛出异常")
         void shouldThrow_whenPermsDuplicated() {
-            // Given：perms 唯一性校验命中已有记录
+            // Given：perms 唯一守卫收敛进 SysMenuDomainService，mock 抛出领域异常
             MenuCreateDTO dto = MenuTestFactory.createDTO("目录", 0L, 1, "/system", null, "sys:menu:add", 1, null);
-            given(sysMenuMapper.selectCount(any())).willReturn(1L);
+            willThrow(new BusinessException(SystemErrorCode.MENU_PERMS_DUPLICATED, "权限标识 sys:menu:add 已存在"))
+                .given(sysMenuDomainService).requirePermsAvailable("sys:menu:add", null);
 
             // When + Then
             assertThatThrownBy(() -> service.create(dto))
@@ -300,7 +301,6 @@ class SysMenuApplicationServiceImplTest {
             assertThat(updated.getPath()).isEqualTo("/new");
             assertThat(updated.getMenuSort()).isEqualTo(2);
             assertThat(updated.getVersion()).isEqualTo(3);
-            verify(sysMenuMapper, never()).selectCount(any());
         }
 
         @Test   
@@ -321,9 +321,11 @@ class SysMenuApplicationServiceImplTest {
         @Test   
         @DisplayName("更新菜单时，抛出异常")
         void shouldThrow_whenParentPointsToSelf() {
-            // Given
+            // Given：自指守卫收敛进 SysMenuDomainService，mock 抛出领域异常
             SysMenu menu = MenuTestFactory.dirMenu(1L, "系统管理", 0L, 1);
             given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
+            willThrow(new BusinessException(CommonErrorCode.PARAM_ERROR, "父级菜单不能指向自身"))
+                .given(sysMenuDomainService).requireValidParent(1L, 1L);
 
             // When + Then
             assertThatThrownBy(() -> service.update(1L, MenuTestFactory.updateDTO(1, null, 1L, null, null, null, null, null)))
@@ -336,11 +338,11 @@ class SysMenuApplicationServiceImplTest {
         @Test   
         @DisplayName("更新菜单时，抛出异常")
         void shouldThrow_whenParentIsOwnDescendant() {
-            // Given：父级沿父链回溯会回到自身（防环）
+            // Given：父级沿父链回溯会回到自身（防环），守卫收敛进 SysMenuDomainService
             SysMenu menu = MenuTestFactory.dirMenu(1L, "根目录", 0L, 1);
-            SysMenu child = MenuTestFactory.dirMenu(2L, "子目录", 1L, 1);
             given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
-            given(sysMenuMapper.selectById(2L)).willReturn(child);
+            willThrow(new BusinessException(CommonErrorCode.PARAM_ERROR, "父级菜单不能指向自身或自身下级"))
+                .given(sysMenuDomainService).requireValidParent(1L, 2L);
 
             // When + Then
             assertThatThrownBy(() -> service.update(1L, MenuTestFactory.updateDTO(1, null, 2L, null, null, null, null, null)))
@@ -353,10 +355,11 @@ class SysMenuApplicationServiceImplTest {
         @Test   
         @DisplayName("更新菜单时，抛出异常")
         void shouldThrow_whenNewParentMissing() {
-            // Given
+            // Given：父级守卫收敛进 SysMenuDomainService，mock 抛出领域异常
             SysMenu menu = MenuTestFactory.dirMenu(1L, "根目录", 0L, 1);
             given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
-            given(sysMenuMapper.selectById(99L)).willReturn(null);
+            willThrow(new BusinessException(SystemErrorCode.MENU_NOT_FOUND, "上级菜单不存在或已删除"))
+                .given(sysMenuDomainService).requireValidParent(1L, 99L);
 
             // When + Then
             assertThatThrownBy(() -> service.update(1L, MenuTestFactory.updateDTO(1, null, 99L, null, null, null, null, null)))
@@ -369,10 +372,11 @@ class SysMenuApplicationServiceImplTest {
         @Test   
         @DisplayName("更新菜单时，抛出异常")
         void shouldThrow_whenNewParentIsButton() {
-            // Given
+            // Given：父级守卫收敛进 SysMenuDomainService，mock 抛出领域异常
             SysMenu menu = MenuTestFactory.dirMenu(1L, "根目录", 0L, 1);
             given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
-            given(sysMenuMapper.selectById(9L)).willReturn(MenuTestFactory.buttonMenu(9L, "按钮", 3L, "a:b:c", 1));
+            willThrow(new BusinessException(SystemErrorCode.MENU_LEVEL_EXCEEDED))
+                .given(sysMenuDomainService).requireValidParent(1L, 9L);
 
             // When + Then
             assertThatThrownBy(() -> service.update(1L, MenuTestFactory.updateDTO(1, null, 9L, null, null, null, null, null)))
@@ -385,11 +389,12 @@ class SysMenuApplicationServiceImplTest {
         @Test   
         @DisplayName("更新菜单时，抛出异常")
         void shouldThrow_whenPermsDuplicatedOnUpdate() {
-            // Given：修改为已存在的 perms
+            // Given：修改为已存在的 perms，唯一守卫收敛进 SysMenuDomainService
             SysMenu menu = MenuTestFactory.buttonMenu(1L, "新增按钮", 0L, "old:perm", 1);
             MenuUpdateDTO dto = MenuTestFactory.updateDTO(2, null, null, null, null, null, "dup:perm", null);
             given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
-            given(sysMenuMapper.selectCount(any())).willReturn(1L);
+            willThrow(new BusinessException(SystemErrorCode.MENU_PERMS_DUPLICATED, "权限标识 dup:perm 已存在"))
+                .given(sysMenuDomainService).requirePermsAvailable("dup:perm", 1L);
 
             // When + Then
             assertThatThrownBy(() -> service.update(1L, dto))
@@ -423,7 +428,6 @@ class SysMenuApplicationServiceImplTest {
             MenuUpdateDTO dto = MenuTestFactory.updateDTO(2, null, null, 3, null, null, "system:user:create", null);
             given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
             given(sysMenuMapper.selectById(1L)).willReturn(menu);
-            given(sysMenuMapper.selectCount(any())).willReturn(0L);
             given(sysMenuMapper.updateById(any(SysMenu.class))).willReturn(1);
 
             // When

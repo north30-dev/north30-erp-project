@@ -3,7 +3,10 @@ package me.north30.erp.system.role.entity;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.mybatis.BaseEntity;
+import me.north30.erp.system.common.enums.SystemErrorCode;
+import me.north30.erp.system.role.enums.DataScopeEnum;
 
 /**
  * 角色数据权限范围配置表（sys_role_data_scope，SYS-04：业务对象 + 过滤维度 + 数据范围 + 字段掩码）。
@@ -33,4 +36,14 @@ public class SysRoleDataScope extends BaseEntity {
 
     /** 字段级掩码 0-不掩码 1-金额掩码 2-银行账号掩码 */
     private Integer fieldMask;
+
+    /**
+     * scopeType 值域守卫：非法抛 ROLE_DATA_SCOPE_INVALID（18018）。
+     */
+    public void requireScopeTypeValid() {
+        if (!DataScopeEnum.isValid(scopeType)) {
+            throw new BusinessException(SystemErrorCode.ROLE_DATA_SCOPE_INVALID,
+                "数据范围配置非法：scope_type=" + scopeType);
+        }
+    }
 }

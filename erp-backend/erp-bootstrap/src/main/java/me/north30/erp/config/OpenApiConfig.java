@@ -86,6 +86,9 @@ public class OpenApiConfig {
         };
     }
 
+    /**
+     * 全局注入响应体 schema：引用 Result 结构，避免逐接口重复声明。
+     */
     private void addIfAbsent(ApiResponses responses, String code, String description, String schemaName) {
         if (responses == null || responses.containsKey(code)) {
             return;

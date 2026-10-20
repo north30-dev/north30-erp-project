@@ -2,13 +2,17 @@ package me.north30.erp.system.role.strategy;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
+import me.north30.erp.common.exception.BusinessException;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.role.converter.RoleConverter;
 import me.north30.erp.system.role.dto.RoleDataScopeItemDTO;
 import me.north30.erp.system.role.entity.SysRoleDataScope;
 import me.north30.erp.system.role.entity.SysRoleMenu;
+import me.north30.erp.system.role.enums.DataScopeEnum;
 import me.north30.erp.system.role.mapper.SysRoleDataScopeMapper;
 import me.north30.erp.system.role.mapper.SysRoleMenuMapper;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 
@@ -53,10 +57,18 @@ public class RoleGrantStrategy {
 
     /**
      * 数据范围明细 DTO → 实体（deptIds/userIds 序列化与 fieldMask 缺省值在此装配）。
+     * <p>装配点承载范围校验：scopeType 值域守卫下沉实体（{@link SysRoleDataScope#requireScopeTypeValid()}）；
+     * 自定义档位（9）须至少勾选组织或人员（joinIds 序列化后的入参字符串判空）。</p>
      */
     public SysRoleDataScope buildDataScope(Long roleId, RoleDataScopeItemDTO item,
                                            String deptIds, String userIds) {
         SysRoleDataScope scope = roleConverter.toSysRoleDataScope(roleId, item);
+        scope.requireScopeTypeValid();
+        if (DataScopeEnum.CUSTOM.getCode() == scope.getScopeType()
+            && !StringUtils.hasText(deptIds) && !StringUtils.hasText(userIds)) {
+            throw new BusinessException(SystemErrorCode.ROLE_DATA_SCOPE_INVALID,
+                "数据范围配置非法：自定义范围必须至少勾选组织或人员");
+        }
         scope.setDeptIds(deptIds);
         scope.setUserIds(userIds);
         scope.setFieldMask(item.fieldMask() == null ? 0 : item.fieldMask());

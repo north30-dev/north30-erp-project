@@ -88,4 +88,35 @@ class SysUserRoleServiceImplTest {
             assertThat(result).isFalse();
         }
     }
+
+    @Nested
+    @DisplayName("统计用户已分配角色数")
+    class CountByUserIdTest {
+
+        @Test   
+        @DisplayName("统计用户已分配角色数时，计数非空直接返回")
+        void shouldReturnCount_whenCountPresent() {
+            // Given
+            when(sysUserRoleMapper.selectCount(any())).thenReturn(2L);
+
+            // When
+            long count = service.countByUserId(10L);
+
+            // Then
+            assertThat(count).isEqualTo(2L);
+        }
+
+        @Test   
+        @DisplayName("统计用户已分配角色数时，计数为 null 按 0 处理（非引用即允许删除）")
+        void shouldReturnZero_whenCountNull() {
+            // Given
+            when(sysUserRoleMapper.selectCount(any())).thenReturn(null);
+
+            // When
+            long count = service.countByUserId(10L);
+
+            // Then
+            assertThat(count).isZero();
+        }
+    }
 }

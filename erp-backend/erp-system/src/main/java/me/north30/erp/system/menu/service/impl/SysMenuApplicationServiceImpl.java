@@ -5,7 +5,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import me.north30.erp.common.util.UpdateGuardUtil;
 import me.north30.erp.common.exception.BusinessException;
-import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.util.DateTimeFormatUtil;
 import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.common.util.MenuTreeUtil;
@@ -62,16 +61,14 @@ public class SysMenuApplicationServiceImpl implements SysMenuApplicationService 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public MenuCreatedVO create(MenuCreateDTO dto) {
-        // 按钮下不可再建子节点（最多三级：目录 → 菜单 → 按钮）
+        // 父级合法性（存在性 + 非按钮 + 防环）与 perms 唯一守卫收敛进领域服务；
+        // 按钮下禁建子仅在 requireValidParent 判断一次
         if (dto.parentId() != null && dto.parentId() != ROOT_PARENT_ID) {
-            SysMenu parent = requireParent(dto.parentId());
-            if (parent.getMenuType() != null && parent.getMenuType() == SysMenu.TYPE_BUTTON) {
-                throw new BusinessException(SystemErrorCode.MENU_LEVEL_EXCEEDED);
-            }
+            sysMenuDomainService.requireValidParent(null, dto.parentId());
         }
         SysMenu menu = menuConverter.createSysMenu(dto);
         menu.requireTypeFieldsValid();
-        checkPermsUnique(menu.getPerms(), null);
+        sysMenuDomainService.requirePermsAvailable(menu.getPerms(), null);
         menu.applyCreateDefaults();
         menu.clearRouteFieldsIfButton();
         sysMenuMapper.insert(menu);
@@ -83,12 +80,12 @@ public class SysMenuApplicationServiceImpl implements SysMenuApplicationService 
     public MenuUpdatedVO update(Long id, MenuUpdateDTO dto) {
         SysMenu menu = sysMenuDomainService.requireMenu(id);
         if (dto.parentId() != null) {
-            validateParent(id, dto.parentId());
+            sysMenuDomainService.requireValidParent(id, dto.parentId());
         }
         // null 字段跳过（部分更新语义），按钮字段清空与乐观锁 version 由下方逻辑处理
         menuConverter.updateSysMenu(dto, menu);
         menu.requireTypeFieldsValid();
-        checkPermsUnique(menu.getPerms(), id);
+        sysMenuDomainService.requirePermsAvailable(menu.getPerms(), id);
         menu.clearRouteFieldsIfButton();
         // 乐观锁按客户端传入 version 校验
         menu.setVersion(dto.version());
@@ -115,65 +112,5 @@ public class SysMenuApplicationServiceImpl implements SysMenuApplicationService 
         }
         sysMenuMapper.deleteById(id);
         return new DeleteResultVO(id, 1);
-    }
-
-    // ------------------------------------------------------------------
-    // 私有辅助方法
-    // ------------------------------------------------------------------
-
-    /**
-     * perms 唯一校验（应用层保证，excludeId 用于修改场景排除自身）。
-     */
-    private void checkPermsUnique(String perms, Long excludeId) {
-        if (!StringUtils.hasText(perms)) {
-            return;
-        }
-        Long count = sysMenuMapper.selectCount(new LambdaQueryWrapper<SysMenu>()
-            .eq(SysMenu::getPerms, perms)
-            .ne(excludeId != null, SysMenu::getId, excludeId));
-        if (count != null && count > 0) {
-            throw new BusinessException(SystemErrorCode.MENU_PERMS_DUPLICATED,
-                "权限标识 " + perms + " 已存在");
-        }
-    }
-
-    /**
-     * 父级菜单必须存在，否则抛"上级菜单不存在或已删除"。
-     */
-    private SysMenu requireParent(Long parentId) {
-        SysMenu parent = sysMenuMapper.selectById(parentId);
-        if (parent == null) {
-            throw new BusinessException(SystemErrorCode.MENU_NOT_FOUND, "上级菜单不存在或已删除");
-        }
-        return parent;
-    }
-
-    /**
-     * 父级合法性校验：不得为按钮、不得指向自身或自身下级（防环，逐级向上回溯）。
-     */
-    private void validateParent(Long selfId, Long parentId) {
-        if (parentId == null || parentId == ROOT_PARENT_ID) {
-            return;
-        }
-        if (parentId.equals(selfId)) {
-            throw new BusinessException(CommonErrorCode.PARAM_ERROR, "父级菜单不能指向自身");
-        }
-        SysMenu parent = requireParent(parentId);
-        if (parent.getMenuType() != null && parent.getMenuType() == SysMenu.TYPE_BUTTON) {
-            throw new BusinessException(SystemErrorCode.MENU_LEVEL_EXCEEDED);
-        }
-        // 防环：从新父级沿父链向上回溯，若回到自身则说明父级位于自身下级
-        Long cursor = parentId;
-        int guard = 0;
-        while (cursor != null && cursor != ROOT_PARENT_ID && guard++ < 10) {
-            if (cursor.equals(selfId)) {
-                throw new BusinessException(CommonErrorCode.PARAM_ERROR, "父级菜单不能指向自身或自身下级");
-            }
-            SysMenu current = sysMenuMapper.selectById(cursor);
-            if (current == null) {
-                break;
-            }
-            cursor = current.getParentId();
-        }
     }
 }

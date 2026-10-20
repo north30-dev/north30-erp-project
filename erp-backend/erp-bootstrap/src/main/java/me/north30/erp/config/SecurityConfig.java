@@ -51,9 +51,13 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+            // csrf（跨站请求伪造） 关闭（纯 API）
             .csrf(csrf -> csrf.disable())
+            // cors（跨域资源共享） 配置：放开本机 Vite 开发服务器来源
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            // sessionManagement（会话管理） 配置：无状态会话，不创建会话对象
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // authorizeHttpRequests（授权请求） 配置：所有请求都需要认证，除白名单
             .authorizeHttpRequests(auth -> auth
                 // 免认证白名单（显式列举，禁通配）
                 .requestMatchers("/api/auth/captcha", "/api/auth/login", "/api/auth/refresh",
@@ -61,16 +65,23 @@ public class SecurityConfig {
                     "/actuator/health").permitAll()
                 // 其余全部需要认证
                 .anyRequest().authenticated())
+            // oauth2ResourceServer（OAuth2 资源服务器） 配置：JWT 认证
             .oauth2ResourceServer(oauth2 -> oauth2
+                // jwt（JSON Web Token） 配置：自定义解码器、转换器
                 .jwt(jwt -> jwt
                     .decoder(jwtTokenProvider.getDecoder())
                     .jwtAuthenticationConverter(jwtLoginUserConverter::convert))
                 // 401/403 必须同时挂在这里：token 解析失败由 BearerTokenAuthenticationFilter
                 // 自带失败处理器直接响应，不会走 exceptionHandling 注册的 EntryPoint
+                // 401 未认证：Token 缺失/过期/验签失败/type 非 access/会话不存在，响应体与 Result 结构一致
                 .authenticationEntryPoint(authenticationEntryPoint())
+                // 403 已认证但无权限：缺少接口所需权限点（纵向越权）或数据范围越界
                 .accessDeniedHandler(accessDeniedHandler()))
+            // exceptionHandling（异常处理） 配置：统一 401/403 响应体
             .exceptionHandling(handling -> handling
+                // 401 未认证：Token 缺失/过期/验签失败/type 非 access/会话不存在，响应体与 Result 结构一致
                 .authenticationEntryPoint(authenticationEntryPoint())
+                // 403 已认证但无权限：缺少接口所需权限点（纵向越权）或数据范围越界，响应体与 Result 结构一致
                 .accessDeniedHandler(accessDeniedHandler()));
         return http.build();
     }

@@ -9,14 +9,13 @@ import me.north30.erp.common.audit.AuditModuleEnum;
 import me.north30.erp.common.audit.OperateTypeEnum;
 import me.north30.erp.common.util.UpdateGuardUtil;
 import me.north30.erp.common.exception.BusinessException;
-import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.common.util.DateTimeFormatUtil;
 import me.north30.erp.common.util.WarehouseIdCodecUtil;
 import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.dept.entity.SysDept;
-import me.north30.erp.system.dept.mapper.SysDeptMapper;
+import me.north30.erp.system.dept.service.SysDeptDomainService;
 import me.north30.erp.system.user.converter.UserConverter;
 import me.north30.erp.system.user.dto.UserAssignRolesDTO;
 import me.north30.erp.system.user.dto.UserCreateDTO;
@@ -65,7 +64,7 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
     private static final String PERMISSION_REFRESH_TIP = "权限变更将在 5 分钟内或重新登录后生效";
 
     private final SysUserMapper sysUserMapper;
-    private final SysDeptMapper sysDeptMapper;
+    private final SysDeptDomainService sysDeptDomainService;
     private final PasswordEncoder passwordEncoder;
     private final UserConverter userConverter;
     private final SysUserDomainService sysUserDomainService;
@@ -103,8 +102,8 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
         List<Long> roleIds = userRoleStrategy.listRoleIdsByUserId(id);
         Map<Long, String> roleCodeMap = userAssembleStrategy.loadRoleCodeMap(roleIds);
         List<String> roles = roleIds.stream().map(roleCodeMap::get).filter(Objects::nonNull).toList();
-        SysDept dept = user.getDeptId() != null ? sysDeptMapper.selectById(user.getDeptId()) : null;
-        return userConverter.toDetailVO(user, dept, roles, roleIds,
+        SysDept dept = user.getDeptId() != null ? sysDeptDomainService.getById(user.getDeptId()) : null;
+        return userConverter.toUserDetailVO(user, dept, roles, roleIds,
             WarehouseIdCodecUtil.parse(user.getWarehouseIds()));
     }
 
@@ -122,23 +121,18 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
         sysUserDomainService.requireUsernameAvailable(dto.username());
         sysUserDomainService.requireUserCodeAvailable(dto.userCode());
         // 2. 组织存在性校验（18024）；角色集合去重去空后校验存在性（18014）
-        if (dto.deptId() != null && sysDeptMapper.selectById(dto.deptId()) == null) {
-            throw new BusinessException(SystemErrorCode.DEPT_NOT_FOUND, "组织 " + dto.deptId() + " 不存在");
+        if (dto.deptId() != null) {
+            sysDeptDomainService.requireDept(dto.deptId());
         }
         List<Long> roleIds = dto.roleIds() == null ? List.of()
             : dto.roleIds().stream().filter(Objects::nonNull).distinct().toList();
         userRoleStrategy.requireAllExist(roleIds);
         // 3. 落库：口令复杂度校验（18009）+ BCrypt 加密 + 初始口令修改时间置为当前（90 天有效期基准）
-        SysUser user = userConverter.toEntity(dto);
+        SysUser user = userConverter.createUser(dto);
         user.initPassword(dto.password(), passwordEncoder, LocalDateTime.now());
         user.setWarehouseIds(WarehouseIdCodecUtil.join(dto.warehouseIds()));
-        if (user.getGender() == null) {
-            user.setGender(0);
-        }
-        if (user.getStatus() == null) {
-            user.setStatus(1);
-        }
-        user.setIsAdmin(0);
+        
+        user.applyCreateDefault();
         sysUserMapper.insert(user);
         userRoleStrategy.insertForUser(user.getId(), roleIds);
         return user.getId();
@@ -157,13 +151,13 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
     public String update(Long id, UserUpdateDTO dto) {
         SysUser user = sysUserDomainService.requireUser(id);
         // 停用内置管理员视为受保护操作（18012）；update 语义是资料更新，不走 changeStatus 实体方法
-        if (user.isAdmin() && dto.status() != null && dto.status() == 0) {
-            throw new BusinessException(SystemErrorCode.ADMIN_PROTECTED);
+        if (dto.status() != null && dto.status() == 0) {
+            user.requireNotAdmin();
         }
-        if (dto.deptId() != null && sysDeptMapper.selectById(dto.deptId()) == null) {
-            throw new BusinessException(SystemErrorCode.DEPT_NOT_FOUND, "组织 " + dto.deptId() + " 不存在");
+        if (dto.deptId() != null) {
+            sysDeptDomainService.requireDept(dto.deptId());
         }
-        SysUser entity = userConverter.toEntity(dto);
+        SysUser entity = userConverter.updateUser(dto);
         entity.setId(id);
         entity.setWarehouseIds(dto.warehouseIds() != null ? WarehouseIdCodecUtil.join(dto.warehouseIds()) : null);
         // 带乐观锁版本条件更新，冲突时更新行数为 0；显式设置更新时间（strictUpdateFill 不覆盖已设值）
@@ -184,9 +178,7 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
     public DeleteResultVO delete(Long id) {
         SysUser user = sysUserDomainService.requireUser(id);
         // 内置管理员不可删除（18012）
-        if (user.isAdmin()) {
-            throw new BusinessException(SystemErrorCode.ADMIN_PROTECTED);
-        }
+        user.requireNotAdmin();
         // 存在角色分配即视为被引用，拒绝删除（18013）
         if (userRoleStrategy.countByUserId(id) > 0) {
             throw new BusinessException(SystemErrorCode.USER_REFERENCED,
@@ -209,11 +201,7 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
     @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     public UserStatusVO changeStatus(Long id, UserStatusDTO dto) {
         SysUser user = sysUserDomainService.requireUser(id);
-        // 非法状态值 → 10001（注解校验兜底，服务层再守卫一次）
-        if (dto.status() == null || (dto.status() != 0 && dto.status() != 1)) {
-            throw new BusinessException(CommonErrorCode.PARAM_ERROR, "状态取值非法，仅支持 0-停用 1-启用");
-        }
-        // 内置管理员不可停用（18012），守卫收敛于实体 changeStatus
+        // 状态值域守卫（10001）与内置管理员不可停用（18012）收敛于实体 changeStatus
         user.changeStatus(dto.status());
         SysUser patch = new SysUser();
         patch.setId(id);

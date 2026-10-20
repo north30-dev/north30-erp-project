@@ -52,6 +52,11 @@ public class SysMenu extends BaseEntity {
     /** 状态 0-停用 1-启用 */
     private Integer status;
 
+    /**
+     * 创建时应用默认值。
+     * <p>默认值：menuSort=0, visible=1, status=1</p>
+     * <p>仅在创建时调用，更新时不调用。</p>
+     */
     public void applyCreateDefaults() {
         if (menuSort == null) {
             menuSort = 0;

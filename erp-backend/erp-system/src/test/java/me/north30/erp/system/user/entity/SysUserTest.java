@@ -50,17 +50,33 @@ class SysUserTest {
     }
 
     @Test
-    @DisplayName("changeStatus 时，null 状态不触发管理员守卫直接赋值")
-    void shouldAssignNullStatus_withoutAdminGuard() {
-        // Given：dto.status() 的取值合法性由服务层守卫，实体仅拦截"停用管理员"组合
+    @DisplayName("changeStatus 时，null 状态触发值域守卫抛 10001")
+    void shouldThrow10001_whenStatusNull() {
+        // Given：取值合法性守卫已下沉实体，null/越界值均抛 10001（优先于管理员守卫）
         SysUser admin = new SysUser();
         admin.setIsAdmin(1);
 
-        // When
-        admin.changeStatus(null);
-
-        // Then
+        // When / Then
+        assertThatThrownBy(() -> admin.changeStatus(null))
+            .isInstanceOfSatisfying(BusinessException.class,
+                ex -> assertThat(ex.getCode()).isEqualTo(10001))
+            .hasMessage("状态取值非法，仅支持 0-停用 1-启用");
         assertThat(admin.getStatus()).isNull();
+    }
+
+    @Test
+    @DisplayName("changeStatus 时，越界状态触发值域守卫抛 10001")
+    void shouldThrow10001_whenStatusOutOfRange() {
+        // Given
+        SysUser user = new SysUser();
+        user.setIsAdmin(0);
+
+        // When / Then
+        assertThatThrownBy(() -> user.changeStatus(2))
+            .isInstanceOfSatisfying(BusinessException.class,
+                ex -> assertThat(ex.getCode()).isEqualTo(10001))
+            .hasMessage("状态取值非法，仅支持 0-停用 1-启用");
+        assertThat(user.getStatus()).isNull();
     }
 
     @Test

@@ -41,6 +41,7 @@ public class SysRole extends BaseEntity {
      * </p>
      */
     public void changeDataScope(Integer dataScope) {
+        
         if (!DataScopeEnum.isValid(dataScope)) {
             throw new BusinessException(SystemErrorCode.ROLE_DATA_SCOPE_INVALID,
                     "数据范围配置非法：data_scope=" + dataScope);

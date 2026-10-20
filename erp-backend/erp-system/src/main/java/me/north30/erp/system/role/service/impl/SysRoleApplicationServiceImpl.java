@@ -6,9 +6,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import me.north30.erp.common.util.UpdateGuardUtil;
 import me.north30.erp.common.exception.BusinessException;
-import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.common.util.DateTimeFormatUtil;
+import me.north30.erp.common.util.QueryGuardUtil;
 import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.menu.entity.SysMenu;
@@ -16,10 +16,8 @@ import me.north30.erp.system.menu.service.SysMenuDomainService;
 import me.north30.erp.system.role.converter.RoleConverter;
 import me.north30.erp.system.role.dto.RoleAssignMenuDTO;
 import me.north30.erp.system.role.dto.RoleCreateDTO;
-import me.north30.erp.system.role.dto.RoleDataScopeItemDTO;
 import me.north30.erp.system.role.dto.RoleDataScopeSaveDTO;
 import me.north30.erp.system.role.dto.RolePageQueryDTO;
-import me.north30.erp.system.role.enums.DataScopeEnum;
 import me.north30.erp.system.role.dto.RoleUpdateDTO;
 import me.north30.erp.system.role.entity.SysRole;
 import me.north30.erp.system.role.entity.SysRoleDataScope;
@@ -88,12 +86,9 @@ public class SysRoleApplicationServiceImpl implements SysRoleApplicationService 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public RoleCreatedVO create(RoleCreateDTO dto) {
-        Long exists = sysRoleMapper.selectCount(
-            new LambdaQueryWrapper<SysRole>().eq(SysRole::getRoleCode, dto.roleCode()));
-        if (exists != null && exists > 0) {
-            throw new BusinessException(SystemErrorCode.ROLE_CODE_EXISTS,
-                "角色编码 " + dto.roleCode() + " 已存在");
-        }
+        // 角色编码全局唯一校验（18015）收敛进领域服务
+        sysRoleDomainService.requireRoleCodeAvailable(dto.roleCode());
+
         SysRole role = roleConverter.createSysRole(dto);
         role.changeDataScope(dto.dataScope() == null ? 1 : dto.dataScope());
         role.applyCreateDefault();
@@ -126,10 +121,8 @@ public class SysRoleApplicationServiceImpl implements SysRoleApplicationService 
             throw new BusinessException(SystemErrorCode.ROLE_BUILTIN);
         }
         long userCount = sysUserRoleService.countUsersByRoleId(id);
-        if (userCount > 0) {
-            throw new BusinessException(SystemErrorCode.ROLE_REFERENCED_BY_USER,
-                "角色 " + role.getRoleName() + " 已分配给 " + userCount + " 个用户，不可删除");
-        }
+        QueryGuardUtil.requireCountZero(userCount, SystemErrorCode.ROLE_REFERENCED_BY_USER, 
+            "角色 " + role.getRoleName() + " 已分配给 " + userCount + " 个用户，不可删除");
         sysRoleMapper.deleteById(id);
         // 级联逻辑删除授权与数据范围配置，避免已删角色残留引用阻塞菜单删除/范围查询
         roleGrantStrategy.cleanupOnRoleDelete(id);
@@ -160,9 +153,7 @@ public class SysRoleApplicationServiceImpl implements SysRoleApplicationService 
     @Transactional(rollbackFor = Exception.class)
     public RoleDataScopeVO saveDataScopes(Long id, RoleDataScopeSaveDTO dto) {
         sysRoleDomainService.requireRole(id);
-        for (RoleDataScopeItemDTO item : dto.scopes()) {
-            requireScopeValid(item);
-        }
+        // 档位值域与自定义范围跨字段校验由 RoleGrantStrategy.buildDataScope 装配点承载
         List<SysRoleDataScope> scopes = dto.scopes().stream()
             .map(item -> roleGrantStrategy.buildDataScope(id, item,
                 roleAssembleStrategy.joinIds(item.deptIds()), roleAssembleStrategy.joinIds(item.userIds())))
@@ -182,24 +173,5 @@ public class SysRoleApplicationServiceImpl implements SysRoleApplicationService 
                 roleAssembleStrategy.parseIds(scope.getUserIds()), scope.getFieldMask()))
             .toList();
         return new RoleDataScopeVO(role.getDataScope(), scopes);
-    }
-
-    // ------------------------------------------------------------------
-    // 私有辅助方法
-    // ------------------------------------------------------------------
-
-    /**
-     * 校验数据范围明细：档位合法且自定义范围至少勾选组织或人员。
-     */
-    private void requireScopeValid(RoleDataScopeItemDTO item) {
-        if (!DataScopeEnum.isValid(item.scopeType())) {
-            throw new BusinessException(SystemErrorCode.ROLE_DATA_SCOPE_INVALID,
-                "数据范围配置非法：scope_type=" + item.scopeType());
-        }
-        if (item.scopeType() == DataScopeEnum.CUSTOM.getCode() && roleAssembleStrategy.isEmpty(item.deptIds())
-            && roleAssembleStrategy.isEmpty(item.userIds())) {
-            throw new BusinessException(SystemErrorCode.ROLE_DATA_SCOPE_INVALID,
-                "数据范围配置非法：自定义范围必须至少勾选组织或人员");
-        }
     }
 }

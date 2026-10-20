@@ -70,4 +70,32 @@
         </dependency>
     </dependencies>
 
+    <build>
+        <plugins>
+            <!-- Mockito 启动期静态挂载：消除 inline-mock-maker 动态 attach 的 JDK 警告，
+                 并兼容未来 JDK 默认禁止动态 agent 的行为。
+                 dependency-plugin 的 properties 目标先把 mockito-core 解析为本地仓库路径属性，
+                 surefire 再通过坐标式占位符引用（mockito 经 starter-test 传递引入，版本由 Boot 托管） -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>mockito-agent-path</id>
+                        <goals>
+                            <goal>properties</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>-javaagent:${org.mockito:mockito-core:jar}</argLine>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>

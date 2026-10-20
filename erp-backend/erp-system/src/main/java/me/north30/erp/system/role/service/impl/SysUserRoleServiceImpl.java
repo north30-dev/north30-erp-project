@@ -11,6 +11,7 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * 用户-角色关联服务实现。
@@ -52,5 +53,36 @@ public class SysUserRoleServiceImpl implements SysUserRoleService {
         return count == null ? 0L : count;
     }
 
-    
+    @Override
+    @Transactional(readOnly = true)
+    public long countByUserId(Long userId) {
+        Long count = sysUserRoleMapper.selectCount(
+            new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getUserId, userId));
+        return count == null ? 0L : count;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Long> listRoleIdsByUserId(Long userId) {
+        return listByUserId(userId).stream()
+            .map(SysUserRole::getRoleId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void createForUser(Long userId, Long roleId) {
+        SysUserRole userRole = new SysUserRole();
+        userRole.setUserId(userId);
+        userRole.setRoleId(roleId);
+        sysUserRoleMapper.insert(userRole);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteByUserId(Long userId) {
+        sysUserRoleMapper.delete(new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getUserId, userId));
+    }
 }

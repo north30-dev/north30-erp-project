@@ -44,4 +44,10 @@ public interface SysRoleDomainService {
      * @return 角色实体
      */
     SysRole requireRole(Long id);
+
+    /**
+     * 校验角色编码可用，已存在抛 18015（@TableLogic 自动过滤已删除行）。
+     * @param roleCode 角色编码
+     */
+    void requireRoleCodeAvailable(String roleCode);
 }

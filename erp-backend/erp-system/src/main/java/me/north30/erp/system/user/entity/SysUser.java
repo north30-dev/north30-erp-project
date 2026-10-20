@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import me.north30.erp.common.exception.BusinessException;
+import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.mybatis.BaseEntity;
 import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.user.strategy.PasswordStrategy;
@@ -78,13 +79,25 @@ public class SysUser extends BaseEntity {
     }
 
     /**
-     * 启用/停用账号：内置管理员不可停用（错误码 18012）。
+     * 内置管理员受保护操作守卫（错误码 18012）。
+     */
+    public void requireNotAdmin() {
+        if (isAdmin()) {
+            throw new BusinessException(SystemErrorCode.ADMIN_PROTECTED);
+        }
+    }
+
+    /**
+     * 启用/停用账号：状态值域守卫（10001）+ 内置管理员不可停用（错误码 18012，仅停用触发）。
      *
      * @param targetStatus 目标状态（0-停用 1-启用）
      */
     public void changeStatus(Integer targetStatus) {
-        if (isAdmin() && Integer.valueOf(0).equals(targetStatus)) {
-            throw new BusinessException(SystemErrorCode.ADMIN_PROTECTED);
+        if (targetStatus == null || (targetStatus != 0 && targetStatus != 1)) {
+            throw new BusinessException(CommonErrorCode.PARAM_ERROR, "状态取值非法，仅支持 0-停用 1-启用");
+        }
+        if (targetStatus == 0) {
+            requireNotAdmin();
         }
         this.status = targetStatus;
     }
@@ -101,5 +114,20 @@ public class SysUser extends BaseEntity {
         PasswordStrategy.checkOrThrow(rawPassword);
         this.password = passwordEncoder.encode(rawPassword);
         this.passwordUpdateTime = now;
+    }
+
+    /**
+     * 应用创建默认值：性别 0-未知 1-男 2-女，状态 0-停用 1-启用，是否超级管理员 0-否 1-是。
+     */
+    public void applyCreateDefault() {
+        if (gender == null) {
+            gender = 0;
+        }
+        if (status == null) {
+            status = 1;
+        }
+        if (isAdmin == null) {
+            isAdmin = 0;
+        }
     }
 }

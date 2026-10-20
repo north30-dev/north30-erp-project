@@ -6,7 +6,6 @@ import me.north30.erp.system.menu.entity.SysMenu;
 import me.north30.erp.system.role.converter.RoleConverter;
 import me.north30.erp.system.role.entity.SysRole;
 import me.north30.erp.system.role.entity.SysRoleMenu;
-import me.north30.erp.system.user.converter.UserConverter;
 import me.north30.erp.system.user.entity.SysUser;
 import me.north30.erp.system.menu.service.SysMenuDomainService;
 import me.north30.erp.system.role.service.SysRoleMenuService;
@@ -55,7 +54,6 @@ public class AdminInitializer implements ApplicationRunner {
     private final SysUserRoleService sysUserRoleService;
     private final SysRoleMenuService sysRoleMenuService;
     private final PasswordEncoder passwordEncoder;
-    private final UserConverter userConverter;
     private final RoleConverter roleConverter;
 
     /**
@@ -102,7 +100,7 @@ public class AdminInitializer implements ApplicationRunner {
         boolean userCreated = false;
         if (user == null) {
             user = createAdminUser();
-            sysUserRoleService.createUserRole(userConverter.toUserRole(user.getId(), roleId));
+            sysUserRoleService.createForUser(user.getId(), roleId);
             userCreated = true;
         }
 

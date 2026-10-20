@@ -1,5 +1,9 @@
 package me.north30.erp.system.menu.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import me.north30.erp.common.exception.BusinessException;
+import me.north30.erp.common.exception.CommonErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.menu.MenuTestFactory;
 import me.north30.erp.system.menu.entity.SysMenu;
 import me.north30.erp.system.menu.mapper.SysMenuMapper;
@@ -9,6 +13,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -17,6 +23,8 @@ import java.util.Collection;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
@@ -33,6 +41,9 @@ class SysMenuDomainServiceImplTest {
 
     @InjectMocks
     private SysMenuDomainServiceImpl service;
+
+    @Captor
+    private ArgumentCaptor<LambdaQueryWrapper<SysMenu>> menuWrapperCaptor;
 
     @BeforeAll
     static void initMpTableInfo() {
@@ -204,6 +215,134 @@ class SysMenuDomainServiceImplTest {
 
             // Then
             assertThat(created).isFalse();
+        }
+    }
+
+    @Nested
+    @DisplayName("requirePermsAvailable：权限标识唯一守卫")
+    class RequirePermsAvailableTest {
+
+        @Test   
+        @DisplayName("权限标识重复时抛出 MENU_PERMS_DUPLICATED")
+        void shouldThrow_whenPermsDuplicated() {
+            // Given
+            given(sysMenuMapper.selectCount(any())).willReturn(1L);
+
+            // When + Then
+            assertThatThrownBy(() -> service.requirePermsAvailable("sys:menu:add", null))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.MENU_PERMS_DUPLICATED.getCode()))
+                .hasMessage("权限标识 sys:menu:add 已存在");
+        }
+
+        @Test   
+        @DisplayName("修改场景排除自身（excludeId 条件写入查询）后无重复时放行")
+        void shouldPass_whenExcludeSelfAndNoDuplicate() {
+            // Given
+            given(sysMenuMapper.selectCount(any())).willReturn(0L);
+
+            // When + Then（不抛异常）
+            assertThatCode(() -> service.requirePermsAvailable("sys:menu:add", 1L))
+                .doesNotThrowAnyException();
+            // 查询参数应携带排除的自身 ID（ne 条件在渲染 SQL 片段时落参）
+            verify(sysMenuMapper).selectCount(menuWrapperCaptor.capture());
+            LambdaQueryWrapper<SysMenu> wrapper = menuWrapperCaptor.getValue();
+            wrapper.getSqlSegment();
+            assertThat(wrapper.getParamNameValuePairs().containsValue(1L)).isTrue();
+        }
+
+        @Test   
+        @DisplayName("perms 为空白时直接放行，不发起唯一性查询")
+        void shouldSkipQuery_whenPermsBlank() {
+            // When + Then
+            assertThatCode(() -> service.requirePermsAvailable("   ", null)).doesNotThrowAnyException();
+            assertThatCode(() -> service.requirePermsAvailable(null, 1L)).doesNotThrowAnyException();
+            verifyNoInteractions(sysMenuMapper);
+        }
+    }
+
+    @Nested
+    @DisplayName("requireValidParent：父级合法性守卫")
+    class RequireValidParentTest {
+
+        @Test   
+        @DisplayName("父级为 null（顶级）时直接放行，不查库")
+        void shouldSkip_whenParentIdNull() {
+            // When + Then（selfId 为 null 表示新增场景，同样跳过防环）
+            assertThatCode(() -> service.requireValidParent(null, null)).doesNotThrowAnyException();
+            verifyNoInteractions(sysMenuMapper);
+        }
+
+        @Test   
+        @DisplayName("父级为 0（顶级）时直接放行，不查库")
+        void shouldSkip_whenParentIdZero() {
+            // When + Then
+            assertThatCode(() -> service.requireValidParent(1L, 0L)).doesNotThrowAnyException();
+            verifyNoInteractions(sysMenuMapper);
+        }
+
+        @Test   
+        @DisplayName("父级存在且为目录时放行（新增场景 selfId 为 null，回溯不命中自身）")
+        void shouldPass_whenParentExistsAndSelfIdNull() {
+            // Given：父级 2（目录，父链 2→1→0）
+            SysMenu parent = MenuTestFactory.dirMenu(2L, "基础数据", 1L, 1);
+            SysMenu grand = MenuTestFactory.dirMenu(1L, "系统管理", 0L, 1);
+            given(sysMenuMapper.selectById(2L)).willReturn(parent);
+            given(sysMenuMapper.selectById(1L)).willReturn(grand);
+
+            // When + Then
+            assertThatCode(() -> service.requireValidParent(null, 2L)).doesNotThrowAnyException();
+        }
+
+        @Test   
+        @DisplayName("父级不存在时抛出 MENU_NOT_FOUND")
+        void shouldThrow_whenParentMissing() {
+            // Given
+            given(sysMenuMapper.selectById(99L)).willReturn(null);
+
+            // When + Then
+            assertThatThrownBy(() -> service.requireValidParent(null, 99L))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.MENU_NOT_FOUND.getCode()))
+                .hasMessage("上级菜单不存在或已删除");
+        }
+
+        @Test   
+        @DisplayName("父级为按钮时抛出 MENU_LEVEL_EXCEEDED（按钮下禁建子，仅此处判断一次）")
+        void shouldThrow_whenParentIsButton() {
+            // Given
+            given(sysMenuMapper.selectById(9L))
+                .willReturn(MenuTestFactory.buttonMenu(9L, "按钮", 3L, "a:b:c", 1));
+
+            // When + Then
+            assertThatThrownBy(() -> service.requireValidParent(null, 9L))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.MENU_LEVEL_EXCEEDED.getCode()))
+                .hasMessage("菜单仅支持三级（目录/菜单/按钮）");
+        }
+
+        @Test   
+        @DisplayName("父级指向自身时抛出 PARAM_ERROR（自指）")
+        void shouldThrow_whenParentIsSelf() {
+            // When + Then
+            assertThatThrownBy(() -> service.requireValidParent(1L, 1L))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
+                .hasMessage("父级菜单不能指向自身");
+            verifyNoInteractions(sysMenuMapper);
+        }
+
+        @Test   
+        @DisplayName("父级位于自身下级时抛出 PARAM_ERROR（沿父链回溯命中自身，防环）")
+        void shouldThrow_whenParentIsOwnDescendant() {
+            // Given：selfId=1，新父级 2 的父链为 2→1（1 是自身下级）
+            given(sysMenuMapper.selectById(2L)).willReturn(MenuTestFactory.dirMenu(2L, "子目录", 1L, 1));
+
+            // When + Then
+            assertThatThrownBy(() -> service.requireValidParent(1L, 2L))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
+                .hasMessage("父级菜单不能指向自身或自身下级");
         }
     }
 }

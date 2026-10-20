@@ -37,4 +37,31 @@ public interface SysUserRoleService {
      * @return 用户数
      */
     long countUsersByRoleId(Long roleId);
+
+    /**
+     * 统计用户已分配角色数（删除用户前置引用守卫用）。
+     * @param userId 用户 ID
+     * @return 角色 ID 集合数量
+     */
+    long countByUserId(Long userId);
+
+    /**
+     * 查询用户已分配角色 ID 列表（详情/装配用）。
+     * @param userId 用户 ID
+     * @return 角色 ID 集合
+     */
+    List<Long> listRoleIdsByUserId(Long userId);
+
+    /**
+     * 为用户逐条写入角色关联（实体由本域构建）。
+     * @param userId 用户 ID
+     * @param roleId 角色 ID
+     */
+    void createForUser(Long userId, Long roleId);
+
+    /**
+     * 逻辑删除用户全部角色关联（全删全插前半段）。
+     * @param userId 用户 ID
+     */
+    void deleteByUserId(Long userId);
 }

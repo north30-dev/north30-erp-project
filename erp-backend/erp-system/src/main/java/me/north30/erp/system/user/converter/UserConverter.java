@@ -11,7 +11,6 @@ import me.north30.erp.system.user.dto.UserUpdateDTO;
 import me.north30.erp.system.user.entity.SysUser;
 import me.north30.erp.system.user.vo.UserDetailVO;
 import me.north30.erp.system.user.vo.UserVO;
-import me.north30.erp.system.role.entity.SysUserRole;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -43,7 +42,7 @@ public interface UserConverter {
     @Mapping(target = "gender")
     @Mapping(target = "status")
     @Mapping(target = "remark")
-    SysUser toEntity(UserCreateDTO dto);
+    SysUser createUser(UserCreateDTO dto);
 
     /**
      * 修改用户 DTO → 部分更新实体（携带乐观锁 version）。
@@ -58,15 +57,7 @@ public interface UserConverter {
     @Mapping(target = "status")
     @Mapping(target = "remark")
     @Mapping(target = "version")
-    SysUser toEntity(UserUpdateDTO dto);
-
-    /**
-     * 组装用户-角色关联实体（全删全插场景逐条构建）。
-     */
-    @BeanMapping(ignoreByDefault = true)
-    @Mapping(target = "userId")
-    @Mapping(target = "roleId")
-    SysUserRole toUserRole(Long userId, Long roleId);
+    SysUser updateUser(UserUpdateDTO dto);
 
     /**
      * 实体 → 详情 VO（多源参数：用户实体 + 所属部门 + 角色派生集合）。
@@ -94,7 +85,7 @@ public interface UserConverter {
     @Mapping(target = "passwordUpdateTime", source = "user.passwordUpdateTime", qualifiedByName = "formatTime")
     @Mapping(target = "lastLoginTime", source = "user.lastLoginTime", qualifiedByName = "formatTime")
     @Mapping(target = "createTime", source = "user.createTime", qualifiedByName = "formatTime")
-    UserDetailVO toDetailVO(SysUser user, SysDept dept,
+    UserDetailVO toUserDetailVO(SysUser user, SysDept dept,
                             List<String> roles, List<Long> roleIds, List<Long> warehouseIds);
 
     /**

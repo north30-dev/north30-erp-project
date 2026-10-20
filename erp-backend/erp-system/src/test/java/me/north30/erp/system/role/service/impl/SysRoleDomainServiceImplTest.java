@@ -1,5 +1,7 @@
 package me.north30.erp.system.role.service.impl;
 
+import me.north30.erp.common.exception.BusinessException;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.role.entity.SysRole;
 import me.north30.erp.system.role.mapper.SysRoleMapper;
 import org.junit.jupiter.api.BeforeAll;
@@ -14,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -146,6 +149,34 @@ class SysRoleDomainServiceImplTest {
 
             // Then
             assertThat(result).isFalse();
+        }
+    }
+
+    @Nested
+    @DisplayName("requireRoleCodeAvailable：角色编码唯一守卫")
+    class RequireRoleCodeAvailableTest {
+
+        @Test
+        @DisplayName("角色编码可用时放行")
+        void shouldPass_whenRoleCodeAbsent() {
+            // Given
+            when(sysRoleMapper.selectOne(any())).thenReturn(null);
+
+            // When / Then（不抛异常）
+            service.requireRoleCodeAvailable("R001");
+        }
+
+        @Test
+        @DisplayName("角色编码已存在时抛出 18015")
+        void shouldThrow18015_whenRoleCodeExists() {
+            // Given
+            when(sysRoleMapper.selectOne(any())).thenReturn(RoleTestFactory.sysRole());
+
+            // When / Then
+            assertThatThrownBy(() -> service.requireRoleCodeAvailable("R001"))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.ROLE_CODE_EXISTS.getCode()))
+                .hasMessage("角色编码 R001 已存在");
         }
     }
 }

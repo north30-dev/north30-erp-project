@@ -3,6 +3,7 @@ package me.north30.erp.system.role.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.exception.BusinessException;
+import me.north30.erp.common.util.QueryGuardUtil;
 import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.role.entity.SysRole;
 import me.north30.erp.system.role.mapper.SysRoleMapper;
@@ -52,10 +53,15 @@ public class SysRoleDomainServiceImpl implements SysRoleDomainService {
     @Override
     @Transactional(readOnly = true)
     public SysRole requireRole(Long id) {
-        SysRole role = sysRoleMapper.selectById(id);
-        if (role == null) {
-            throw new BusinessException(SystemErrorCode.ROLE_NOT_FOUND, "角色 " + id + " 不存在");
+        return QueryGuardUtil.requirePresent(sysRoleMapper.selectById(id), SystemErrorCode.ROLE_NOT_FOUND, "角色 " + id + " 不存在");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void requireRoleCodeAvailable(String roleCode) {
+        if (getByRoleCode(roleCode) != null) {
+            throw new BusinessException(SystemErrorCode.ROLE_CODE_EXISTS,
+                "角色编码 " + roleCode + " 已存在");
         }
-        return role;
     }
 }
