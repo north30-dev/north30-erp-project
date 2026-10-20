@@ -75,7 +75,7 @@ class SysDeptApplicationServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        deptTreeStrategy = new DeptTreeStrategy(sysDeptMapper, sysDeptService);
+        deptTreeStrategy = new DeptTreeStrategy(sysDeptMapper);
         service = new SysDeptApplicationServiceImpl(sysDeptMapper, sysDeptService, deptTreeStrategy,
             deptTreeUtil, deptConverter);
     }
@@ -175,7 +175,7 @@ class SysDeptApplicationServiceImplTest {
             // Given：父级为 1 级组织（祖级路径 "0"）
             DeptCreateDTO dto = DeptTestFactory.createDTO("ORG003", "生产部", 5L, 4, 1, 1);
             SysDept parent = DeptTestFactory.rootDept(5L, "ORG001", "总部", 1, 1);
-            given(sysDeptService.requireDept(5L)).willReturn(parent);
+            given(sysDeptMapper.selectList(any())).willReturn(List.of(parent));
             given(sysDeptMapper.insert(any(SysDept.class))).willAnswer(invocation -> {
                 invocation.getArgument(0, SysDept.class).setId(11L);
                 return 1;
@@ -208,10 +208,9 @@ class SysDeptApplicationServiceImplTest {
         @Test
         @DisplayName("部门创建，父级组织不存在，抛出异常")
         void shouldThrow_whenParentMissing() {
-            // Given
+            // Given：父级不在组织表中
             DeptCreateDTO dto = DeptTestFactory.createDTO("ORG003", "生产部", 99L, 4, 1, 1);
-            given(sysDeptService.requireDept(99L))
-                .willThrow(new BusinessException(SystemErrorCode.DEPT_NOT_FOUND, "组织 99 不存在"));
+            given(sysDeptMapper.selectList(any())).willReturn(List.of());
 
             // When + Then
             assertThatThrownBy(() -> service.create(dto))
@@ -227,7 +226,7 @@ class SysDeptApplicationServiceImplTest {
             // Given：父级已是第 5 级，子级将超过层级上限
             DeptCreateDTO dto = DeptTestFactory.createDTO("ORG006", "车间班组", 5L, 5, 1, 1);
             SysDept parent = DeptTestFactory.dept(5L, "ORG005", "五级车间", 4L, 5, 5, "0,1,2,3,4", 1);
-            given(sysDeptService.requireDept(5L)).willReturn(parent);
+            given(sysDeptMapper.selectList(any())).willReturn(List.of(parent));
 
             // When + Then
             assertThatThrownBy(() -> service.create(dto))
@@ -303,6 +302,7 @@ class SysDeptApplicationServiceImplTest {
             SysDept current = DeptTestFactory.dept(2L, "ORG002", "生产部", 1L, 4, 2, "0,1", 1);
             DeptUpdateDTO dto = DeptTestFactory.updateDTO(2L, "生产部", 4, 1);
             given(sysDeptService.requireDept(2L)).willReturn(current);
+            given(sysDeptMapper.selectList(any())).willReturn(List.of(current));
 
             // When + Then
             assertThatThrownBy(() -> service.update(2L, dto))

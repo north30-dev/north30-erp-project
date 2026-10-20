@@ -2,10 +2,10 @@ package me.north30.erp.system.dept.strategy;
 
 import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.exception.BusinessException;
+import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.dept.entity.SysDept;
 import me.north30.erp.system.dept.mapper.SysDeptMapper;
-import me.north30.erp.system.dept.service.SysDeptDomainService;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayDeque;
@@ -29,41 +29,6 @@ public class DeptTreeStrategy {
     private static final long ROOT_PARENT_ID = 0L;
 
     private final SysDeptMapper sysDeptMapper;
-    private final SysDeptDomainService sysDeptService;
-
-    /**
-     * 解析父级组织：parentId 为空或 0 表示顶级，返回 null；否则必须存在。
-     * 
-     * @param parentId 父组织 ID
-     * @return 父组织实体
-     */
-    public SysDept resolveParent(Long parentId) {
-        if (parentId == null || parentId == ROOT_PARENT_ID) {
-            return null;
-        }
-        return sysDeptService.requireDept(parentId);
-    }
-
-    /**
-     * 环检测：从 startId 沿父级链向上走，若经过 selfId 说明 startId 是自身的后代。
-     * 
-     * @param deptMap 组织索引（按 ID 建立）
-     * @param selfId  当前组织 ID
-     * @param startId 开始组织 ID
-     * @return 是否是后代
-     */
-    public boolean inAncestorChain(Map<Long, SysDept> deptMap, Long selfId, Long startId) {
-        Long cursor = startId;
-        Set<Long> visited = new HashSet<>();
-        while (cursor != null && cursor != ROOT_PARENT_ID && visited.add(cursor)) {
-            if (cursor.equals(selfId)) {
-                return true;
-            }
-            SysDept node = deptMap.get(cursor);
-            cursor = node == null ? null : node.getParentId();
-        }
-        return false;
-    }
 
     /**
      * 级联重算下级组织的祖级路径与层级（BFS，父节点先于子节点刷新）。
@@ -94,6 +59,56 @@ public class DeptTreeStrategy {
             .collect(Collectors.toMap(SysDept::getId, Function.identity()));
     }
 
+/**
+     * 换父校验：目标为顶级（null/0）返回 null；自引用、父级存在性（18022）与环检测逐项拦截。
+     * <p>deptMap 一次查全量由调用方贯穿校验与级联重算（禁 N+1）。
+     * 层级上限由 {@link SysDept#applyParent(SysDept)} 充血承载。</p>
+     *
+     * @param deptMap      组织索引（按 ID 建立）
+     * @param dept         当前组织实体（新建时 id 为 null，自引用/环检测天然不命中）
+     * @param newParentId  目标父级 ID
+     * @return 新父级实体；目标为顶级时返回 null
+     */
+    public SysDept requireValidNewParent(Map<Long, SysDept> deptMap, SysDept dept, Long newParentId) {
+        // 顶级（0）或未指定父级直接放行
+        if (newParentId == null || newParentId == ROOT_PARENT_ID) {
+            return null;
+        }
+        // 校验自引用，不能选择自身或自身下级组织
+        if (newParentId.equals(dept.getId())) {
+            throw new BusinessException(CommonErrorCode.PARAM_ERROR, "上级组织不可选择自身");
+        }
+        // 校验父级存在性
+        SysDept newParent = requireParentInMap(deptMap, newParentId);
+        // 校验环检测，不能选择自身或自身下级组织
+        if (inAncestorChain(deptMap, dept.getId(), newParent.getId())) {
+            throw new BusinessException(CommonErrorCode.PARAM_ERROR, "上级组织不可选择自身或自身下级组织");
+        }
+        return newParent;
+    }
+
+    /**
+     * 环检测：从 startId 沿父级链向上走，若经过 selfId 说明 startId 是自身的后代。
+     * <p>避免无限循环，记录已访问节点。</p>
+     * 
+     * @param deptMap 组织索引（按 ID 建立）
+     * @param selfId  当前组织 ID
+     * @param startId 开始组织 ID
+     * @return 是否是后代
+     */
+    private boolean inAncestorChain(Map<Long, SysDept> deptMap, Long selfId, Long startId) {
+        Long cursor = startId;
+        Set<Long> visited = new HashSet<>();
+        while (cursor != null && cursor != ROOT_PARENT_ID && visited.add(cursor)) {
+            if (cursor.equals(selfId)) {
+                return true;
+            }
+            SysDept node = deptMap.get(cursor);
+            cursor = node == null ? null : node.getParentId();
+        }
+        return false;
+    }
+
     /**
      * 校验指定父级存在于全量组织中，不存在抛 18022。
      * 
@@ -101,7 +116,7 @@ public class DeptTreeStrategy {
      * @param parentId 父组织 ID
      * @return 父组织实体
      */
-    public SysDept requireParentInMap(Map<Long, SysDept> deptMap, Long parentId) {
+    private SysDept requireParentInMap(Map<Long, SysDept> deptMap, Long parentId) {
         SysDept parent = deptMap.get(parentId);
         if (parent == null) {
             throw new BusinessException(SystemErrorCode.DEPT_NOT_FOUND, "组织 " + parentId + " 不存在");

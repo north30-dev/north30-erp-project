@@ -3,8 +3,6 @@ package me.north30.erp.system.dept.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import me.north30.erp.common.exception.BusinessException;
-import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.util.DateTimeFormatUtil;
 import me.north30.erp.common.util.UpdateGuardUtil;
 import me.north30.erp.system.common.util.DeptTreeUtil;
@@ -25,7 +23,6 @@ import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 /**
  * 组织/部门管理服务实现。
@@ -63,7 +60,13 @@ public class SysDeptApplicationServiceImpl implements SysDeptApplicationService 
     public DeptMutationVO create(DeptCreateDTO dto) {
         sysDeptService.requireDeptCodeAvailable(dto.deptCode());
         SysDept dept = deptConverter.createDept(dto);
-        dept.applyParent(deptTreeStrategy.resolveParent(dto.parentId()));
+        // 新建实体 id 为 null，自引用/环检测天然不命中，仅父级存在性生效；顶级（0/null）不查全量
+        if (dto.parentId() != null && dto.parentId() != 0L) {
+            dept.applyParent(deptTreeStrategy.requireValidNewParent(
+                deptTreeStrategy.loadDeptMap(), dept, dto.parentId()));
+        } else {
+            dept.applyParent(null);
+        }
         dept.applyCreateDefault();
         sysDeptMapper.insert(dept);
         return new DeptMutationVO(dept.getId(), dept.getAncestors(), dept.getDeptLevel(),
@@ -75,31 +78,20 @@ public class SysDeptApplicationServiceImpl implements SysDeptApplicationService 
     public DeptMutationVO update(Long id, DeptUpdateDTO dto) {
         SysDept dept = sysDeptService.requireDept(id);
         boolean parentChanged = dept.parentChangedTo(dto.parentId());
-    
+        // 一次查全量贯穿换父校验与级联重算（禁 N+1）
+        Map<Long, SysDept> deptMap = null;
         if (parentChanged) {
-            if (Objects.equals(dto.parentId(), id)) {
-                throw new BusinessException(CommonErrorCode.PARAM_ERROR, "上级组织不可选择自身");
-            }
-            // 一次查全量用于父级解析、环检测与级联重算（禁 N+1）
-            Map<Long, SysDept> deptMap = deptTreeStrategy.loadDeptMap();
+            deptMap = deptTreeStrategy.loadDeptMap();
             dept = deptMap.get(id);
-            SysDept newParent = null;
-            // 新父级为顶级（0）时无父级可解析；否则解析父级并做环检测
-            if (dto.parentId() != null && dto.parentId() != 0L) {
-                newParent = deptTreeStrategy.requireParentInMap(deptMap, dto.parentId());
-                if (deptTreeStrategy.inAncestorChain(deptMap, id, newParent.getId())) {
-                    throw new BusinessException(CommonErrorCode.PARAM_ERROR, "上级组织不可选择自身或自身下级组织");
-                }
-            }
-            dept.applyParent(newParent);
+            dept.applyParent(deptTreeStrategy.requireValidNewParent(deptMap, dept, dto.parentId()));
         }
 
         deptConverter.updateDept(dto, dept);
         dept.setVersion(dto.version());
         UpdateGuardUtil.checkOptimisticLockConflict(sysDeptMapper.updateById(dept));
-        
+
         if (parentChanged) {
-            deptTreeStrategy.cascadeRefreshDescendants(deptTreeStrategy.loadDeptMap(), dept);
+            deptTreeStrategy.cascadeRefreshDescendants(deptMap, dept);
         }
         return new DeptMutationVO(dept.getId(), dept.getAncestors(), dept.getDeptLevel(),
             DateTimeFormatUtil.format(dept.getUpdateTime()), null);
