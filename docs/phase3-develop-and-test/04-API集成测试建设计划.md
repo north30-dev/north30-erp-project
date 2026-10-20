@@ -68,16 +68,14 @@
 
 ### 4.1 形态选型
 
-当前阶段采用**脚本化黑盒测试**（HTTP 客户端逐用例断言），理由：
+**P1 起采用 Java 集成测试代码**：`@SpringBootTest(RANDOM_PORT)` + REST Assured + JUnit 5，实施细节见 `05-API集成测试代码实施方案.md`。
 
-- 不依赖测试框架基建，D 阶段每个子阶段交付即可同步补充用例
-- 与联调环境直接衔接（打运行中的服务，2 秒级反馈）
-- 用例即文档：请求体/预期业务码对照 API 文档可读性强
+- 环境采用**测试专用库**（PG 独立库 `erp_test_db` + Redis 逻辑库 db1），`@ActiveProfiles("test")` + application-test.yml 注入，复用本机 PG/Redis 零新增依赖
+- 通过测试类不写连接串、不依赖既有数据两条铁律，保证后续迁 Testcontainers 只换配置来源不改测试代码
 
-中期（业务模块成型后）演进为 **JUnit + Testcontainers**：
+中期（接入 CI 时）演进为 **Testcontainers**：
 
-- `@SpringBootTest(webEnvironment = RANDOM_PORT)` + TestRestTemplate
-- Testcontainers 拉起 PostgreSQL 16 + Redis 8 临时容器，CI 可自动跑，不依赖本地环境
+- PostgreSQL 16 + Redis 8 临时容器，CI 可自动跑，不依赖本地环境
 - 前置条件：开发机需恢复 Docker 环境
 
 ### 4.2 用例清单规划（按域）
@@ -110,7 +108,7 @@
 | 步骤 | 内容 | 退出标准 |
 |------|------|---------|
 | **P0（已完成）** | system 模块全接口人工验证，缺陷清零 | 60 用例全绿 |
-| P1 | 用例资产文件化入库（`scripts/api-tests/`，脚本不入 git，用例清单入库），补低权限 token 轮次 | 每域用例可重放，权限轮次全绿 |
+| P1 | 按 05 号文档搭建集成测试骨架（基类 + it profile + 测试专用库），system 模块 11 域 Java 集成测试成套编写，补低权限 token 轮次 | `mvn test -Pit` 全绿且可重复执行 |
 | P2（随 D3 基础数据） | base 模块（物料/BOM/工厂）用例，随域交付同步补充 | 每交付一域即有一域用例 |
 | P3（随 D4-D8 业务模块） | 库存/采购/销售/生产/财务，重点是**单据流转链**（如采购单建→审→收货→入库→核销）与库存流水/乐观锁断言 | 每域 3-5 个链路用例 |
 | P4 | JUnit + Testcontainers 迁移评估，接入 CI（mvn verify） | CI 全自动回归 |
