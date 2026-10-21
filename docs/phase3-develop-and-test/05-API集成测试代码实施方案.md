@@ -22,21 +22,22 @@
 
 ## 3. 代码骨架设计
 
+**位置定稿：`erp-bootstrap/src/test/java`**，不放在 erp-system。原因：`@SpringBootTest` 需要在当前模块依赖链内找到 `@SpringBootConfiguration`（启动类 `ErpApplication`）、`@MapperScan`/SecurityConfig 等配置类以及 application-test.yml/schema.sql，这些设施全在 erp-bootstrap；且"全工程唯一启动入口"铁律禁止在 erp-system 的 test 里再造启动类。集成测试跟随启动模块是 Spring Boot 多模块项目的标准做法。
+
 ```
-erp-backend/erp-system/src/test/java/me/north30/erp/system/
-└── integration/
-    ├── ApiIntegrationTest.java        # 基类：注解组合 + 登录辅助 + 端口注入
-    ├── AuthIntegrationTest.java
-    ├── UserIntegrationTest.java
-    ├── RoleIntegrationTest.java
-    ├── MenuIntegrationTest.java
-    ├── DeptIntegrationTest.java
-    ├── DictIntegrationTest.java
-    ├── ConfigIntegrationTest.java
-    ├── LogIntegrationTest.java        # 登录日志 + 审计日志
-    ├── AttachmentIntegrationTest.java
-    ├── ImportTaskIntegrationTest.java
-    └── CodeSequenceIntegrationTest.java
+erp-backend/erp-bootstrap/src/test/java/me/north30/erp/integration/
+├── ApiIntegrationTest.java        # 基类：注解组合 + 登录辅助 + 端口注入
+├── AuthIntegrationTest.java
+├── UserIntegrationTest.java
+├── RoleIntegrationTest.java
+├── MenuIntegrationTest.java
+├── DeptIntegrationTest.java
+├── DictIntegrationTest.java
+├── ConfigIntegrationTest.java
+├── LogIntegrationTest.java        # 登录日志 + 审计日志
+├── AttachmentIntegrationTest.java
+├── ImportTaskIntegrationTest.java
+└── CodeSequenceIntegrationTest.java
 ```
 
 基类职责（一个类，不做多余抽象）：
@@ -74,7 +75,7 @@ public abstract class ApiIntegrationTest {
 3. **写测试类**：继承 `ApiIntegrationTest`，类名 `<域>IntegrationTest`；正向用例按「创建→查询确认→修改→查询确认→删除→确认查不到」闭环展开，临时数据统一随机后缀（uuid hex 前 8 位）
 4. **断言四层**：HTTP 状态码 / 响应体结构（code/message/data/timestamp/traceId）/ 业务码号段 / 关键写操作落库抽查（含 create_by 审计字段）
 5. **鉴权轮次**：admin token 全通过；无 token 401、伪造 token 401、低权限 token 访问非白名单接口 403；该轮与业务轮分开写（`@Nested` 或独立方法组）
-6. **执行与修复**：`mvn test -Pit -pl erp-system -am`；失败项区分三类——实现 bug（改后端）、用例预期错误（改用例）、环境问题（改配置），分开计数，禁止改预期凑绿
+6. **执行与修复**：`mvn test -Pit -pl erp-bootstrap -am`；失败项区分三类——实现 bug（改后端）、用例预期错误（改用例）、环境问题（改配置），分开计数，禁止改预期凑绿
 7. **清理验证**：连续跑两遍全绿（幂等性验证）；`erp_test_db` 残留数据按后缀抽查为零
 
 ## 5. 断言写法基线
@@ -109,7 +110,7 @@ given()
 ## 7. 运行方式
 
 ```bash
-mvn test -Pit -pl erp-system -am    # system 模块集成测试（含依赖模块构建）
+mvn test -Pit -pl erp-bootstrap -am  # system 阶段集成测试（含依赖模块构建）
 mvn test -Pit                        # 后续全模块
 mvn test                             # 日常单测，不含集成测试
 ```

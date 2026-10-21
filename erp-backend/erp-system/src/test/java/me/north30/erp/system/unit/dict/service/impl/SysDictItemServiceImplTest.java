@@ -11,7 +11,6 @@ import me.north30.erp.system.dict.converter.DictConverter;
 import me.north30.erp.system.dict.converter.DictConverterImpl;
 import me.north30.erp.system.dict.entity.SysDictItem;
 import me.north30.erp.system.dict.mapper.SysDictItemMapper;
-import me.north30.erp.system.dict.service.SysDictItemService;
 import me.north30.erp.system.dict.service.SysDictTypeService;
 import me.north30.erp.system.dict.service.impl.SysDictItemServiceImpl;
 import me.north30.erp.system.dict.vo.DictItemVO;

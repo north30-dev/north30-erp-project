@@ -15,4 +15,4 @@ spring:
 # 开发期打印 SQL 便于调试
 logging:
   level:
-    me.north30.erp: info
+    me.north30.erp: debug

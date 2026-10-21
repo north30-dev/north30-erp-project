@@ -37,8 +37,14 @@
         <hutool.version>5.8.47</hutool.version>
         <!-- MapStruct：编译期对象映射（唯一转换方案，禁用反射拷贝工具） -->
         <mapstruct.version>1.6.3</mapstruct.version>
+        <!-- REST Assured：API 集成测试（erp-bootstrap test scope，仅 it profile 执行） -->
+        <rest-assured.version>5.5.2</rest-assured.version>
+        <!-- Groovy 4：与 rest-assured 编译基线一致（Boot BOM 默认 Groovy 5 不兼容） -->
+        <groovy4.version>4.0.22</groovy4.version>
         <!-- Lombok 与 MapStruct 注解处理器协作桥接 -->
         <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
+        <!-- surefire 排除组：默认排除 @Tag("integration") 集成测试；it profile 覆盖为不存在的组名 -->
+        <it.excluded.groups>integration</it.excluded.groups>
     </properties>
 
     <!-- 仅做版本管控，D1 不实际引入；依赖在子模块按需声明 -->
@@ -92,6 +98,28 @@
                 <artifactId>springdoc-openapi-starter-common</artifactId>
                 <version>${springdoc-openapi.version}</version>
             </dependency>
+            <!-- REST Assured：API 集成测试（版本管控，test scope 依赖在 erp-bootstrap 声明） -->
+            <dependency>
+                <groupId>io.rest-assured</groupId>
+                <artifactId>rest-assured</artifactId>
+                <version>${rest-assured.version}</version>
+            </dependency>
+            <!-- Groovy 固定 4.x：rest-assured 5.5.x 按 Groovy 4 编译，Boot BOM 管控的 Groovy 5 存在二进制不兼容（发送请求阶段 NPE）；仅 rest-assured 使用 Groovy，全局固定安全 -->
+            <dependency>
+                <groupId>org.apache.groovy</groupId>
+                <artifactId>groovy</artifactId>
+                <version>${groovy4.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.groovy</groupId>
+                <artifactId>groovy-xml</artifactId>
+                <version>${groovy4.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.groovy</groupId>
+                <artifactId>groovy-json</artifactId>
+                <version>${groovy4.version}</version>
+            </dependency>
             <!-- MapStruct：运行时注解 -->
             <dependency>
                 <groupId>org.mapstruct</groupId>
@@ -112,6 +140,37 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+
+    <!-- 默认构建排除集成测试（@Tag("integration")，须连真实 PG/Redis）；it profile 反转，仅执行集成测试。
+         surefire 3.6 JUnit Platform provider 下类名 excludes 匹配不可靠，统一用 tag 过滤；
+         排除组经属性注入，it profile 将属性改为不存在的组名实现"清空排除"（插件配置合并不支持可靠的列表覆盖） -->
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>it</id>
+            <properties>
+                <it.excluded.groups>__no_such_group__</it.excluded.groups>
+            </properties>
+            <!-- 注意：groups 过滤配置不能放在这里，会被全部子模块继承，
+                 erp-base 等无 JUnit5 引擎的模块会构建失败；它放在 erp-bootstrap 自己的 it profile 中 -->
+        </profile>
+        <!-- IDE 便捷开关：勾选 all + 点 Lifecycle test = 单测与集成测试全跑 -->
+        <profile>
+            <id>all</id>
+            <properties>
+                <it.excluded.groups>__no_such_group__</it.excluded.groups>
+            </properties>
+        </profile>
+    </profiles>
 
     <!-- 父 POM 不声明任何 <dependencies>，不放 spring-boot-maven-plugin（仅 erp-bootstrap 持有） -->
 

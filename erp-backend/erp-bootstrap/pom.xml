@@ -54,6 +54,19 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- API 集成测试：REST Assured（test scope，仅 it profile 执行 *IntegrationTest） -->
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- 测试框架：JUnit 5（test scope） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <dependency>
             <groupId>me.north30.erp</groupId>
             <artifactId>erp-common</artifactId>
@@ -78,6 +91,14 @@
 
     <build>
         <plugins>
+            <!-- 默认排除 @Tag("integration") 集成测试；组名经根 pom 属性注入，-Pit 时属性指向不存在的组 = 不排除 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <excludedGroups>${it.excluded.groups}</excludedGroups>
+                </configuration>
+            </plugin>
             <!-- 全工程唯一的 spring-boot-maven-plugin：打出可执行 fat jar -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
@@ -93,5 +114,23 @@
             </plugin>
         </plugins>
     </build>
+
+    <!-- -Pit 时与根 pom 的同名 profile 一并激活：仅执行 @Tag("integration") 集成测试 -->
+    <profiles>
+        <profile>
+            <id>it</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <groups>integration</groups>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>
