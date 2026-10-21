@@ -1,0 +1,104 @@
+package me.north30.erp.system.menu.entity;
+
+import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import me.north30.erp.common.exception.BusinessException;
+import me.north30.erp.common.exception.CommonErrorCode;
+import me.north30.erp.common.mybatis.BaseEntity;
+
+/**
+ * 菜单与按钮权限点表（sys_menu，三级：目录/菜单/按钮）。
+ */
+@Data
+@EqualsAndHashCode(callSuper = true)
+@TableName("sys_menu")
+public class SysMenu extends BaseEntity {
+
+    /** 菜单类型：目录 */
+    public static final int TYPE_DIR = 1;
+    /** 菜单类型：菜单 */
+    public static final int TYPE_MENU = 2;
+    /** 菜单类型：按钮 */
+    public static final int TYPE_BUTTON = 3;
+
+    /** 菜单/权限点名称 */
+    private String menuName;
+
+    /** 父级菜单 ID（0 为顶级） */
+    private Long parentId;
+
+    /** 类型 1-目录 2-菜单 3-按钮 */
+    private Integer menuType;
+
+    /** 路由地址 */
+    private String path;
+
+    /** 前端组件路径 */
+    private String component;
+
+    /** 权限点标识（如 sales:order:approve） */
+    private String perms;
+
+    /** 图标 */
+    private String icon;
+
+    /** 显示顺序 */
+    private Integer menuSort;
+
+    /** 是否显示 0-隐藏 1-显示 */
+    private Integer visible;
+
+    /** 状态 0-停用 1-启用 */
+    private Integer status;
+
+    /**
+     * 创建时应用默认值。
+     * <p>默认值：menuSort=0, visible=1, status=1</p>
+     * <p>仅在创建时调用，更新时不调用。</p>
+     */
+    public void applyCreateDefaults() {
+        if (menuSort == null) {
+            menuSort = 0;
+        }
+        if (visible == null) {
+            visible = 1;
+        }
+        if (status == null) {
+            status = 1;
+        }
+    }
+
+    /**
+     * 校验菜单类型与按类型的必填字段（目录/菜单必填 path，菜单还需 component，按钮必填 perms）。
+     * <p>仅校验自身状态，非法抛 10001 参数错误。</p>
+     */
+    public void requireTypeFieldsValid() {
+        if (menuType == null || menuType < TYPE_DIR || menuType > TYPE_BUTTON) {
+            throw new BusinessException(CommonErrorCode.PARAM_ERROR, "菜单类型非法：" + menuType);
+        }
+        if (menuType == TYPE_DIR && !hasText(path)) {
+            throw new BusinessException(CommonErrorCode.PARAM_ERROR, "目录必须配置路由地址");
+        }
+        if (menuType == TYPE_MENU && (!hasText(path) || !hasText(component))) {
+            throw new BusinessException(CommonErrorCode.PARAM_ERROR, "菜单必须配置路由地址与前端组件路径");
+        }
+        if (menuType == TYPE_BUTTON && !hasText(perms)) {
+            throw new BusinessException(CommonErrorCode.PARAM_ERROR, "按钮必须配置权限标识");
+        }
+    }
+
+    /**
+     * 按钮不承载路由与组件信息，置空 path/component。
+     */
+    public void clearRouteFieldsIfButton() {
+        if (Integer.valueOf(TYPE_BUTTON).equals(menuType)) {
+            this.path = null;
+            this.component = null;
+        }
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+}

@@ -31,16 +31,71 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
-        <!-- MyBatis-Plus 注解：BaseEntity 的 @TableId/@TableLogic/@Version 等注解（不引入 MP 核心） -->
+        <!-- MyBatis-Plus 注解：BaseEntity 的 @TableId/@TableLogic/@Version 等注解 -->
         <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-annotation</artifactId>
         </dependency>
+        <!-- MyBatis 核心：注解默认值引用 org.apache.ibatis.type.JdbcType，编译期需要可见 -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-core</artifactId>
+        </dependency>
+        <!-- JWT：NimbusJwtEncoder/Decoder 签发与解析（仅 jose 库，不引入 security starter，禁用 jjwt） -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-jose</artifactId>
+        </dependency>
+        <!-- MapStruct 运行时注解：全模块对象转换基础（版本由父工程管控） -->
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+        </dependency>
+        <!-- 持久层异常语义：UpdateGuardUtil 抛 OptimisticLockingFailureException（409 乐观锁冲突） -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
+        </dependency>
+        <!-- Lombok：代码生成工具（编译期提供，不引入运行时依赖） -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
         </dependency>
+        <!-- 测试依赖：测试环境使用，不引入运行时依赖 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Mockito 启动期静态挂载：消除 inline-mock-maker 动态 attach 的 JDK 警告，
+                 并兼容未来 JDK 默认禁止动态 agent 的行为。
+                 dependency-plugin 的 properties 目标先把 mockito-core 解析为本地仓库路径属性，
+                 surefire 再通过坐标式占位符引用（mockito 经 starter-test 传递引入，版本由 Boot 托管） -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>mockito-agent-path</id>
+                        <goals>
+                            <goal>properties</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>-javaagent:${org.mockito:mockito-core:jar}</argLine>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

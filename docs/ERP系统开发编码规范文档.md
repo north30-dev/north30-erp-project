@@ -73,7 +73,7 @@ me.north30.erp.[模块]              # erp-system / erp-base / erp-business（er
 | **Service** | 核心业务逻辑、事务管理、流程编排 | ❌ 禁止直接操作数据库SQL ❌ 禁止SQL拼接 |
 | **Mapper** | 仅CRUD及简单关联查询 | ❌ 禁止在XML中硬编码业务常量（应使用枚举） |
 | **Entity** | 纯数据映射，贫血模型 | ❌ 禁止携带业务方法 ❌ 禁止关联其他Entity |
-| **DTO/VO** | 接口数据契约 | ❌ 禁止DTO中引用Entity ❌ 禁止携带数据库注解 |
+| **DTO/VO** | 接口数据契约，**一律使用 record**（含 GET 查询对象，依赖 Spring 6.1+ 构造器绑定） | ❌ 禁止DTO中引用Entity ❌ 禁止携带数据库注解 ❌ 禁止 DTO/VO 使用 class（含树形/递归结构：children 装配采用自底向上递归构造新 record 实例） ❌ record 类 Javadoc 必须用 `@param` 逐字段注释（禁止字段内联注释承载契约说明） ❌ GET 查询对象分页参数必须 `@Min(1)`/`@Max(200)` + Controller 入参 `@Valid` 入口校验（返回 400）；Service normalize 仅做缺省兜底与防御（超限抛业务异常返回 422） |
 
 **特别规范**：
 - Controller 层接收请求后，**必须在入口处将 DTO 转换为 Entity/BO（业务对象）**，返回时再将 Entity 转换为 VO/DTO，**严禁直接使用 Entity 进行数据序列化返回给前端**，防止序列化时暴露敏感字段（如密码密文、乐观锁版本号）或因 `@JsonIgnore` 配置不当导致逻辑混乱。
@@ -203,6 +203,48 @@ BigDecimal total = BigDecimalUtil.multiply(price, quantity, 2);
 - 分布式环境下任务必须配置 **路由策略（分片广播/轮询）**，避免重复执行。
 - 批量数据处理任务必须分页查询 + 批量更新，严禁一次性加载全量数据到内存。
 
+### 2.12 对象转换规范（MapStruct，强制）
+
+- **MapStruct 是全项目唯一的对象转换方案**：DTO→Entity、Entity→VO、Entity→Entity 字段拷贝一律使用 MapStruct 编译期生成的转换器；**禁止**使用 Hutool `BeanUtil`、Spring `BeanUtils` 等任何反射拷贝工具。
+- 转换器命名与位置：各业务域下新建 `converter` 包，接口命名 `XxxConverter`（**禁止**命名为 `XxxMapper`，避免与 MyBatis 的 `org.apache.ibatis.annotations.Mapper` 混淆）。标准写法：
+
+```java
+@Mapper(componentModel = MappingConstants.ComponentModel.SPRING,
+        unmappedTargetPolicy = ReportingPolicy.ERROR)
+public interface UserConverter {
+
+    @BeanMapping(ignoreByDefault = true)
+    @Mapping(target = "username")
+    @Mapping(target = "realName")
+    SysUser toEntity(UserCreateDTO dto);
+}
+```
+
+- `unmappedTargetPolicy = ReportingPolicy.ERROR`：目标字段未显式声明映射即编译报错，杜绝静默丢字段；同名同型字段自动映射，不同名或需排除的字段用 `@Mapping` 显式声明。
+- `@BeanMapping(ignoreByDefault = true)` + 逐字段 `@Mapping(target = ...)` 组合：应对目标实体含大量 BaseEntity 审计字段（createBy/createTime/version 等）的场景，审计字段由 MyBatis-Plus 自动填充，禁止通过转换器赋值。
+- 部分更新语义（DTO 合并到已加载实体、null 字段跳过）：`@BeanMapping(ignoreByDefault = true, nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)` + `@MappingTarget` 参数；仅 2-3 个字段的局部更新（如 changeStatus、resetPassword）仍直接使用 `LambdaUpdateWrapper`，不必走转换器。
+- DTO/VO 为 record 时无需额外配置：record 目标由 MapStruct 自动走规范构造器注入（生成代码为 `new XxxVO(...)`），record 源走访问器读取；`source` 属性导航使用属性名（如 `source = "item.bizObject"`），不写访问器括号。
+- 适用边界：装配型 VO（DetailVO 等需查关联数据的场景）只由转换器处理主体字段，关联字段仍由 Service 查询后显式装配；金额等派生字段由 Service 计算后处理。
+- 依赖与编译配置：
+  - 版本由根 `pom.xml` 统一管控（`mapstruct.version`）；`erp-common` 引入 `mapstruct` 运行时注解包，业务模块引入 `mapstruct-processor`。
+  - `maven-compiler-plugin` 的 `annotationProcessorPaths` 顺序**必须**为：`lombok` → `lombok-mapstruct-binding` → `mapstruct-processor`。顺序错误会导致生成空实现（运行时字段全 null）且编译不报错，改动配置后必须抽查 `target/generated-sources` 下生成的 `XxxConverterImpl` 验证字段映射完整。
+- MapperScan 只扫描 `**.mapper` 包，转换器（converter 包）不会被 MyBatis 加载，二者无冲突。
+
+### 2.13 领域模型与策略类规范（小 DDD，强制）
+
+> 依据《system模块小DDD重构方案》，system 模块 10 个域已全部落地，business 模块域参照执行。
+
+- **Entity 局部充血**：Entity 方法只允许做三件事——校验自身状态、修改自身字段、抛 `BusinessException`；禁止调 Mapper/Service/Redis/HTTP，禁止触碰其他实体的持久化；需要外部能力的参数显式传入（如 `SysConfig.validateValue(ObjectMapper)`）。
+- **充血方法的归属**：跨字段业务规则（如 `SysMenu.requireTypeFieldsValid` 菜单类型与 path/component/perms 配套校验）、值域校验（如 `SysRole.changeDataScope`）下沉 Entity；查库事实校验（存在性、唯一性）收敛到对应 Service 的 `requireXxx` 方法（如 `requireDept`/`requireRole`/`requireAttachment`）。
+- **`<domain>/strategy` 策略子包**：`@Component` 策略类承接 ServiceImpl 中可命名的复用逻辑，按粒度分类：
+  - `XxxQueryStrategy`：查询构造（分页防御、排序字段白名单、Wrapper 组装）；
+  - `XxxAssembleStrategy`：纯函数装配（ID 串序列化/解析等，无 IO 依赖）；
+  - `XxxGrantStrategy` 等写策略：全删全插、级联清理等持久化编排；
+  - IO 类策略（Redis/文件）：如 `FileStorageStrategy`、`UserSessionRevokeStrategy`、`LoginLogStrategy`，降级语义（WARN 不阻断）随策略承载。
+- **AssembleStrategy 与 Converter 的边界**：Converter（MapStruct）做整对象字段映射；AssembleStrategy 只做 Converter 覆盖不了的派生处理（字符串拆合、内存关联、树补链）。
+- **ServiceImpl 目标形态**：只保留流程编排与少量一两行的私有方法，禁止累积成"私有方法仓库"；新逻辑优先下沉 Entity 充血方法或策略类。
+- **跨域依赖收敛**：禁止跨域直接注入 Mapper，必须通过目标域 Service 接口（含 `countByXxx`/`listByXxx`/`existsByXxx` 等最小方法）；同域关联表 Mapper 可进入本域策略类。
+- **避免 N+1**：批量取数一次 IN 查询后内存 `groupingBy`/`toMap` 关联（如分页 userCount 派生），禁止循环内查库。
 
 ## 三、数据库设计规范（PostgreSQL / MySQL）
 

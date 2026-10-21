@@ -10,7 +10,14 @@ north30-erp-project/                                    # 项目根目录
 │   ├── pom.xml                                 # 后端父POM（统一版本管理）
 │   ├── erp-common/                             # 公共模块（Result统一响应/异常处理/JWT工具/公共Util）
 │   ├── erp-system/                             # 系统管理模块（用户/角色/权限/菜单/审计日志）
-│   ├── erp-base/                               # 基础数据模块（物料/BOM/客商/仓库）
+│   │   └── src/main/java/me/north30/erp/system/
+│   │       ├── auth/                           # 认证授权（登录/令牌/会话/权限取数编排）
+│   │       ├── user/ role/ menu/ dept/         # 用户/角色/菜单/部门，各域内分 controller/service/mapper/entity/dto/vo
+│   │       ├── dict/ config/ log/              # 字典/系统参数/日志（登录日志+审计日志）
+│   │       ├── attachment/ importtask/ codesequence/  # 附件/导入任务/单据编号序列
+│   │       ├── security/                       # 模块级安全上下文（JWT 转换器/当前用户）
+│   │       └── common/                         # 模块内公共（util/enums 错误码/通用 VO）
+│   ├── erp-base/                               # 基础数据模块（物料/BOM/客商/仓库，按业务域同规则分包）
 │   ├── erp-business/                           # 业务模块（依赖 erp-common + erp-system + erp-base）
 │   │   └── src/main/java/me/north30/erp/business/
 │   │       ├── purchase/                       # 采购管理（申请→订单→收货→入库）

@@ -1,0 +1,83 @@
+package me.north30.erp.system.user.strategy;
+
+import lombok.RequiredArgsConstructor;
+import me.north30.erp.common.exception.BusinessException;
+import me.north30.erp.system.common.enums.SystemErrorCode;
+import me.north30.erp.system.role.service.SysRoleDomainService;
+import me.north30.erp.system.role.service.SysUserRoleService;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+
+/**
+ * 用户-角色关联策略：跨域（role）关联读写的统一收口。
+ * <p>IO 类策略（@Component）；角色存在性校验、关联全删全插、引用计数与角色 ID 查询
+ * 均收敛于此；跨域访问一律走 role 域 Service（{@link SysRoleDomainService}/
+ * {@link SysUserRoleService}），禁止直接注入 role 域 Mapper。</p>
+ */
+@Component
+@RequiredArgsConstructor
+public class UserRoleStrategy {
+
+    private final SysRoleDomainService sysRoleDomainService;
+    private final SysUserRoleService sysUserRoleService;
+
+    /**
+     * 校验角色集合全部存在，否则抛 18014（单次 IN 批量查询，非循环查库）。
+     *
+     * @param roleIds 角色 ID 集合（调用方已去空去重）
+     */
+    public void requireAllExist(List<Long> roleIds) {
+        if (roleIds.isEmpty()) {
+            return;
+        }
+        if (sysRoleDomainService.listByIds(roleIds).size() != roleIds.size()) {
+            throw new BusinessException(SystemErrorCode.ROLE_NOT_FOUND,
+                "角色不存在，请刷新角色列表后重试");
+        }
+    }
+
+    /**
+     * 写入用户-角色关联（单用户角色数个位数，逐条插入即可，无需批量基建）。
+     *
+     * @param userId 用户 ID
+     * @param roleIds 角色 ID 集合
+     */
+    public void insertForUser(Long userId, List<Long> roleIds) {
+        for (Long roleId : roleIds) {
+            sysUserRoleService.createForUser(userId, roleId);
+        }
+    }
+
+    /**
+     * 全删全插（全量覆盖语义）：sys_user_role 带 @TableLogic，delete 为逻辑删除，
+     * 唯一索引 uk_sys_user_role 仅约束 is_deleted=0 行，重插不冲突。
+     *
+     * @param userId 用户 ID
+     * @param roleIds 角色 ID 集合
+     */
+    public void replaceAllForUser(Long userId, List<Long> roleIds) {
+        sysUserRoleService.deleteByUserId(userId);
+        insertForUser(userId, roleIds);
+    }
+
+    /**
+     * 统计用户已分配角色数（删除引用守卫用）。
+     *
+     * @param userId 用户 ID
+     * @return 角色数
+     */
+    public long countByUserId(Long userId) {
+        return sysUserRoleService.countByUserId(userId);
+    }
+
+    /**
+     * 查询用户已分配角色 ID 列表（去空去重）。
+     *
+     * @param userId 用户 ID
+     * @return 角色 ID 集合
+     */
+    public List<Long> listRoleIdsByUserId(Long userId) {
+        return sysUserRoleService.listRoleIdsByUserId(userId);
+    }
+}

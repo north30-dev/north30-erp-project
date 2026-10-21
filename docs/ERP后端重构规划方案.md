@@ -35,21 +35,20 @@ erp-backend/                          # 后端根目录
 ├── erp-system/                       # 系统管理模块（用户/角色/权限/菜单）
 │   ├── pom.xml
 │   └── src/main/java/me/north30/erp/system/
-│       ├── controller/               # AuthController（登录）、UserController
-│       ├── service/                  # AuthService、UserService
-│       ├── mapper/                   # SysUserMapper、SysRoleMapper
-│       ├── entity/                   # SysUser、SysRole、SysMenu
-│       ├── dto/                      # LoginDTO（登录入参）
-│       └── vo/                       # LoginVO（登录出参）
+│       ├── auth/                      # 认证授权域（AuthController、AuthService、LoginDTO/VO 等）
+│       ├── user/                      # 用户域（controller/service/mapper/entity/dto/vo）
+│       ├── role/ menu/ dept/          # 角色/菜单/部门域（同 user 域结构）
+│       ├── dict/ config/ log/         # 字典/参数/日志域
+│       ├── attachment/ importtask/ codesequence/  # 附件/导入任务/编号序列域
+│       ├── security/                  # 模块级安全上下文（JWT 转换器/当前用户）
+│       └── common/                    # 模块内公共（util/enums/通用 VO）
 │
 ├── erp-base/                         # 基础数据模块（物料/BOM/客商/仓库）
 │   ├── pom.xml
 │   └── src/main/java/me/north30/erp/base/
-│       ├── controller/               # MaterialController、BomController 等
-│       ├── service/                  # MaterialService、BomService 等
-│       ├── mapper/                   # MaterialMapper、BomMapper 等
-│       ├── entity/                   # Material、Bom、BomItem、Customer 等
-│       └── dto/                      # MaterialDTO、BomDTO 等
+│       ├── material/                  # 物料域（controller/service/mapper/entity/dto/vo）
+│       ├── bom/                       # BOM 域
+│       └── partner/ warehouse/        # 客商/仓库域（各域内再分层，规则同 system）
 │
 ├── erp-business/                     # 业务模块（采购/销售/库存/生产/财务）
 │   ├── pom.xml                       # 依赖 erp-common + erp-system + erp-base

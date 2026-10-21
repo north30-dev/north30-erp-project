@@ -9,16 +9,20 @@ public enum OperateTypeEnum {
     CREATE("创建"),
     /** 修改 */
     UPDATE("修改"),
-    /** 提交 */
-    SUBMIT("提交"),
     /** 审核 */
     APPROVE("审核"),
     /** 驳回 */
     REJECT("驳回"),
-    /** 取消 */
-    CANCEL("取消"),
     /** 删除 */
-    DELETE("删除");
+    DELETE("删除"),
+    /** 过账 */
+    POST("过账"),
+    /** 反审核 */
+    UNAPPROVE("反审核"),
+    /** 关闭 */
+    CLOSE("关闭"),
+    /** 期间重开 */
+    REOPEN("期间重开");
 
     private final String desc;
 

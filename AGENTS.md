@@ -45,8 +45,12 @@
 
 ## 5. 包结构与命名
 
-- 分层：`me.north30.erp.<模块>.core.{controller, service, mapper, entity, dto}`（business 下再分 purchase/sales/inventory/manufacturing/finance 业务域）。
+- 分层与业务域分包：`me.north30.erp.<模块>.<业务域>.{controller, service, service.impl, mapper, entity, dto, vo}`，第一级按业务域分包（不设 core 中间层）；模块内跨域公共部分放 `<模块>.common.{util, enums, vo}`，安全上下文放 `<模块>.security`。
+- 业务域划分：system 模块按 auth/user/role/menu/dept/dict/config/log/attachment/importtask/codesequence 分域；business 模块按 purchase/sales/inventory/manufacturing/finance 分域；base 模块按物料/BOM/工厂等基础数据域分包。
+- 小 DDD（编码规范 2.13）：Entity 局部充血（只校验自身状态 + 修改自身字段 + 抛 BusinessException）；可命名复用逻辑下沉 `<domain>/strategy` 策略类（Query/Assemble/Grant/IO 类）；ServiceImpl 只留编排，禁止私有方法仓库；**跨域禁止直接注入 Mapper**，须经目标域 Service 的 requireXxx/countByXxx/listByXxx 等最小接口。
 - 命名：Entity 对应表名大驼峰（`PurOrder` ↔ `pur_order`）；DTO/VO 后缀 `DTO`/`VO`；实现类 `Impl` 后缀；枚举 `Enum` 后缀；工具类 `Util` 后缀。
+- DTO/VO 一律 record（含 GET 查询对象），树形结构 children 用自底向上递归构造；record 类 Javadoc 必须 `@param` 逐字段注释。
+- GET 查询对象分页参数统一 `@Min(1)`/`@Max(200)` + Controller `@Valid` 入口校验（400）；Service normalize 仅做缺省兜底与防御（超限 422）。
 - 实体继承 `BaseEntity`（审计字段 id/create_by/create_time/update_by/update_time/version/is_deleted/remark 自动填充，勿重复定义）。
 - 表名前缀：`sys_`（系统）/ `base_`（基础数据）/ `pur_`（采购）/ `sal_`（销售）/ `inv_`（库存）/ `mf_`（生产）/ `fin_`（财务），单数形式。
 - API 前缀统一 `/api`，RESTful 风格，动词场景走 POST（如 `/api/purchase/orders/{id}/approve`）。
@@ -74,7 +78,7 @@
 
 | 组件 | 说明 |
 |------|------|
-| PostgreSQL 16 | Docker 容器 `erp-postgres`，端口 5432，用户/库 `erp`，密码 `erp@123456`，数据卷 `erp-postgres-data` |
+| PostgreSQL 18.6 | 本机安装（原 Docker 容器 `erp-postgres` 已停止），端口 5432，用户 `erp_user`，密码 `erp_password`，库 `erp_db` |
 | Redis 8 | 本机运行，密码 `root` |
 | JDK / Maven | Java 21 LTS / Maven 3.9+ |
 | admin 初始密码 | `Admin@123456`（AdminInitializer 幂等创建） |

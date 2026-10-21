@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Configuration;
  * <p>插件顺序有讲究：分页插件在前，乐观锁插件在后。</p>
  */
 @Configuration
-@MapperScan("me.north30.erp.**.mapper")
+@MapperScan("me.north30.erp.**.**.mapper")
 public class MybatisPlusConfig {
 
     @Bean
