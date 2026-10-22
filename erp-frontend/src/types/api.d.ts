@@ -153,3 +153,120 @@ export interface PageQuery {
   pageNum?: number
   pageSize?: number
 }
+
+/* ---------- 用户管理（user 域，对齐后端 SysUserController） ---------- */
+
+/** 删除回执 VO（me.north30.erp.system.common.vo.DeleteResultVO） */
+export interface DeleteResultVO {
+  /** 删除记录数 */
+  count: number
+}
+
+/** 用户列表项 VO */
+export interface UserVO {
+  id: number
+  userCode: string
+  username: string
+  realName: string
+  phone: string | null
+  email: string | null
+  deptId: number | null
+  deptName: string | null
+  roles: string[]
+  status: number
+  isAdmin: number
+  lastLoginTime: string | null
+  createTime: string
+}
+
+/** 用户详情 VO */
+export interface UserDetailVO {
+  id: number
+  userCode: string
+  username: string
+  realName: string
+  phone: string | null
+  email: string | null
+  deptId: number | null
+  deptName: string | null
+  roles: string[]
+  roleIds: number[] | null
+  warehouseIds: number[] | null
+  status: number
+  isAdmin: number
+  gender: number
+  remark: string | null
+  loginFailCount: number
+  lockUntil: string | null
+  passwordUpdateTime: string | null
+  lastLoginTime: string | null
+  createTime: string
+}
+
+/** 用户查询 DTO（GET 分页） */
+export interface UserQueryDTO {
+  username?: string
+  realName?: string
+  userCode?: string
+  deptId?: number
+  status?: number
+  pageNum?: number
+  pageSize?: number
+}
+
+/** 创建用户 DTO */
+export interface UserCreateDTO {
+  userCode: string
+  username: string
+  password: string
+  realName: string
+  deptId: number | null
+  warehouseIds: number[] | null
+  phone: string | null
+  email: string | null
+  gender: number
+  status: number
+  roleIds: number[] | null
+  remark: string | null
+}
+
+/** 更新用户 DTO */
+export interface UserUpdateDTO {
+  realName: string
+  deptId: number | null
+  warehouseIds: number[] | null
+  phone: string | null
+  email: string | null
+  gender: number
+  status: number
+  remark: string | null
+  version: number
+}
+
+/** 更新用户状态 DTO */
+export interface UserStatusDTO {
+  status: number
+  version: number
+}
+
+/** 重置密码 DTO */
+export interface UserResetPasswordDTO {
+  newPassword: string
+}
+
+/** 重置密码响应 VO */
+export interface UserResetPasswordVO {
+  initialPassword: string
+}
+
+/** 分配角色 DTO */
+export interface UserAssignRolesDTO {
+  roleIds: number[] | null
+}
+
+/** 分配角色响应 VO */
+export interface UserAssignRolesVO {
+  roleIds: number[] | null
+  /** 权限刷新提示 */
+  permissionRefreshTip: string
+}
