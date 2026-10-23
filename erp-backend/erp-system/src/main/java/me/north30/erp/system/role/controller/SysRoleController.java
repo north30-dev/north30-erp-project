@@ -22,6 +22,7 @@ import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.role.vo.RoleCreatedVO;
 import me.north30.erp.system.role.vo.RoleDataScopeVO;
 import me.north30.erp.system.role.vo.RoleMenuAssignedVO;
+import me.north30.erp.system.role.vo.RoleMenuIdsVO;
 import me.north30.erp.system.role.vo.RoleUpdatedVO;
 import me.north30.erp.system.role.vo.RoleVO;
 import org.springdoc.core.annotations.ParameterObject;
@@ -115,6 +116,16 @@ public class SysRoleController {
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<RoleMenuAssignedVO> assignMenus(@PathVariable Long id, @Valid @RequestBody RoleAssignMenuDTO dto) {
         return Result.success(sysRoleApplicationService.assignMenus(id, dto));
+    }
+
+    /**
+     * 5.2.8 查询角色已分配菜单（分配菜单弹窗回显用）。
+     */
+    @GetMapping("/{id}/menus")
+    @PreAuthorize("hasAuthority('system:role:assignmenu')")
+    @Operation(summary = "查询角色已分配菜单", description = "权限点 system:role:assignmenu；返回 sys_role_menu 逻辑未删除关联的 menuIds 集合")
+    public Result<RoleMenuIdsVO> listRoleMenuIds(@PathVariable Long id) {
+        return Result.success(sysRoleApplicationService.listRoleMenuIds(id));
     }
 
     /**

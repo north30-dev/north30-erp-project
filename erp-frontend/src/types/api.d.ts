@@ -302,7 +302,7 @@ export interface DeptTreeVO {
   children: DeptTreeVO[] | null
 }
 
-/* ---------- 角色（role 域，F1 仅作分配角色下拉数据源，对齐后端 RoleVO/RolePageQueryDTO） ---------- */
+/* ---------- 角色（role 域，对齐后端 SysRoleController /api/system/roles，接口文档 5.2） ---------- */
 
 /** 角色分页查询 DTO（5.2.1） */
 export interface RolePageQueryDTO {
@@ -315,7 +315,7 @@ export interface RolePageQueryDTO {
   orderDirection?: string
 }
 
-/** 角色分页记录 VO（5.2.1，userCount 为派生计数） */
+/** 角色分页记录 VO（5.2.1，userCount 为派生计数；version/remark 供编辑弹窗回填） */
 export interface RoleVO {
   id: string
   roleCode: string
@@ -324,5 +324,84 @@ export interface RoleVO {
   dataScope: number
   isBuiltin: number
   status: number
-  userCount: string
+  remark: string | null
+  version: number
+  userCount: number
+}
+
+/** 新增角色请求 DTO（5.2.2） */
+export interface RoleCreateDTO {
+  roleCode: string
+  roleName: string
+  roleSort?: number
+  dataScope?: number
+  status?: number
+  remark?: string | null
+}
+
+/** 修改角色请求 DTO（5.2.3，role_code 不可修改，乐观锁 version 必填） */
+export interface RoleUpdateDTO {
+  roleName: string
+  roleSort?: number
+  dataScope?: number
+  status?: number
+  remark?: string | null
+  version: number
+}
+
+/** 新增角色响应 VO（5.2.2，返回新角色 ID） */
+export interface RoleCreatedVO {
+  id: string
+}
+
+/** 修改角色响应 VO（5.2.3，返回 sys_role.update_time） */
+export interface RoleUpdatedVO {
+  updateTime: string | null
+}
+
+/** 数据范围明细项 VO（5.2.6/5.2.7 scopes[] 元素；Long 后端以字符串序列化） */
+export interface RoleDataScopeItemVO {
+  bizObject: string
+  filterDimension: string
+  scopeType: number
+  deptIds: string[] | null
+  userIds: string[] | null
+  fieldMask: number | null
+}
+
+/** 数据范围明细项请求 DTO（5.2.6 scopes[] 元素） */
+export interface RoleDataScopeItemDTO {
+  bizObject: string
+  filterDimension: string
+  scopeType: number
+  deptIds?: string[]
+  userIds?: string[]
+  fieldMask?: number
+}
+
+/** 配置角色数据范围请求 DTO（5.2.6，全量覆盖） */
+export interface RoleDataScopeSaveDTO {
+  scopes: RoleDataScopeItemDTO[]
+}
+
+/** 角色数据范围响应 VO（5.2.6/5.2.7） */
+export interface RoleDataScopeVO {
+  dataScope: number
+  scopes: RoleDataScopeItemVO[]
+}
+
+/** 分配角色菜单权限请求 DTO（5.2.5，全量覆盖语义，空数组表示收回全部；Long 后端以字符串强转） */
+export interface RoleAssignMenuDTO {
+  menuIds: string[]
+}
+
+/** 分配角色菜单权限响应 VO（5.2.5） */
+export interface RoleMenuAssignedVO {
+  menuIds: string[]
+  permCount: number
+}
+
+/** 角色已分配菜单 ID 响应 VO（5.2.8，分配菜单弹窗回显用） */
+export interface RoleMenuIdsVO {
+  menuIds: string[]
 }

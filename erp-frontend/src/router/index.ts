@@ -18,6 +18,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/system/role',
+    name: 'system-role',
+    component: () => import('../views/system/role/index.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/',
     name: 'home',
     // 占位：F9 动态菜单落地后改为工作台/首页，现阶段默认进用户管理页

@@ -37,13 +37,26 @@ export const GENDER_OPTIONS = [
   { label: '女', value: GENDER_FEMALE },
 ] as const
 
-/* ---------- 数据范围（sys_role.data_scope） ---------- */
-export const DATA_SCOPE_ALL = 0
-export const DATA_SCOPE_DEPT = 1
-export const DATA_SCOPE_DEPT_AND_CHILD = 2
+/* ---------- 数据范围（sys_role.data_scope，对齐后端 DataScopeEnum：合法取值 1~6、9） ---------- */
+export const DATA_SCOPE_ALL = 1
+export const DATA_SCOPE_ORG_AND_CHILDREN = 2
+export const DATA_SCOPE_ORG_ONLY = 3
+export const DATA_SCOPE_DEPT_AND_CHILDREN = 4
+export const DATA_SCOPE_DEPT_ONLY = 5
+export const DATA_SCOPE_SELF_ONLY = 6
+export const DATA_SCOPE_CUSTOM = 9
 
 export const DATA_SCOPE_OPTIONS = [
-  { label: '全部数据', value: DATA_SCOPE_ALL },
-  { label: '本部门', value: DATA_SCOPE_DEPT },
-  { label: '本部门及以下', value: DATA_SCOPE_DEPT_AND_CHILD },
+  { label: '全部', value: DATA_SCOPE_ALL },
+  { label: '本组织及下级', value: DATA_SCOPE_ORG_AND_CHILDREN },
+  { label: '本组织', value: DATA_SCOPE_ORG_ONLY },
+  { label: '本部门及下级', value: DATA_SCOPE_DEPT_AND_CHILDREN },
+  { label: '本部门', value: DATA_SCOPE_DEPT_ONLY },
+  { label: '仅本人', value: DATA_SCOPE_SELF_ONLY },
+  { label: '自定义', value: DATA_SCOPE_CUSTOM },
 ] as const
+
+/** 数据范围反查（表格列渲染用） */
+export const DATA_SCOPE_MAP: Record<number, string> = Object.fromEntries(
+  DATA_SCOPE_OPTIONS.map((option) => [option.value, option.label]),
+)

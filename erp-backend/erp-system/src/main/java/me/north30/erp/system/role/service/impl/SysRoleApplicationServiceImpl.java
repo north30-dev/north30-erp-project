@@ -34,6 +34,7 @@ import me.north30.erp.system.role.vo.RoleCreatedVO;
 import me.north30.erp.system.role.vo.RoleDataScopeItemVO;
 import me.north30.erp.system.role.vo.RoleDataScopeVO;
 import me.north30.erp.system.role.vo.RoleMenuAssignedVO;
+import me.north30.erp.system.role.vo.RoleMenuIdsVO;
 import me.north30.erp.system.role.vo.RoleUpdatedVO;
 import me.north30.erp.system.role.vo.RoleVO;
 import org.springframework.stereotype.Service;
@@ -78,7 +79,7 @@ public class SysRoleApplicationServiceImpl implements SysRoleApplicationService 
         List<RoleVO> vos = page.getRecords().stream()
             .map(role -> new RoleVO(role.getId(), role.getRoleCode(), role.getRoleName(),
                 role.getRoleSort(), role.getDataScope(), role.getIsBuiltin(), role.getStatus(),
-                userCounts.getOrDefault(role.getId(), 0L).intValue()))
+                role.getRemark(), role.getVersion(), userCounts.getOrDefault(role.getId(), 0L).intValue()))
             .toList();
         return PageResult.of(page.getTotal(), (int) page.getCurrent(), (int) page.getSize(), vos);
     }
@@ -147,6 +148,13 @@ public class SysRoleApplicationServiceImpl implements SysRoleApplicationService 
             .filter(menu -> menu.getPerms() != null && !menu.getPerms().isBlank())
             .count();
         return new RoleMenuAssignedVO(menuIds, permCount);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public RoleMenuIdsVO listRoleMenuIds(Long id) {
+        sysRoleDomainService.requireRole(id);
+        return new RoleMenuIdsVO(roleGrantStrategy.listMenuIds(id));
     }
 
     @Override

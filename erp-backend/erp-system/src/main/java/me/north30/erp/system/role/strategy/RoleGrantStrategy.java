@@ -38,6 +38,16 @@ public class RoleGrantStrategy {
     }
 
     /**
+     * 查询角色已分配菜单权限点 ID 集合（sys_role_menu 逻辑未删除关联，供分配菜单弹窗回显）。
+     */
+    public List<Long> listMenuIds(Long roleId) {
+        return sysRoleMenuMapper.selectList(
+                new LambdaQueryWrapper<SysRoleMenu>().eq(SysRoleMenu::getRoleId, roleId)).stream()
+            .map(SysRoleMenu::getMenuId)
+            .toList();
+    }
+
+    /**
      * 全删全插重写角色数据范围配置（deptIds/userIds 序列化与 fieldMask 缺省由调用方装配）。
      */
     public void replaceDataScopes(Long roleId, List<SysRoleDataScope> scopes) {
