@@ -18,6 +18,8 @@ import java.util.List;
  * @param menuSort  显示顺序
  * @param visible   是否显示 0-隐藏 1-显示
  * @param status    状态 0-停用 1-启用
+ * @param remark    备注（编辑弹窗回填用）
+ * @param version   乐观锁版本号（编辑提交用）
  * @param children  子节点（同级递归结构，无子节点时为 null）
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -44,6 +46,10 @@ public record MenuNodeVO(
     Integer visible,
 
     Integer status,
+
+    String remark,
+
+    Integer version,
 
     List<MenuNodeVO> children
 ) {

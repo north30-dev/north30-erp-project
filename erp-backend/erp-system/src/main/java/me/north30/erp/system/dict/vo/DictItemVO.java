@@ -14,6 +14,7 @@ package me.north30.erp.system.dict.vo;
  * @param extJson 扩展属性 JSON
  * @param status 状态 0-停用 1-启用
  * @param remark 备注
+ * @param version 乐观锁版本号（编辑弹窗回填与提交用）
  * @param cached 是否命中缓存（派生，字典缓存后续阶段接入，当前恒为 false）
  */
 public record DictItemVO(
@@ -28,6 +29,7 @@ public record DictItemVO(
     String extJson,
     Integer status,
     String remark,
+    Integer version,
     Boolean cached
 ) {
 }

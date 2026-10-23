@@ -102,7 +102,8 @@ public class MenuTreeUtil {
             .map(child -> attachNodeChildren(child, childrenMap))
             .collect(Collectors.toList());
         return new MenuNodeVO(node.id(), node.menuName(), node.parentId(), node.menuType(), node.path(),
-            node.component(), node.perms(), node.icon(), node.menuSort(), node.visible(), node.status(), attached);
+            node.component(), node.perms(), node.icon(), node.menuSort(), node.visible(), node.status(),
+            node.remark(), node.version(), attached);
     }
 
     /**

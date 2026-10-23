@@ -43,14 +43,14 @@ class DeptIntegrationTest extends ApiIntegrationTest {
     }
 
     /** 树形结构拍平（递归 children） */
-    private java.util.List<java.util.Map<String, Object>> flatten(java.util.List<java.util.Map<String, Object>> nodes) {
-        java.util.List<java.util.Map<String, Object>> result = new java.util.ArrayList<>();
+    private List<Map<String, Object>> flatten(List<Map<String, Object>> nodes) {
+        List<Map<String, Object>> result = new ArrayList<>();
         if (nodes == null) {
             return result;
         }
-        for (java.util.Map<String, Object> node : nodes) {
+        for (Map<String, Object> node : nodes) {
             result.add(node);
-            result.addAll(flatten((java.util.List<java.util.Map<String, Object>>) node.get("children")));
+            result.addAll(flatten((List<Map<String, Object>>) node.get("children")));
         }
         return result;
     }

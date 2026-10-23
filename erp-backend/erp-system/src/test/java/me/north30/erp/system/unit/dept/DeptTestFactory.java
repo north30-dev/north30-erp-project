@@ -65,6 +65,6 @@ public final class DeptTestFactory {
      * 组织树节点 VO（DeptTreeUtil 测试用）。
      */
     public static DeptTreeVO treeVO(Long id, Long parentId, Integer deptSort) {
-        return new DeptTreeVO(id, "ORG" + id, "组织" + id, parentId, 1, 1, "0", null, null, deptSort, 1, null);
+        return new DeptTreeVO(id, "ORG" + id, "组织" + id, parentId, 1, 1, "0", null, null, deptSort, 1, null, 0, null);
     }
 }
