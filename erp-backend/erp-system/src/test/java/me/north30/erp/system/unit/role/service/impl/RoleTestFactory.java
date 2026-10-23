@@ -46,6 +46,8 @@ public final class RoleTestFactory {
         role.setDataScope(2);
         role.setIsBuiltin(0);
         role.setStatus(1);
+        role.setRemark("测试备注");
+        role.setVersion(3);
         return role;
     }
 

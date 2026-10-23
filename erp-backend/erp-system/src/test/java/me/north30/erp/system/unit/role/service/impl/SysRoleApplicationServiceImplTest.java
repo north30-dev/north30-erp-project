@@ -31,6 +31,7 @@ import me.north30.erp.system.role.strategy.RoleQueryStrategy;
 import me.north30.erp.system.role.vo.RoleCreatedVO;
 import me.north30.erp.system.role.vo.RoleDataScopeVO;
 import me.north30.erp.system.role.vo.RoleMenuAssignedVO;
+import me.north30.erp.system.role.vo.RoleMenuIdsVO;
 import me.north30.erp.system.role.vo.RoleUpdatedVO;
 import me.north30.erp.system.role.vo.RoleVO;
 import org.junit.jupiter.api.BeforeAll;
@@ -140,6 +141,8 @@ class SysRoleApplicationServiceImplTest {
             assertThat(first.dataScope()).isEqualTo(2);
             assertThat(first.isBuiltin()).isZero();
             assertThat(first.status()).isEqualTo(1);
+            assertThat(first.remark()).isEqualTo("测试备注");
+            assertThat(first.version()).isEqualTo(3);
             assertThat(first.userCount()).isEqualTo(2);
             assertThat(result.list().get(1).userCount()).isEqualTo(1);
             // 默认排序：create_time DESC
@@ -552,6 +555,62 @@ class SysRoleApplicationServiceImplTest {
                     ex -> assertThat(ex.getCode()).isEqualTo(18014))
                 .hasMessage("角色 5 不存在");
             verifyNoInteractions(sysMenuDomainService, sysRoleMenuMapper);
+        }
+    }
+
+    @Nested
+    @DisplayName("listRoleMenuIds：查询角色已分配菜单")
+    class ListRoleMenuIdsTest {
+
+        @Test
+        @DisplayName("查询已分配菜单，返回 sys_role_menu 关联的 menuIds 集合")
+        void shouldReturnAssignedMenuIds() {
+            // Given
+            when(sysRoleDomainService.requireRole(5L)).thenReturn(RoleTestFactory.sysRole());
+            when(sysRoleMenuMapper.selectList(any())).thenReturn(List.of(
+                RoleTestFactory.sysRoleMenu(5L, 1L),
+                RoleTestFactory.sysRoleMenu(5L, 3L),
+                RoleTestFactory.sysRoleMenu(5L, 7L)));
+
+            // When
+            RoleMenuIdsVO vo = service.listRoleMenuIds(5L);
+
+            // Then
+            assertThat(vo.menuIds()).containsExactly(1L, 3L, 7L);
+            verify(sysRoleMenuMapper).selectList(argThat(wrapper -> {
+                LambdaQueryWrapper<SysRoleMenu> condition = (LambdaQueryWrapper<SysRoleMenu>) wrapper;
+                condition.getSqlSegment();
+                return condition.getParamNameValuePairs().containsValue(5L);
+            }));
+        }
+
+        @Test
+        @DisplayName("查询已分配菜单，角色未授权时返回空集合")
+        void shouldReturnEmptyMenuIds_whenNoAssignment() {
+            // Given
+            when(sysRoleDomainService.requireRole(5L)).thenReturn(RoleTestFactory.sysRole());
+            when(sysRoleMenuMapper.selectList(any())).thenReturn(List.of());
+
+            // When
+            RoleMenuIdsVO vo = service.listRoleMenuIds(5L);
+
+            // Then
+            assertThat(vo.menuIds()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("查询已分配菜单，角色不存在时抛出异常")
+        void shouldThrow18014_whenRoleNotFound() {
+            // Given
+            when(sysRoleDomainService.requireRole(5L)).thenThrow(
+                new BusinessException(SystemErrorCode.ROLE_NOT_FOUND, "角色 5 不存在"));
+
+            // When / Then
+            assertThatThrownBy(() -> service.listRoleMenuIds(5L))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(18014))
+                .hasMessage("角色 5 不存在");
+            verifyNoInteractions(sysRoleMenuMapper);
         }
     }
 
