@@ -42,7 +42,7 @@ export const useAuthStore = defineStore('auth', () => {
     userInfo.value = user
     menus.value = menuTree
     perms.value = userPerms.perms
-    isAdmin.value = userPerms.roles.includes('admin')
+    isAdmin.value = userPerms.roles.includes('ADMIN')
   }
 
   /** 登出：调后端使会话失效并清本地 token（接口失败也继续清理，保证前端可登出） */

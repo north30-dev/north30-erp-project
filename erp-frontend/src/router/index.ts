@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import { getAccessToken } from '../utils/token'
+import { useAuthStore } from '../stores/auth'
 
 /** 全局路由表（动态业务路由后续由 auth store 的菜单树驱动，基建期先放占位页） */
 const routes: RouteRecordRaw[] = [
@@ -11,10 +12,16 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: false },
   },
   {
+    path: '/system/user',
+    name: 'system-user',
+    component: () => import('../views/system/user/index.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/',
     name: 'home',
-    // 占位：管理页路由在页面阶段由菜单树动态生成后替换
-    redirect: '/login',
+    // 占位：F9 动态菜单落地后改为工作台/首页，现阶段默认进用户管理页
+    redirect: '/system/user',
   },
 ]
 
@@ -23,11 +30,20 @@ const router = createRouter({
   routes,
 })
 
-/** 全局守卫：无 token 一律去登录页，登录后加载用户档案（用户信息/菜单/权限点） */
+/** 全局守卫：无 token 一律去登录页；有 token 但内存态未加载（刷新/新标签页）先补齐用户档案（含权限点，v-perm 依赖） */
 router.beforeEach(async (to) => {
+  const auth = useAuthStore()
   const hasToken = Boolean(getAccessToken())
   if (!hasToken && to.name !== 'login') {
     return { name: 'login', query: { redirect: to.fullPath } }
+  }
+  if (hasToken && !auth.userInfo && to.name !== 'login') {
+    try {
+      await auth.loadProfile()
+    } catch {
+      // 失败提示由 request 拦截器弹出（token 失效时其内部已跳登录），这里兜底不再放行
+      return { name: 'login' }
+    }
   }
   return true
 })

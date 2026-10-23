@@ -52,27 +52,27 @@ public class UserAssembleStrategy {
             return List.of();
         }
         Map<Long, String> deptNames = loadDeptNames(users);
-        Map<Long, List<String>> roleCodes = loadRoleCodesByUserIds(
+        Map<Long, List<String>> roleNames = loadRoleNamesByUserIds(
             users.stream().map(SysUser::getId).toList());
         return users.stream()
             .map(user -> userConverter.toUserVO(user,
                 deptNames.get(user.getDeptId()),
-                roleCodes.getOrDefault(user.getId(), List.of())))
+                roleNames.getOrDefault(user.getId(), List.of())))
             .toList();
     }
 
     /**
-     * 按角色 ID 集合批量加载角色编码映射（getDetail 详情装配用）。
+     * 按角色 ID 集合批量加载角色名称映射（getDetail 详情装配用）。
      *
      * @param roleIds 角色 ID 集合
-     * @return 角色 ID 映射角色编码的映射
+     * @return 角色 ID 映射角色名称的映射
      */
-    public Map<Long, String> loadRoleCodeMap(Collection<Long> roleIds) {
+    public Map<Long, String> loadRoleNameMap(Collection<Long> roleIds) {
         if (roleIds == null || roleIds.isEmpty()) {
             return Map.of();
         }
         return sysRoleMapper.selectByIds(roleIds).stream()
-            .collect(Collectors.toMap(SysRole::getId, SysRole::getRoleCode));
+            .collect(Collectors.toMap(SysRole::getId, SysRole::getRoleName));
     }
 
     /**
@@ -83,7 +83,7 @@ public class UserAssembleStrategy {
      */
     public byte[] toCsvBytes(List<SysUser> users) {
         Map<Long, String> deptNames = loadDeptNames(users);
-        Map<Long, List<String>> roleCodes = loadRoleCodesByUserIds(
+        Map<Long, List<String>> roleNames = loadRoleNamesByUserIds(
             users.stream().map(SysUser::getId).toList());
         StringBuilder csv = new StringBuilder();
         csv.append(CSV_BOM);
@@ -96,7 +96,7 @@ public class UserAssembleStrategy {
                 .append(escape(DesensitizeUtil.maskPhone(user.getPhone()))).append(',')
                 .append(escape(user.getEmail())).append(',')
                 .append(escape(deptNames.get(user.getDeptId()))).append(',')
-                .append(escape(String.join(";", roleCodes.getOrDefault(user.getId(), List.of())))).append(',')
+                .append(escape(String.join(";", roleNames.getOrDefault(user.getId(), List.of())))).append(',')
                 .append(escape(user.getStatus() != null && user.getStatus() == 1 ? "启用" : "停用")).append(',')
                 .append(escape(user.isAdmin() ? "是" : "否")).append(',')
                 .append(escape(DateTimeFormatUtil.format(user.getLastLoginTime()))).append(',')
@@ -126,12 +126,12 @@ public class UserAssembleStrategy {
     }
 
     /**
-     * 批量加载用户角色编码映射（user_role + role 各一次 IN 查询，避免循环查库）。
+     * 批量加载用户角色名称映射（user_role + role 各一次 IN 查询，避免循环查库）。
      *
      * @param userIds 用户 ID 集合
-     * @return 用户 ID 映射角色编码列表的映射
+     * @return 用户 ID 映射角色名称列表的映射
      */
-    private Map<Long, List<String>> loadRoleCodesByUserIds(List<Long> userIds) {
+    private Map<Long, List<String>> loadRoleNamesByUserIds(List<Long> userIds) {
         if (userIds.isEmpty()) {
             return Map.of();
         }
@@ -144,10 +144,10 @@ public class UserAssembleStrategy {
             .map(SysUserRole::getRoleId)
             .filter(Objects::nonNull)
             .collect(Collectors.toSet());
-        Map<Long, String> roleCodeMap = loadRoleCodeMap(roleIds);
+        Map<Long, String> roleNameMap = loadRoleNameMap(roleIds);
         return userRoles.stream()
             .collect(Collectors.groupingBy(SysUserRole::getUserId,
-                Collectors.mapping(ur -> roleCodeMap.get(ur.getRoleId()),
+                Collectors.mapping(ur -> roleNameMap.get(ur.getRoleId()),
                     Collectors.filtering(Objects::nonNull, Collectors.toList()))));
     }
 

@@ -76,6 +76,10 @@ instance.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 // 响应拦截器：业务状态码 / 401 无感刷新 / 统一错误提示
 instance.interceptors.response.use(
   (response: AxiosResponse) => {
+    // 文件流响应（responseType: 'blob'）不经过 Result 包装，直接放行
+    if (response.config.responseType === 'blob') {
+      return response
+    }
     // HTTP 正常时仍需检查业务状态码
     const result = response.data as Result<unknown>
     if (result.code !== 200) {
@@ -125,4 +129,9 @@ export function put<T>(url: string, data?: unknown): Promise<Result<T>> {
 
 export function del<T>(url: string, params?: Record<string, unknown>): Promise<Result<T>> {
   return instance.delete<unknown, AxiosResponse<Result<T>>>(url, { params }).then((r) => r.data)
+}
+
+/** 文件流下载专用：返回原始 Blob（导出 CSV 等场景），错误提示仍由拦截器统一处理 */
+export function getBlob(url: string, params?: Record<string, unknown>): Promise<Blob> {
+  return instance.get<Blob>(url, { params, responseType: 'blob' }).then((r) => r.data)
 }

@@ -100,8 +100,8 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
     public UserDetailVO getDetail(Long id) {
         SysUser user = sysUserDomainService.requireUser(id);
         List<Long> roleIds = userRoleStrategy.listRoleIdsByUserId(id);
-        Map<Long, String> roleCodeMap = userAssembleStrategy.loadRoleCodeMap(roleIds);
-        List<String> roles = roleIds.stream().map(roleCodeMap::get).filter(Objects::nonNull).toList();
+        Map<Long, String> roleNameMap = userAssembleStrategy.loadRoleNameMap(roleIds);
+        List<String> roles = roleIds.stream().map(roleNameMap::get).filter(Objects::nonNull).toList();
         SysDept dept = user.getDeptId() != null ? sysDeptDomainService.getById(user.getDeptId()) : null;
         return userConverter.toUserDetailVO(user, dept, roles, roleIds,
             WarehouseIdCodecUtil.parse(user.getWarehouseIds()));

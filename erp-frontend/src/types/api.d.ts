@@ -20,12 +20,12 @@ export interface Result<T = unknown> {
   traceId?: string
 }
 
-/** 分页响应体（me.north30.erp.common.result.PageResult：list/total/pageNum/pageSize/pages） */
+/** 分页响应体（me.north30.erp.common.result.PageResult：list/total/pageNum/pageSize/pages；后端 Long 全局转 string） */
 export interface PageResult<T> {
   /** 当前页记录 */
   list: T[]
-  /** 总记录数 */
-  total: number
+  /** 总记录数（后端 Long 序列化为 string，展示时 Number() 收敛） */
+  total: string
   /** 页码（从 1 开始） */
   pageNum: number
   /** 每页条数 */
@@ -54,10 +54,10 @@ export interface LoginDTO {
 
 /** 登录用户信息 */
 export interface LoginUserInfoVO {
-  userId: number
+  userId: string
   username: string
   realName: string
-  deptId: number | null
+  deptId: string | null
   deptName: string | null
   roles: string[]
   /** 是否管理员（0：否，1：是） */
@@ -95,11 +95,11 @@ export interface LogoutVO {
 
 /** 当前用户信息响应 VO（4.5） */
 export interface CurrentUserVO {
-  userId: number
+  userId: string
   userCode: string
   username: string
   realName: string
-  deptId: number | null
+  deptId: string | null
   deptName: string | null
   phone: string | null
   email: string | null
@@ -112,11 +112,11 @@ export interface CurrentUserVO {
 
 /** 菜单树节点 VO（4.6，sys_menu 树形） */
 export interface MenuTreeVO {
-  menuId: number
+  menuId: string
   menuName: string
   /** 类型（1：目录，2：菜单，3：按钮） */
   menuType: number
-  parentId: number
+  parentId: string
   path: string | null
   component: string | null
   icon: string | null
@@ -158,22 +158,24 @@ export interface PageQuery {
 
 /** 删除回执 VO（me.north30.erp.system.common.vo.DeleteResultVO） */
 export interface DeleteResultVO {
-  /** 删除记录数 */
-  count: number
+  /** 删除记录数（后端 Long 序列化为 string） */
+  count: string
 }
 
 /** 用户列表项 VO */
 export interface UserVO {
-  id: number
+  id: string
   userCode: string
   username: string
   realName: string
   phone: string | null
   email: string | null
-  deptId: number | null
+  deptId: string | null
   deptName: string | null
   roles: string[]
   status: number
+  /** 乐观锁版本号（状态切换时回传） */
+  version: number
   isAdmin: number
   lastLoginTime: string | null
   createTime: string
@@ -181,18 +183,20 @@ export interface UserVO {
 
 /** 用户详情 VO */
 export interface UserDetailVO {
-  id: number
+  id: string
   userCode: string
   username: string
   realName: string
   phone: string | null
   email: string | null
-  deptId: number | null
+  deptId: string | null
   deptName: string | null
   roles: string[]
-  roleIds: number[] | null
-  warehouseIds: number[] | null
+  roleIds: string[] | null
+  warehouseIds: string[] | null
   status: number
+  /** 乐观锁版本号（编辑/状态切换时回传） */
+  version: number
   isAdmin: number
   gender: number
   remark: string | null
@@ -208,7 +212,7 @@ export interface UserQueryDTO {
   username?: string
   realName?: string
   userCode?: string
-  deptId?: number
+  deptId?: string
   status?: number
   pageNum?: number
   pageSize?: number
@@ -220,21 +224,21 @@ export interface UserCreateDTO {
   username: string
   password: string
   realName: string
-  deptId: number | null
-  warehouseIds: number[] | null
+  deptId: string | null
+  warehouseIds: string[] | null
   phone: string | null
   email: string | null
   gender: number
   status: number
-  roleIds: number[] | null
+  roleIds: string[] | null
   remark: string | null
 }
 
 /** 更新用户 DTO */
 export interface UserUpdateDTO {
   realName: string
-  deptId: number | null
-  warehouseIds: number[] | null
+  deptId: string | null
+  warehouseIds: string[] | null
   phone: string | null
   email: string | null
   gender: number
@@ -249,6 +253,12 @@ export interface UserStatusDTO {
   version: number
 }
 
+/** 更新用户状态响应 VO（5.1.6：变更后状态与会话是否已失效） */
+export interface UserStatusVO {
+  status: number
+  sessionRevoked: boolean
+}
+
 /** 重置密码 DTO */
 export interface UserResetPasswordDTO {
   newPassword: string
@@ -261,12 +271,58 @@ export interface UserResetPasswordVO {
 
 /** 分配角色 DTO */
 export interface UserAssignRolesDTO {
-  roleIds: number[] | null
+  roleIds: string[] | null
 }
 
 /** 分配角色响应 VO */
 export interface UserAssignRolesVO {
-  roleIds: number[] | null
+  roleIds: string[] | null
   /** 权限刷新提示 */
   permissionRefreshTip: string
+}
+
+/* ---------- 组织部门（dept 域，F1 仅作用户页下拉数据源，对齐后端 DeptTreeVO） ---------- */
+
+/** 组织部门树节点 VO（5.4.1，children 递归） */
+export interface DeptTreeVO {
+  id: string
+  deptCode: string
+  deptName: string
+  parentId: string
+  /** 类型（1：集团，2：生产基地，3：销售分公司，4：部门，5：车间） */
+  deptType: number
+  /** 层级（1 为顶级，上限 5 级） */
+  deptLevel: number
+  /** 祖级路径（如 0,1,5） */
+  ancestors: string
+  leader: string | null
+  phone: string | null
+  deptSort: number
+  status: number
+  children: DeptTreeVO[] | null
+}
+
+/* ---------- 角色（role 域，F1 仅作分配角色下拉数据源，对齐后端 RoleVO/RolePageQueryDTO） ---------- */
+
+/** 角色分页查询 DTO（5.2.1） */
+export interface RolePageQueryDTO {
+  roleCode?: string
+  roleName?: string
+  status?: number
+  pageNum?: number
+  pageSize?: number
+  orderBy?: string
+  orderDirection?: string
+}
+
+/** 角色分页记录 VO（5.2.1，userCount 为派生计数） */
+export interface RoleVO {
+  id: string
+  roleCode: string
+  roleName: string
+  roleSort: number
+  dataScope: number
+  isBuiltin: number
+  status: number
+  userCount: string
 }

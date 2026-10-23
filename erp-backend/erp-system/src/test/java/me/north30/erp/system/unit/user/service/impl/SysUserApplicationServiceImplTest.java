@@ -156,7 +156,7 @@ class SysUserApplicationServiceImplTest {
             assertThat(vo.username()).isEqualTo("zhangsan");
             assertThat(vo.phone()).isEqualTo("138****5678");
             assertThat(vo.deptName()).isEqualTo("生产部");
-            assertThat(vo.roles()).containsExactly("keeper");
+            assertThat(vo.roles()).containsExactly("角色20");
             assertThat(vo.lastLoginTime()).isEqualTo("2026-01-02 09:30:00");
             assertThat(vo.createTime()).isEqualTo("2026-01-01 08:00:00");
             verify(sysUserMapper).selectPage(argThat((Page<SysUser> page) ->
@@ -296,7 +296,7 @@ class SysUserApplicationServiceImplTest {
             assertThat(vo.deptId()).isEqualTo(3L);
             assertThat(vo.deptName()).isEqualTo("生产部");
             assertThat(vo.roleIds()).containsExactly(20L, 21L);
-            assertThat(vo.roles()).containsExactly("admin", "operator");
+            assertThat(vo.roles()).containsExactly("角色20", "角色21");
             assertThat(vo.warehouseIds()).containsExactly(1L, 2L);
             assertThat(vo.status()).isEqualTo(1);
             assertThat(vo.isAdmin()).isZero();
@@ -888,7 +888,7 @@ class SysUserApplicationServiceImplTest {
             String csv = new String(bytes, StandardCharsets.UTF_8);
             assertThat(csv).startsWith("\uFEFF");
             assertThat(csv).contains("用户ID,用户编号,用户名,姓名,联系电话,邮箱,所属组织,角色,状态,是否管理员,最后登录时间,创建时间\r\n");
-            assertThat(csv).contains("10,E001,zhangsan,张三,138****5678,zs@north30.com,生产部,keeper,启用,否,"
+            assertThat(csv).contains("10,E001,zhangsan,张三,138****5678,zs@north30.com,生产部,角色5,启用,否,"
                 + "2026-01-02 09:30:00,2026-01-01 08:00:00\r\n");
             assertThat(csv).contains("2,E002,lisi,\"李,四\",,,,,停用,是,,2026-01-01 08:00:00\r\n");
         }

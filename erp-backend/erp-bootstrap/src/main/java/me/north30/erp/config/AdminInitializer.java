@@ -39,7 +39,7 @@ public class AdminInitializer implements ApplicationRunner {
     /** 初始管理员用户编号 */
     private static final String ADMIN_USER_CODE = "ADMIN";
     /** 超级管理员角色编码 */
-    private static final String ADMIN_ROLE_CODE = "admin";
+    private static final String ADMIN_ROLE_CODE = "ADMIN";
 
     /** 菜单类型：目录 */
     private static final int TYPE_DIR = 1;
