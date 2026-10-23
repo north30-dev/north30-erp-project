@@ -39,7 +39,7 @@ class DeptIntegrationTest extends ApiIntegrationTest {
         List<java.util.Map<String, Object>> flat = flatten(response.jsonPath().getList("data"));
         return flat.stream()
             .filter(item -> deptCode.equals(item.get("deptCode")))
-            .findFirst().map(item -> ((Number) item.get("id")).longValue()).orElse(-1L);
+            .findFirst().map(item -> asLong(item.get("id"))).orElse(-1L);
     }
 
     /** 树形结构拍平（递归 children） */
@@ -53,6 +53,11 @@ class DeptIntegrationTest extends ApiIntegrationTest {
             result.addAll(flatten((java.util.List<java.util.Map<String, Object>>) node.get("children")));
         }
         return result;
+    }
+
+    /** ID 取 Long（雪花 ID 经 Jackson 序列化为字符串，兼容数字/字符串两种形态） */
+    private long asLong(Object value) {
+        return Long.parseLong(String.valueOf(value));
     }
 
     /** 记录创建部门时的编码（供清理与查找） */
@@ -89,9 +94,9 @@ class DeptIntegrationTest extends ApiIntegrationTest {
             }
             boolean deletedAny = false;
             for (java.util.Map<String, Object> node : itNodes) {
-                long id = ((Number) node.get("id")).longValue();
+                long id = asLong(node.get("id"));
                 boolean hasItChild = itNodes.stream()
-                    .anyMatch(n -> n.get("parentId") != null && ((Number) n.get("parentId")).longValue() == id);
+                    .anyMatch(n -> n.get("parentId") != null && asLong(n.get("parentId")) == id);
                 if (!hasItChild) {
                     given().port(port).header("Authorization", "Bearer " + adminToken())
                         .when().delete(BASE_PATH + "/" + id);

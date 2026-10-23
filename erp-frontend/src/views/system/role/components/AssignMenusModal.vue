@@ -6,7 +6,7 @@ import { message } from 'ant-design-vue'
 import type { Key } from 'ant-design-vue/es/table/interface'
 import { assignRoleMenus, getRoleMenuIds } from '../../../../api/role'
 import { getMenuTree } from '../../../../api/menu'
-import type { MenuTreeVO, RoleVO } from '../../../../types/api'
+import type { MenuNodeVO, RoleVO } from '../../../../types/api'
 
 const emit = defineEmits<{ saved: [] }>()
 
@@ -14,18 +14,18 @@ const open = ref(false)
 const submitting = ref(false)
 const treeLoading = ref(false)
 const detail = ref<RoleVO | null>(null)
-const treeData = ref<MenuTreeVO[]>([])
+const treeData = ref<MenuNodeVO[]>([])
 const checkedKeys = ref<Key[]>([])
 const halfCheckedKeys = ref<Key[]>([])
 
-/** MenuTreeVO 字段映射（menuId 作 key、menuName 作标题） */
-const fieldNames = { title: 'menuName', key: 'menuId', children: 'children' }
+/** MenuNodeVO 字段映射（id 作 key、menuName 作标题） */
+const fieldNames = { title: 'menuName', key: 'id', children: 'children' }
 
 /** 收集树中所有父节点 ID（有 children 的节点） */
-function collectParentIds(nodes: MenuTreeVO[], acc: Set<string>): Set<string> {
+function collectParentIds(nodes: MenuNodeVO[], acc: Set<string>): Set<string> {
   for (const node of nodes) {
     if (node.children?.length) {
-      acc.add(node.menuId)
+      acc.add(node.id)
       collectParentIds(node.children, acc)
     }
   }

@@ -127,6 +127,24 @@ export interface MenuTreeVO {
   children: MenuTreeVO[]
 }
 
+/** 菜单管理树节点 VO（5.3.1，/system/menus/tree；与 4.6 MenuTreeVO 字段名不同，id 为管理端主键） */
+export interface MenuNodeVO {
+  id: string
+  menuName: string
+  parentId: string
+  /** 类型（1：目录，2：菜单，3：按钮） */
+  menuType: number
+  path: string | null
+  component: string | null
+  perms: string | null
+  icon: string | null
+  menuSort: number
+  /** 是否可见（0：隐藏，1：显示） */
+  visible: number
+  status: number
+  children: MenuNodeVO[] | null
+}
+
 /** 当前用户权限点集合响应 VO（4.7） */
 export interface UserPermsVO {
   perms: string[]
