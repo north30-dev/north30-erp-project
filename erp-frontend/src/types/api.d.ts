@@ -142,7 +142,61 @@ export interface MenuNodeVO {
   /** 是否可见（0：隐藏，1：显示） */
   visible: number
   status: number
+  /** 备注（编辑弹窗回填用） */
+  remark: string | null
+  /** 乐观锁版本号（编辑提交用） */
+  version: number
   children: MenuNodeVO[] | null
+}
+
+/** 菜单树查询 DTO（5.3.1，条件均可选） */
+export interface MenuTreeQueryDTO {
+  menuName?: string
+  perms?: string
+  status?: number
+}
+
+/** 新增菜单 DTO（5.3.2） */
+export interface MenuCreateDTO {
+  menuName: string
+  /** 父级菜单 ID（0 为顶级，Long 以字符串序列化） */
+  parentId: string
+  /** 类型（1：目录，2：菜单，3：按钮） */
+  menuType: number
+  path?: string | null
+  component?: string | null
+  perms?: string | null
+  icon?: string | null
+  menuSort?: number
+  visible?: number
+  status?: number
+  remark?: string | null
+}
+
+/** 修改菜单 DTO（5.3.3，乐观锁 version 必填） */
+export interface MenuUpdateDTO {
+  menuName?: string
+  parentId?: string
+  menuType?: number
+  path?: string | null
+  component?: string | null
+  perms?: string | null
+  icon?: string | null
+  menuSort?: number
+  visible?: number
+  status?: number
+  remark?: string | null
+  version: number
+}
+
+/** 新增菜单响应 VO（5.3.2） */
+export interface MenuCreatedVO {
+  id: string
+}
+
+/** 修改菜单响应 VO（5.3.3，返回 sys_menu.update_time） */
+export interface MenuUpdatedVO {
+  updateTime: string | null
 }
 
 /** 当前用户权限点集合响应 VO（4.7） */
@@ -176,8 +230,10 @@ export interface PageQuery {
 
 /** 删除回执 VO（me.north30.erp.system.common.vo.DeleteResultVO） */
 export interface DeleteResultVO {
-  /** 删除记录数（后端 Long 序列化为 string） */
-  count: string
+  /** 记录 ID（后端 Long 序列化为 string） */
+  id: string
+  /** 逻辑删除标记 */
+  isDeleted: number
 }
 
 /** 用户列表项 VO */

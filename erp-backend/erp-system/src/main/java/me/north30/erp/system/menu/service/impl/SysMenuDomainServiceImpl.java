@@ -120,6 +120,7 @@ public class SysMenuDomainServiceImpl implements SysMenuDomainService {
         if (parentId == null || parentId == ROOT_PARENT_ID) {
             return;
         }
+        // 防止指向自身或自身下级
         if (parentId.equals(selfId)) {
             throw new BusinessException(CommonErrorCode.PARAM_ERROR, "父级菜单不能指向自身");
         }
@@ -130,7 +131,12 @@ public class SysMenuDomainServiceImpl implements SysMenuDomainService {
         // 按钮下禁建子（最多三级：目录 → 菜单 → 按钮），此判断仅在此处收敛一次
         if (parent.getMenuType() != null && parent.getMenuType() == SysMenu.TYPE_BUTTON) {
             throw new BusinessException(SystemErrorCode.MENU_LEVEL_EXCEEDED);
-        }
+        } 
+        // 按钮只能再菜单下创建
+        // if (){
+
+        // }
+
         // 防环：从新父级沿父链向上回溯，若回到自身则说明父级位于自身下级
         Long cursor = parentId;
         int guard = 0;

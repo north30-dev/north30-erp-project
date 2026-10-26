@@ -5,6 +5,34 @@ export const MENU_TYPE_DIR = 1
 export const MENU_TYPE_MENU = 2
 export const MENU_TYPE_BUTTON = 3
 
+export const MENU_TYPE_OPTIONS = [
+  { label: '目录', value: MENU_TYPE_DIR },
+  { label: '菜单', value: MENU_TYPE_MENU },
+  { label: '按钮', value: MENU_TYPE_BUTTON },
+] as const
+
+/** 菜单类型反查（表格列渲染用） */
+export const MENU_TYPE_MAP: Record<number, string> = {
+  [MENU_TYPE_DIR]: '目录',
+  [MENU_TYPE_MENU]: '菜单',
+  [MENU_TYPE_BUTTON]: '按钮',
+}
+
+/* ---------- 菜单可见性（sys_menu.visible） ---------- */
+export const VISIBLE_HIDDEN = 0
+export const VISIBLE_SHOWN = 1
+
+export const VISIBLE_OPTIONS = [
+  { label: '显示', value: VISIBLE_SHOWN },
+  { label: '隐藏', value: VISIBLE_HIDDEN },
+] as const
+
+/** 可见性反查（表格列渲染用） */
+export const VISIBLE_MAP: Record<number, string> = {
+  [VISIBLE_SHOWN]: '显示',
+  [VISIBLE_HIDDEN]: '隐藏',
+}
+
 /* ---------- 通用状态 ---------- */
 export const STATUS_ENABLED = 1
 export const STATUS_DISABLED = 0
