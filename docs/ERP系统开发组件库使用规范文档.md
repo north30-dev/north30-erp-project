@@ -70,7 +70,7 @@
 2. 布局只用组件库布局件 + token；
 3. 图标全部来自 icons-vue，grep 检查无 emoji；
 4. `<style scoped>` 仅剩布局微调且无魔法色值；
-5. `npm run build` 通过。
+5. `pnpm build` 通过。
 
 提交前 grep 自查（命中即违规）：
 

@@ -109,7 +109,7 @@ erp-frontend/src/
 
 ## 9. 工程与提交门禁（强制）
 
-1. `npm run build`（含 `vue-tsc -b`）零错误方可提交；后续引入 eslint 后增加 lint 门禁。
+1. `pnpm build`（含 `vue-tsc -b`）零错误方可提交；后续引入 eslint 后增加 lint 门禁。
 2. 禁止 `console.log` 提交进仓库（与后端 System.out.println 同级别禁令）。
 3. commit Message 沿用 Angular 规范，scope 用 `frontend`，如 `feat(frontend): 用户管理页面`。
 4. 开发代理：vite 已配置 `/api → http://localhost:8080`，前端代码中**不得**出现完整后端地址。
@@ -124,4 +124,4 @@ erp-frontend/src/
 - [ ] 按钮挂 v-perm，权限点与后端 `sys_menu.perms` 一致
 - [ ] 状态/枚举展示走 constants 映射，无裸数字
 - [ ] 新增/编辑/删除成功后表格 reload，失败有后端 message
-- [ ] `npm run build` 通过，文件未超 300 行
+- [ ] `pnpm build` 通过，文件未超 300 行
