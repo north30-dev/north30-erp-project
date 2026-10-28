@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,7 +53,7 @@ class RoleIntegrationTest extends ApiIntegrationTest {
             .when().get("/api/system/menus/tree")
             .then().statusCode(200)
             .extract().body().asString();
-        List<Long> ids = new java.util.ArrayList<>();
+        List<Long> ids = new ArrayList<>();
         collectLeafIds(JsonMapper.builder().build().readTree(body).get("data"), ids);
         return ids.subList(0, Math.min(limit, ids.size()));
     }

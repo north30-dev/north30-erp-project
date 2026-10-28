@@ -80,12 +80,41 @@ public interface SysMenuDomainService {
     void requirePermsAvailable(String perms, Long excludeId);
 
     /**
-     * 父级合法性守卫：存在性 + 非按钮 + 防环（逐级向上回溯）。
-     * <p>parentId 为 null 或 0（顶级）直接放行；父不存在抛 MENU_NOT_FOUND；
-     * 父为按钮抛 MENU_LEVEL_EXCEEDED；自指/成环抛 PARAM_ERROR。
-     * selfId 为 null 表示新增场景（无自身 ID，跳过防环回溯）。</p>
-     * @param selfId 当前菜单 ID（新增场景传 null）
-     * @param parentId 目标父级菜单 ID
+     * 父级结构合法性守卫：父级存在性 + 父子类型配对（委托 {@link SysMenu#requireValidChildType}）。
+     * <p>create/update 共用；parentId 为 null 或 0（顶级）时仅校验 childType 非按钮（18023/10001）；
+     * 父不存在抛 MENU_NOT_FOUND（18019）。不含自指/防环（update 换父级场景由
+     * {@link #requireNotDescendant} 承载），不含深度校验（由 requireDepthWithinLimit 承载）。</p>
+     * @param parentId 目标父级菜单 ID（顶级传 null 或 0）
+     * @param childType 待挂载的子节点菜单类型
      */
-    void requireValidParent(Long selfId, Long parentId);
+    void requireValidParent(Long parentId, Integer childType);
+
+
+    /**
+     * 修改换父级时防环守卫：修改后的父级不可为自身或自身子孙。
+     * <p>仅 update 换父级场景由编排层调用。父级为自身或自身子孙抛 PARAM_ERROR。
+     * 沿新父级向上回溯，若回到自身则说明新父级为自身子孙，抛 PARAM_ERROR。</p>
+     *
+     * @param selfId 当前菜单 ID
+     * @param newParentId 目标父级菜单 ID
+     */
+    void requireNotDescendant(Long selfId, Long newParentId);
+
+    /**
+     * 深度守卫（新增场景）：父级深度 + 1 ≤ {@link SysMenu#MAX_DEPTH}。
+     * <p>顶级（parentId 为 null 或 0）子节点深度恒为 1，直接放行不查库；
+     * 超限抛 MENU_LEVEL_EXCEEDED（18023）。一次全量查询后内存计算。</p>
+     * @param parentId 目标父级菜单 ID
+     * @param childType 待挂载的子节点菜单类型
+     */
+    void requireDepthWithinLimit(Long parentId, Integer childType);
+
+    /**
+     * 深度守卫（修改换父级场景）：新父级深度 + 1 + 自身子树高度 − 1 ≤ {@link SysMenu#MAX_DEPTH}。
+     * <p>仅 update 换父级时由编排层调用（与 requireNotDescendant 同场景）；
+     * 新父级不存在按父级深度 0 处理；超限抛 MENU_LEVEL_EXCEEDED（18023）。</p>
+     * @param selfId 当前菜单 ID
+     * @param newParentId 目标父级菜单 ID
+     */
+    void requireSubtreeDepthWithinLimit(Long selfId, Long newParentId);
 }

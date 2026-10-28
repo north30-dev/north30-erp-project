@@ -83,8 +83,8 @@ public enum SystemErrorCode implements ErrorCode {
     /** 权限标识重复（perms 唯一冲突） */
     MENU_PERMS_DUPLICATED(18022, "权限标识已存在"),
 
-    /** 菜单超过三级（按钮下不可再建子节点） */
-    MENU_LEVEL_EXCEEDED(18023, "菜单仅支持三级（目录/菜单/按钮）"),
+    /** 菜单层级超过上限（按钮下不可建子；深度最多 4 级） */
+    MENU_LEVEL_EXCEEDED(18023, "菜单层级超过上限（最多 4 级）"),
 
     // ---------- 组织（18024-18027） ----------
 

@@ -65,8 +65,8 @@ public class SysMenuController {
     @PostMapping
     @PreAuthorize("hasAuthority('system:menu:create')")
     @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.CREATE)
-    @Operation(summary = "新增菜单", description = "权限点 system:menu:create；最多三级（目录/菜单/按钮），按钮下不可再建子节点")
-    @ApiResponse(responseCode = "422", description = "业务校验失败（10001 菜单类型或类型必填字段非法/18019 上级菜单不存在/18022 权限标识已存在/18023 菜单超过三级）",
+    @Operation(summary = "新增菜单", description = "权限点 system:menu:create；父子类型配对校验（按钮仅可挂菜单下），深度上限 4 级")
+    @ApiResponse(responseCode = "422", description = "业务校验失败（10001 菜单类型/类型必填字段/格式非法/18019 上级菜单不存在/18022 权限标识已存在/18023 菜单层级超过上限）",
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<MenuCreatedVO> create(@Valid @RequestBody MenuCreateDTO dto) {
@@ -80,7 +80,7 @@ public class SysMenuController {
     @PreAuthorize("hasAuthority('system:menu:update')")
     @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     @Operation(summary = "修改菜单", description = "权限点 system:menu:update；父级不得指向自身或自身下级（防环），乐观锁按 version 校验")
-    @ApiResponse(responseCode = "422", description = "业务校验失败（10001 菜单类型或类型必填字段非法/18019 菜单不存在/18022 权限标识已存在/18023 菜单超过三级/10601 乐观锁冲突）",
+    @ApiResponse(responseCode = "422", description = "业务校验失败（10001 菜单类型/类型必填字段/格式非法/存在子节点禁改类型/18019 菜单不存在/18022 权限标识已存在/18023 菜单层级超过上限/10601 乐观锁冲突）",
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<MenuUpdatedVO> update(@PathVariable Long id, @Valid @RequestBody MenuUpdateDTO dto) {

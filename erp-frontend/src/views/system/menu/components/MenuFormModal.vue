@@ -69,7 +69,12 @@ function initialForm(): CrudForm {
   }
 }
 
-/** 必填规则与后端充血校验一致：目录必填 path；菜单必填 path+component；按钮必填 perms */
+/** 与后端 SysMenu 正则同语义：path 小写、component 允许大驼峰（与前端页面组件命名一致）、perms 三段小写 */
+const PATH_PATTERN = /^\/[a-z0-9-]+(?:\/[a-z0-9-]+)*$/
+const COMPONENT_PATTERN = /^[a-zA-Z0-9-]+(?:\/[a-zA-Z0-9-]+)+$/
+const PERMS_PATTERN = /^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$/
+
+/** 必填与格式规则与后端充血校验一致：目录必填 path（格式）；菜单必填 path+component（格式）；按钮必填 perms（格式） */
 const rules = computed<CrudRules>(() => {
   const type = currentMenuType.value
   const rulesMap: CrudRules = {
@@ -79,9 +84,18 @@ const rules = computed<CrudRules>(() => {
     ],
     parentId: [{ required: true, message: '请选择上级菜单' }],
     menuType: [{ required: true, message: '请选择菜单类型' }],
-    path: [{ max: 200, message: '路由地址长度不能超过 200' }],
-    component: [{ max: 200, message: '前端组件路径长度不能超过 200' }],
-    perms: [{ max: 100, message: '权限标识长度不能超过 100' }],
+    path: [
+      { max: 200, message: '路由地址长度不能超过 200' },
+      { pattern: PATH_PATTERN, message: '格式如 /system/menu（以 / 开头，小写字母/数字/中划线）' },
+    ],
+    component: [
+      { max: 200, message: '前端组件路径长度不能超过 200' },
+      { pattern: COMPONENT_PATTERN, message: '格式如 system/loginLog/index（至少两级，不以 / 开头、不以 .vue 结尾）' },
+    ],
+    perms: [
+      { max: 100, message: '权限标识长度不能超过 100' },
+      { pattern: PERMS_PATTERN, message: '格式如 system:menu:create（三段冒号分隔，小写）' },
+    ],
   }
   if (type === MENU_TYPE_DIR || type === MENU_TYPE_MENU) {
     rulesMap.path?.push({ required: true, message: '目录/菜单必须配置路由地址' })

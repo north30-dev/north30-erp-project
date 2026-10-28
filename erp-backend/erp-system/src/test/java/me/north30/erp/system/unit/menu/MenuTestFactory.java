@@ -41,18 +41,18 @@ public final class MenuTestFactory {
     }
 
     /**
-     * 目录型菜单实体（menuType=1，无组件与权限点）。
+     * 目录型菜单实体（menuType=1，无组件与权限点；path 由 id 派生以保证格式合法）。
      */
     public static SysMenu dirMenu(Long id, String menuName, Long parentId, Integer menuSort) {
-        return menu(id, menuName, parentId, TYPE_DIR, "/" + menuName, null, null, menuSort);
+        return menu(id, menuName, parentId, TYPE_DIR, "/dir-" + id, null, null, menuSort);
     }
 
     /**
-     * 页面型菜单实体（menuType=2，含组件与权限点）。
+     * 页面型菜单实体（menuType=2，含组件与权限点；path 由 id 派生以保证格式合法）。
      */
     public static SysMenu pageMenu(Long id, String menuName, Long parentId, String component,
                                    String perms, Integer menuSort) {
-        return menu(id, menuName, parentId, TYPE_MENU, "/" + menuName, component, perms, menuSort);
+        return menu(id, menuName, parentId, TYPE_MENU, "/page-" + id, component, perms, menuSort);
     }
 
     /**

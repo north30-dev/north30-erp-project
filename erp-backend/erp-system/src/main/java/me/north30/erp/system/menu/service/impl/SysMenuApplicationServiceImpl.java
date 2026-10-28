@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import me.north30.erp.common.util.UpdateGuardUtil;
 import me.north30.erp.common.exception.BusinessException;
+import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.util.DateTimeFormatUtil;
 import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.common.util.MenuTreeUtil;
@@ -37,9 +38,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SysMenuApplicationServiceImpl implements SysMenuApplicationService {
 
-    /** 顶级菜单父 ID */
-    private static final long ROOT_PARENT_ID = 0L;
-
     private final SysMenuMapper sysMenuMapper;
     private final SysMenuDomainService sysMenuDomainService;
     private final SysRoleMenuService sysRoleMenuService;
@@ -61,13 +59,11 @@ public class SysMenuApplicationServiceImpl implements SysMenuApplicationService 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public MenuCreatedVO create(MenuCreateDTO dto) {
-        // 父级合法性（存在性 + 非按钮 + 防环）与 perms 唯一守卫收敛进领域服务；
-        // 按钮下禁建子仅在 requireValidParent 判断一次
-        if (dto.parentId() != null && dto.parentId() != ROOT_PARENT_ID) {
-            sysMenuDomainService.requireValidParent(null, dto.parentId());
-        }
+        // 校验顺序：格式（类型必填字段）→ 结构（父级存在性 + 父子类型配对）→ 深度 → perms 唯一 → 入库
         SysMenu menu = menuConverter.createSysMenu(dto);
         menu.requireTypeFieldsValid();
+        sysMenuDomainService.requireValidParent(dto.parentId(), menu.getMenuType());
+        sysMenuDomainService.requireDepthWithinLimit(dto.parentId(), menu.getMenuType());
         sysMenuDomainService.requirePermsAvailable(menu.getPerms(), null);
         menu.applyCreateDefaults();
         menu.clearRouteFieldsIfButton();
@@ -79,12 +75,26 @@ public class SysMenuApplicationServiceImpl implements SysMenuApplicationService 
     @Transactional(rollbackFor = Exception.class)
     public MenuUpdatedVO update(Long id, MenuUpdateDTO dto) {
         SysMenu menu = sysMenuDomainService.requireMenu(id);
-        if (dto.parentId() != null) {
-            sysMenuDomainService.requireValidParent(id, dto.parentId());
-        }
-        // null 字段跳过（部分更新语义），按钮字段清空与乐观锁 version 由下方逻辑处理
+        Integer originalType = menu.getMenuType();
+        Long originalParentId = menu.getParentId();
+        // 先合并 DTO 得到最终 parentId/menuType，所有校验必须使用合并后的最终值
         menuConverter.updateSysMenu(dto, menu);
+        // 有子节点时禁止修改菜单类型（避免子节点与新类型配对违规，形成结构倒挂）
+        if (!menu.getMenuType().equals(originalType)) {
+            Long childCount = sysMenuMapper.selectCount(
+                new LambdaQueryWrapper<SysMenu>().eq(SysMenu::getParentId, id));
+            if (childCount != null && childCount > 0) {
+                throw new BusinessException(CommonErrorCode.PARAM_ERROR,
+                    "菜单存在子节点，不可修改类型，请先处理子节点");
+            }
+        }
         menu.requireTypeFieldsValid();
+        sysMenuDomainService.requireValidParent(menu.getParentId(), menu.getMenuType());
+        // 换父级时追加防环 + 子树深度守卫
+        if (dto.parentId() != null && !dto.parentId().equals(originalParentId)) {
+            sysMenuDomainService.requireNotDescendant(id, menu.getParentId());
+            sysMenuDomainService.requireSubtreeDepthWithinLimit(id, menu.getParentId());
+        }
         sysMenuDomainService.requirePermsAvailable(menu.getPerms(), id);
         menu.clearRouteFieldsIfButton();
         // 乐观锁按客户端传入 version 校验

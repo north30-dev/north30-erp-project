@@ -36,7 +36,7 @@ class DeptIntegrationTest extends ApiIntegrationTest {
             .when().get(BASE_PATH + "/tree")
             .then().statusCode(200)
             .extract().response();
-        List<java.util.Map<String, Object>> flat = flatten(response.jsonPath().getList("data"));
+        List<Map<String, Object>> flat = flatten(response.jsonPath().getList("data"));
         return flat.stream()
             .filter(item -> deptCode.equals(item.get("deptCode")))
             .findFirst().map(item -> asLong(item.get("id"))).orElse(-1L);
@@ -61,7 +61,7 @@ class DeptIntegrationTest extends ApiIntegrationTest {
     }
 
     /** 记录创建部门时的编码（供清理与查找） */
-    private String createAndReturnCode(long parentId, java.util.List<String> codeStore) {
+    private String createAndReturnCode(long parentId, List<String> codeStore) {
         String code = "IT-D-" + suffix();
         Map<String, Object> body = new HashMap<>();
         body.put("deptCode", code);
@@ -85,15 +85,15 @@ class DeptIntegrationTest extends ApiIntegrationTest {
             Response response = given().port(port).header("Authorization", "Bearer " + adminToken())
                 .when().get(BASE_PATH + "/tree")
                 .then().extract().response();
-            java.util.List<java.util.Map<String, Object>> flat = flatten(response.jsonPath().getList("data"));
-            java.util.List<java.util.Map<String, Object>> itNodes = flat.stream()
+            List<Map<String, Object>> flat = flatten(response.jsonPath().getList("data"));
+            List<Map<String, Object>> itNodes = flat.stream()
                 .filter(n -> String.valueOf(n.get("deptCode")).startsWith("IT-"))
                 .toList();
             if (itNodes.isEmpty()) {
                 return;
             }
             boolean deletedAny = false;
-            for (java.util.Map<String, Object> node : itNodes) {
+            for (Map<String, Object> node : itNodes) {
                 long id = asLong(node.get("id"));
                 boolean hasItChild = itNodes.stream()
                     .anyMatch(n -> n.get("parentId") != null && asLong(n.get("parentId")) == id);
@@ -133,7 +133,7 @@ class DeptIntegrationTest extends ApiIntegrationTest {
         @DisplayName("父部门存在，创建子部门成功")
         void shouldCreateChildDept_whenParentExists() {
             // Given：顶级部门
-            java.util.List<String> codes = new java.util.ArrayList<>();
+            List<String> codes = new ArrayList<>();
             createAndReturnCode(0L, codes);
 
             // When / Then：其下创建子部门，树上两个节点均可见
@@ -199,7 +199,7 @@ class DeptIntegrationTest extends ApiIntegrationTest {
             // 说明：树 VO 不含 version，正向修改以 version=999 断言 10601 乐观锁冲突口径覆盖；
             // 正向改名场景由 dept 域单测覆盖（此处不重复）。
             // Given
-            java.util.List<String> codes = new java.util.ArrayList<>();
+            List<String> codes = new ArrayList<>();
             createAndReturnCode(0L, codes);
             long id = findIdByCode(codes.get(0));
             Map<String, Object> body = Map.of("deptName", "乐观锁冲突", "parentId", 0L, "deptType", 4, "version", 999);
@@ -237,7 +237,7 @@ class DeptIntegrationTest extends ApiIntegrationTest {
         @DisplayName("删除无子部门无用户的叶子部门，删除成功")
         void shouldDeleteLeafDept_whenNoChildrenAndNoUsers() {
             // Given
-            java.util.List<String> codes = new java.util.ArrayList<>();
+            List<String> codes = new ArrayList<>();
             createAndReturnCode(0L, codes);
             long id = findIdByCode(codes.get(0));
 
@@ -254,7 +254,7 @@ class DeptIntegrationTest extends ApiIntegrationTest {
         @DisplayName("删除有子部门的部门，返回422存在子部门")
         void shouldReturn422HasChildren_whenDeleteDeptWithChild() {
             // Given：父 + 子两级
-            java.util.List<String> codes = new java.util.ArrayList<>();
+            List<String> codes = new ArrayList<>();
             createAndReturnCode(0L, codes);
             long parentId = findIdByCode(codes.get(0));
             createAndReturnCode(parentId, codes);

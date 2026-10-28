@@ -99,7 +99,7 @@ class MenuTreeUtilTest {
             assertThat(vo.menuName()).isEqualTo("用户管理");
             assertThat(vo.menuType()).isEqualTo(2);
             assertThat(vo.parentId()).isEqualTo(2L);
-            assertThat(vo.path()).isEqualTo("/用户管理");
+            assertThat(vo.path()).isEqualTo("/page-1");
             assertThat(vo.component()).isEqualTo("system/user/index");
             assertThat(vo.menuSort()).isEqualTo(3);
             assertThat(vo.visible()).isEqualTo(1);

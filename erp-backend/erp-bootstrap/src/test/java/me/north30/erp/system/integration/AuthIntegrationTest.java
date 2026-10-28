@@ -2,12 +2,14 @@ package me.north30.erp.system.integration;
 
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
+import me.north30.erp.common.constant.RedisKeyConstants;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.system.common.enums.SystemErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 
@@ -31,7 +33,7 @@ class AuthIntegrationTest extends ApiIntegrationTest {
     private String prepareCaptcha() {
         String captchaKey = UUID.randomUUID().toString().replace("-", "");
         stringRedisTemplate.opsForValue()
-            .set(me.north30.erp.common.constant.RedisKeyConstants.captchaKey(captchaKey), "IT7A", java.time.Duration.ofMinutes(5));
+            .set(RedisKeyConstants.captchaKey(captchaKey), "IT7A", Duration.ofMinutes(5));
         return captchaKey;
     }
 

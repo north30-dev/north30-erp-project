@@ -9,6 +9,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 
 import static io.restassured.RestAssured.given;
@@ -30,7 +31,7 @@ class DictIntegrationTest extends ApiIntegrationTest {
     /** 每用例兜底清理：先删 it_dict_type_ 前缀类型下的项，再删类型（自建自清） */
     @AfterEach
     void cleanup() {
-        java.util.List<Map<String, Object>> list = given()
+        List<Map<String, Object>> list = given()
             .port(port).header("Authorization", "Bearer " + adminToken())
             .queryParam("dictType", "it_dict_type_").queryParam("pageSize", 200)
             .when().get(TYPE_PATH)
@@ -79,7 +80,7 @@ class DictIntegrationTest extends ApiIntegrationTest {
             .queryParam("dictType", dictType).queryParam("pageSize", 200)
             .when().get(ITEM_PATH)
             .then().extract().response();
-        java.util.List<Map<String, Object>> list = response.jsonPath().getList("data.list");
+        List<Map<String, Object>> list = response.jsonPath().getList("data.list");
         if (list != null) {
             for (Map<String, Object> item : list) {
                 given().port(port).header("Authorization", "Bearer " + adminToken())

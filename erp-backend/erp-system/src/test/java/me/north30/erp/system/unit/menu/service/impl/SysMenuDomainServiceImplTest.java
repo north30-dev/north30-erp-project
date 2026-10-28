@@ -263,87 +263,258 @@ class SysMenuDomainServiceImplTest {
     }
 
     @Nested
-    @DisplayName("requireValidParent：父级合法性守卫")
+    @DisplayName("requireValidParent：父级结构守卫（存在性 + 父子类型配对）")
     class RequireValidParentTest {
 
-        @Test   
-        @DisplayName("父级为 null（顶级）时直接放行，不查库")
-        void shouldSkip_whenParentIdNull() {
-            // When + Then（selfId 为 null 表示新增场景，同样跳过防环）
-            assertThatCode(() -> service.requireValidParent(null, null)).doesNotThrowAnyException();
+        @Test
+        @DisplayName("父级为 null（顶级）建目录/菜单时放行，不查库；建按钮抛 10001")
+        void shouldValidateRootChildType_whenParentIdNull() {
+            assertThatCode(() -> service.requireValidParent(null, SysMenu.TYPE_DIR)).doesNotThrowAnyException();
+            assertThatCode(() -> service.requireValidParent(null, SysMenu.TYPE_MENU)).doesNotThrowAnyException();
+            assertThatThrownBy(() -> service.requireValidParent(null, SysMenu.TYPE_BUTTON))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
+                .hasMessage("顶级仅支持目录或菜单类型");
             verifyNoInteractions(sysMenuMapper);
         }
 
-        @Test   
-        @DisplayName("父级为 0（顶级）时直接放行，不查库")
-        void shouldSkip_whenParentIdZero() {
-            // When + Then
-            assertThatCode(() -> service.requireValidParent(1L, 0L)).doesNotThrowAnyException();
+        @Test
+        @DisplayName("父级为 0（顶级）建按钮时抛 10001，不查库")
+        void shouldThrow_whenParentIdZeroAndChildIsButton() {
+            assertThatThrownBy(() -> service.requireValidParent(0L, SysMenu.TYPE_BUTTON))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
+                .hasMessage("顶级仅支持目录或菜单类型");
             verifyNoInteractions(sysMenuMapper);
         }
 
-        @Test   
-        @DisplayName("父级存在且为目录时放行（新增场景 selfId 为 null，回溯不命中自身）")
-        void shouldPass_whenParentExistsAndSelfIdNull() {
-            // Given：父级 2（目录，父链 2→1→0）
-            SysMenu parent = MenuTestFactory.dirMenu(2L, "基础数据", 1L, 1);
-            SysMenu grand = MenuTestFactory.dirMenu(1L, "系统管理", 0L, 1);
-            given(sysMenuMapper.selectById(2L)).willReturn(parent);
-            given(sysMenuMapper.selectById(1L)).willReturn(grand);
+        @Test
+        @DisplayName("目录父下建目录/菜单放行")
+        void shouldPass_whenDirParentWithDirOrMenuChild() {
+            // Given：父级 2（目录）
+            given(sysMenuMapper.selectById(2L)).willReturn(MenuTestFactory.dirMenu(2L, "基础数据", 1L, 1));
 
             // When + Then
-            assertThatCode(() -> service.requireValidParent(null, 2L)).doesNotThrowAnyException();
+            assertThatCode(() -> service.requireValidParent(2L, SysMenu.TYPE_DIR)).doesNotThrowAnyException();
+            assertThatCode(() -> service.requireValidParent(2L, SysMenu.TYPE_MENU)).doesNotThrowAnyException();
         }
 
-        @Test   
+        @Test
+        @DisplayName("菜单父下建菜单/按钮放行")
+        void shouldPass_whenMenuParentWithMenuOrButtonChild() {
+            // Given：父级 2（菜单）
+            given(sysMenuMapper.selectById(2L))
+                .willReturn(MenuTestFactory.pageMenu(2L, "用户管理", 1L, "system/user/index", "system:user:list", 1));
+
+            // When + Then
+            assertThatCode(() -> service.requireValidParent(2L, SysMenu.TYPE_MENU)).doesNotThrowAnyException();
+            assertThatCode(() -> service.requireValidParent(2L, SysMenu.TYPE_BUTTON)).doesNotThrowAnyException();
+        }
+
+        @Test
         @DisplayName("父级不存在时抛出 MENU_NOT_FOUND")
         void shouldThrow_whenParentMissing() {
             // Given
             given(sysMenuMapper.selectById(99L)).willReturn(null);
 
             // When + Then
-            assertThatThrownBy(() -> service.requireValidParent(null, 99L))
+            assertThatThrownBy(() -> service.requireValidParent(99L, SysMenu.TYPE_DIR))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.MENU_NOT_FOUND.getCode()))
                 .hasMessage("上级菜单不存在或已删除");
         }
 
-        @Test   
-        @DisplayName("父级为按钮时抛出 MENU_LEVEL_EXCEEDED（按钮下禁建子，仅此处判断一次）")
+        @Test
+        @DisplayName("父级为按钮时抛出 18023（按钮下不可建子）")
         void shouldThrow_whenParentIsButton() {
             // Given
             given(sysMenuMapper.selectById(9L))
-                .willReturn(MenuTestFactory.buttonMenu(9L, "按钮", 3L, "a:b:c", 1));
+                .willReturn(MenuTestFactory.buttonMenu(9L, "按钮", 3L, "system:user:create", 1));
 
             // When + Then
-            assertThatThrownBy(() -> service.requireValidParent(null, 9L))
+            assertThatThrownBy(() -> service.requireValidParent(9L, SysMenu.TYPE_DIR))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.MENU_LEVEL_EXCEEDED.getCode()))
-                .hasMessage("菜单仅支持三级（目录/菜单/按钮）");
+                .hasMessage("菜单层级超过上限（最多 4 级）");
         }
 
-        @Test   
-        @DisplayName("父级指向自身时抛出 PARAM_ERROR（自指）")
-        void shouldThrow_whenParentIsSelf() {
+        @Test
+        @DisplayName("目录父下建按钮抛 10001（按钮仅可挂菜单下）")
+        void shouldThrow_whenDirParentWithButtonChild() {
+            // Given
+            given(sysMenuMapper.selectById(2L)).willReturn(MenuTestFactory.dirMenu(2L, "系统管理", 0L, 1));
+
             // When + Then
-            assertThatThrownBy(() -> service.requireValidParent(1L, 1L))
+            assertThatThrownBy(() -> service.requireValidParent(2L, SysMenu.TYPE_BUTTON))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
-                .hasMessage("父级菜单不能指向自身");
-            verifyNoInteractions(sysMenuMapper);
+                .hasMessage("目录下仅支持目录或菜单类型");
         }
 
-        @Test   
-        @DisplayName("父级位于自身下级时抛出 PARAM_ERROR（沿父链回溯命中自身，防环）")
-        void shouldThrow_whenParentIsOwnDescendant() {
-            // Given：selfId=1，新父级 2 的父链为 2→1（1 是自身下级）
-            given(sysMenuMapper.selectById(2L)).willReturn(MenuTestFactory.dirMenu(2L, "子目录", 1L, 1));
+        @Test
+        @DisplayName("菜单父下建目录抛 10001（类型倒挂）")
+        void shouldThrow_whenMenuParentWithDirChild() {
+            // Given
+            given(sysMenuMapper.selectById(2L))
+                .willReturn(MenuTestFactory.pageMenu(2L, "用户管理", 1L, "system/user/index", "system:user:list", 1));
 
             // When + Then
-            assertThatThrownBy(() -> service.requireValidParent(1L, 2L))
+            assertThatThrownBy(() -> service.requireValidParent(2L, SysMenu.TYPE_DIR))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
+                .hasMessage("菜单下仅支持菜单或按钮类型");
+        }
+    }
+
+    @Nested
+    @DisplayName("requireNotDescendant：防环守卫（update 换父级）")
+    class RequireNotDescendantTest {
+
+        @Test
+        @DisplayName("新父级为自身时抛出 PARAM_ERROR")
+        void shouldThrow_whenNewParentIsSelf() {
+            // Given：全量菜单仅自身
+            given(sysMenuMapper.selectList(any())).willReturn(
+                List.of(MenuTestFactory.dirMenu(1L, "自身", 0L, 1)));
+
+            // When + Then
+            assertThatThrownBy(() -> service.requireNotDescendant(1L, 1L))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
                 .hasMessage("父级菜单不能指向自身或自身下级");
+        }
+
+        @Test
+        @DisplayName("新父级为自身子孙（沿父链回溯命中自身）时抛出 PARAM_ERROR")
+        void shouldThrow_whenNewParentIsOwnDescendant() {
+            // Given：selfId=1，新父级 2 的父链为 2→1
+            given(sysMenuMapper.selectList(any())).willReturn(
+                List.of(MenuTestFactory.dirMenu(1L, "根目录", 0L, 1),
+                    MenuTestFactory.dirMenu(2L, "子目录", 1L, 1)));
+
+            // When + Then
+            assertThatThrownBy(() -> service.requireNotDescendant(1L, 2L))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
+                .hasMessage("父级菜单不能指向自身或自身下级");
+        }
+
+        @Test
+        @DisplayName("新父级为其他分支节点时放行")
+        void shouldPass_whenNewParentNotDescendant() {
+            // Given：selfId=3，新父级 2 的父链为 2→0，不命中自身
+            given(sysMenuMapper.selectList(any())).willReturn(
+                List.of(MenuTestFactory.dirMenu(1L, "根目录", 0L, 1),
+                    MenuTestFactory.dirMenu(2L, "其他目录", 0L, 2),
+                    MenuTestFactory.dirMenu(3L, "自身", 1L, 1)));
+
+            // When + Then
+            assertThatCode(() -> service.requireNotDescendant(3L, 2L)).doesNotThrowAnyException();
+        }
+    }
+
+    @Nested
+    @DisplayName("requireDepthWithinLimit：深度守卫（新增场景）")
+    class RequireDepthWithinLimitTest {
+
+        @Test
+        @DisplayName("顶级新增不查库，直接放行")
+        void shouldSkip_whenParentIdRoot() {
+            assertThatCode(() -> service.requireDepthWithinLimit(null, SysMenu.TYPE_DIR)).doesNotThrowAnyException();
+            assertThatCode(() -> service.requireDepthWithinLimit(0L, SysMenu.TYPE_MENU)).doesNotThrowAnyException();
+            verifyNoInteractions(sysMenuMapper);
+        }
+
+        @Test
+        @DisplayName("第 3 层父级下新增放行（4 ≤ 4）")
+        void shouldPass_whenParentAtDepth3() {
+            // Given：1→2→3 三层链（父级 3 深度为 3，新增后深度 4）
+            given(sysMenuMapper.selectList(any())).willReturn(
+                List.of(MenuTestFactory.dirMenu(1L, "一层", 0L, 1),
+                    MenuTestFactory.dirMenu(2L, "二层", 1L, 1),
+                    MenuTestFactory.dirMenu(3L, "三层", 2L, 1)));
+
+            // When + Then
+            assertThatCode(() -> service.requireDepthWithinLimit(3L, SysMenu.TYPE_BUTTON)).doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("第 4 层父级下新增被拒（5 > 4，抛 18023）")
+        void shouldThrow_whenParentAtDepth4() {
+            // Given：1→2→3→4 四层链（父级 4 深度为 4，新增后深度 5）
+            given(sysMenuMapper.selectList(any())).willReturn(
+                List.of(MenuTestFactory.dirMenu(1L, "一层", 0L, 1),
+                    MenuTestFactory.dirMenu(2L, "二层", 1L, 1),
+                    MenuTestFactory.dirMenu(3L, "三层", 2L, 1),
+                    MenuTestFactory.dirMenu(4L, "四层", 3L, 1)));
+
+            // When + Then
+            assertThatThrownBy(() -> service.requireDepthWithinLimit(4L, SysMenu.TYPE_BUTTON))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.MENU_LEVEL_EXCEEDED.getCode()))
+                .hasMessage("菜单层级超过上限（最多 4 级）");
+        }
+    }
+
+    @Nested
+    @DisplayName("requireSubtreeDepthWithinLimit：子树深度守卫（update 换父级）")
+    class RequireSubtreeDepthWithinLimitTest {
+
+        @Test
+        @DisplayName("新父级深度 3 + 子树高度 2 = 5 > 4，抛 18023")
+        void shouldThrow_whenSubtreeExceedsLimit() {
+            // Given：新父级 3 链 1→2→3（深度 3）；自身 9（子树 9→10，高度 2）
+            given(sysMenuMapper.selectList(any())).willReturn(
+                List.of(MenuTestFactory.dirMenu(1L, "一层", 0L, 1),
+                    MenuTestFactory.dirMenu(2L, "二层", 1L, 1),
+                    MenuTestFactory.dirMenu(3L, "三层", 2L, 1),
+                    MenuTestFactory.dirMenu(9L, "自身", 0L, 1),
+                    MenuTestFactory.buttonMenu(10L, "子按钮", 9L, "system:a:create", 1)));
+
+            // When + Then
+            assertThatThrownBy(() -> service.requireSubtreeDepthWithinLimit(9L, 3L))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.MENU_LEVEL_EXCEEDED.getCode()))
+                .hasMessage("菜单层级超过上限（最多 4 级）");
+        }
+
+        @Test
+        @DisplayName("新父级深度 3 + 子树高度 1 = 4，放行")
+        void shouldPass_whenSubtreeAtLimit() {
+            // Given：新父级 3 链 1→2→3（深度 3）；自身 9 无子节点（高度 1）
+            given(sysMenuMapper.selectList(any())).willReturn(
+                List.of(MenuTestFactory.dirMenu(1L, "一层", 0L, 1),
+                    MenuTestFactory.dirMenu(2L, "二层", 1L, 1),
+                    MenuTestFactory.dirMenu(3L, "三层", 2L, 1),
+                    MenuTestFactory.dirMenu(9L, "自身", 0L, 1)));
+
+            // When + Then
+            assertThatCode(() -> service.requireSubtreeDepthWithinLimit(9L, 3L)).doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("新父级为顶级时按深度 0 计算，子树高度 4 放行")
+        void shouldPass_whenNewParentIsRoot() {
+            // Given：自身 9 子树 9→10→11→12（高度 4），移到顶级后深度恰为 4
+            given(sysMenuMapper.selectList(any())).willReturn(
+                List.of(MenuTestFactory.dirMenu(9L, "自身", 1L, 1),
+                    MenuTestFactory.dirMenu(10L, "二层", 9L, 1),
+                    MenuTestFactory.dirMenu(11L, "三层", 10L, 1),
+                    MenuTestFactory.buttonMenu(12L, "四层", 11L, "system:a:create", 1)));
+
+            // When + Then
+            assertThatCode(() -> service.requireSubtreeDepthWithinLimit(9L, 0L)).doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("新父级不存在时按深度 0 处理，放行")
+        void shouldPass_whenNewParentMissing() {
+            // Given：映射中无新父级 99
+            given(sysMenuMapper.selectList(any())).willReturn(
+                List.of(MenuTestFactory.dirMenu(9L, "自身", 0L, 1)));
+
+            // When + Then
+            assertThatCode(() -> service.requireSubtreeDepthWithinLimit(9L, 99L)).doesNotThrowAnyException();
         }
     }
 }

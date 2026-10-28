@@ -2,6 +2,7 @@ package me.north30.erp.system.integration;
 
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
+import me.north30.erp.common.constant.RedisKeyConstants;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +13,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -97,7 +99,7 @@ public abstract class ApiIntegrationTest {
     protected String doLogin(String username, String password) {
         String captchaKey = UUID.randomUUID().toString().replace("-", "");
         stringRedisTemplate.opsForValue()
-            .set(me.north30.erp.common.constant.RedisKeyConstants.captchaKey(captchaKey), TEST_CAPTCHA, Duration.ofMinutes(5));
+            .set(RedisKeyConstants.captchaKey(captchaKey), TEST_CAPTCHA, Duration.ofMinutes(5));
         Response response = given()
             .port(port)
             .contentType(ContentType.JSON)
@@ -136,7 +138,7 @@ public abstract class ApiIntegrationTest {
         userBody.put("password", LIMITED_PASSWORD);
         userBody.put("realName", "集成测试低权限用户");
         userBody.put("status", 1);
-        userBody.put("roleIds", java.util.List.of(limitedRoleId));
+        userBody.put("roleIds", List.of(limitedRoleId));
         limitedUserId = given()
             .port(port)
             .header("Authorization", "Bearer " + adminToken())
@@ -158,7 +160,7 @@ public abstract class ApiIntegrationTest {
         if (limitedUserId != null) {
             given().port(serverPort).header("Authorization", "Bearer " + adminToken)
                 .contentType(ContentType.JSON)
-                .body(Map.of("roleIds", java.util.List.of()))
+                .body(Map.of("roleIds", List.of()))
                 .when().put("/api/system/users/" + limitedUserId + "/roles")
                 .then().log().ifValidationFails().statusCode(200);
             given().port(serverPort).header("Authorization", "Bearer " + adminToken)
