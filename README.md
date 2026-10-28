@@ -26,7 +26,7 @@
 | 安全 | Spring Security + oauth2-resource-server | 7.x（NimbusJwtEncoder/Decoder） |
 | 代码简化 | Lombok | 1.18.46（Boot 4.0.8 BOM 托管，@Slf4j/@Data 等） |
 | ORM | MyBatis-Plus | 3.5.17（mybatis-plus-spring-boot4-starter + mybatis-plus-jsqlparser） |
-| 数据库 | PostgreSQL | 16+（Docker 部署） |
+| 数据库 | PostgreSQL | 16+ |
 | 缓存 | Redis | 8.x |
 | API 文档 | springdoc-openapi | 3.x |
 | 前端框架 | Vue 3 + TypeScript + Ant Design Vue | Vue 3.4+ / AntD Vue 4.x |
@@ -92,6 +92,13 @@ north30-erp-project/
 | D8 财务 | 应收应付；存货核算；凭证自动生成；成本归集 | M6 业财一体完成 |
 | D9 报表与优化 | 经营仪表盘；业务报表；权限精细化；性能优化 | M7 Feature Complete |
 
+## 当前进度
+
+- D1 骨架搭建、D2 系统管理后端已完成：认证/JWT、用户/角色/菜单/部门管理，含父子类型配对与层级深度校验、乐观锁、审计日志。
+- D2 前端已完成：登录页、用户/角色/菜单管理页面，AppSearchForm/AppCrudModal 公共组件；包管理器已迁移至 pnpm。
+- 已建立 API 集成测试框架（`mvn test -Pit -pl erp-bootstrap -am`），日常 `mvn test` 不含集成测试。
+- 下一步：D3 基础数据（物料/分类、BOM、客商档案、仓库/库位）。
+
 ## 文档索引
 
 | 文档 | 用途 |
@@ -104,6 +111,10 @@ north30-erp-project/
 | [ERP系统数据库表结构设计文档](docs/ERP系统数据库表结构设计文档.md) | 全量表结构、必备字段、索引规范 |
 | [ERP系统开发编码规范文档](docs/ERP系统开发编码规范文档.md) | 编码铁律、分层约束、Git 规范 |
 | [ERP系统开发阶段计划文档](docs/ERP系统开发阶段计划文档.md) | 7 阶段计划、里程碑 M1-M10、质量闸门 |
+| [ERP系统开发前端编码规范文档](docs/ERP系统开发前端编码规范文档.md) | 前端编码约束、组合式 API 规范 |
+| [ERP系统开发组件库使用规范文档](docs/ERP系统开发组件库使用规范文档.md) | Ant Design Vue 组件使用规范 |
+
+各阶段过程文档按 phase 目录归档：`docs/phase1-requirement-confirmation/`、`docs/phase2-system-design/`、`docs/phase3-develop-and-test/`。
 
 ## Git 工作流
 
@@ -118,16 +129,26 @@ north30-erp-project/
 |------|------|
 | JDK | 21 LTS |
 | Maven | 3.9+ |
-| PostgreSQL 16 | Docker 容器 `erp-postgres`，端口 5432，用户/库 `erp`，密码 `erp@123456` |
-| Redis 8 | 本机运行，密码 `root` |
-| Node.js | 前端构建（Vite 8） |
+| PostgreSQL 16+ | 端口 5432（Docker 或本地部署均可） |
+| Redis 8 | 默认端口 6379 |
+| Node.js + pnpm | 前端构建（Vite 8，包管理器 pnpm） |
 
-后端启动（工程创建后）：
+后端启动：
 
 ```bash
 cd erp-backend
 mvn clean compile
 mvn spring-boot:run -pl erp-bootstrap
 ```
+
+前端启动：
+
+```bash
+cd erp-frontend
+pnpm install
+pnpm dev
+```
+
+数据库连接、Redis 密码、JWT 密钥等配置项位于 `erp-backend/erp-bootstrap/src/main/resources/application.yml` 的 `spring.datasource` / `spring.data.redis` / `erp.jwt` 下，按实际环境修改。系统首次启动时会自动初始化内置管理员账号（admin）。
 
 编码约定速览：统一 UTF-8 + LF 换行符；统一响应体 `Result<T>`；金额计算必须 `BigDecimal`；增删改必须 `@Transactional(rollbackFor = Exception.class)`；关键写操作记录审计日志；API 前缀 `/api`。完整规范见 [AGENTS.md](AGENTS.md) 与 [编码规范文档](docs/ERP系统开发编码规范文档.md)。

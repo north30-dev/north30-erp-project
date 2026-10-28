@@ -13,6 +13,7 @@ import {
 import AppSearchForm from '../../../components/AppSearchForm/index.vue'
 import { deleteMenu, getMenuTree } from '../../../api/menu'
 import {
+  MAX_MENU_DEPTH,
   MENU_TYPE_BUTTON,
   MENU_TYPE_DIR,
   MENU_TYPE_MAP,
@@ -102,6 +103,28 @@ function filterTree(nodes: MenuNodeVO[]): MenuNodeVO[] {
 }
 
 const displayTree = computed(() => filterTree(treeData.value))
+
+/** 节点深度表（顶级=1）：第 4 层非按钮行禁用「新增下级」 */
+const depthMap = computed(() => {
+  const map = new Map<string, number>()
+  function walk(nodes: MenuNodeVO[], depth: number): void {
+    for (const node of nodes) {
+      map.set(node.id, depth)
+      if (node.children?.length) {
+        walk(node.children, depth + 1)
+      }
+    }
+  }
+  walk(treeData.value, 1)
+  return map
+})
+
+/** 是否允许对该节点新增下级：非按钮、深度未达上限（父深度+1 ≤ 4；后端 18028 兜底） */
+function canCreateChild(record: MenuNodeVO): boolean {
+  return (
+    record.menuType !== MENU_TYPE_BUTTON && (depthMap.value.get(record.id) ?? 1) < MAX_MENU_DEPTH
+  )
+}
 
 async function load(): Promise<void> {
   loading.value = true
@@ -219,15 +242,24 @@ onMounted(() => {
           </template>
           <template v-else-if="column.key === 'action'">
             <a-space>
-              <a-button
+              <a-tooltip
                 v-if="(record as MenuNodeVO).menuType !== MENU_TYPE_BUTTON"
-                v-perm="'system:menu:create'"
-                type="link"
-                size="small"
-                @click="openCreate(record as MenuNodeVO)"
+                :title="
+                  canCreateChild(record as MenuNodeVO)
+                    ? ''
+                    : `已达最大层级（${MAX_MENU_DEPTH} 级），不可新增下级`
+                "
               >
-                <PlusSquareOutlined /> 新增下级
-              </a-button>
+                <a-button
+                  v-perm="'system:menu:create'"
+                  type="link"
+                  size="small"
+                  :disabled="!canCreateChild(record as MenuNodeVO)"
+                  @click="openCreate(record as MenuNodeVO)"
+                >
+                  <PlusSquareOutlined /> 新增下级
+                </a-button>
+              </a-tooltip>
               <a-button
                 v-perm="'system:menu:update'"
                 type="link"

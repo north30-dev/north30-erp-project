@@ -9,10 +9,14 @@ import AppCrudModal from '../../../../components/AppCrudModal/index.vue'
 import type { CrudForm, CrudMode, CrudRules } from '../../../../components/AppCrudModal/type'
 import { createMenu, updateMenu } from '../../../../api/menu'
 import {
+  MAX_MENU_DEPTH,
   MENU_TYPE_BUTTON,
   MENU_TYPE_DIR,
   MENU_TYPE_MENU,
   MENU_TYPE_OPTIONS,
+  PERMS_ACTION_SUGGESTIONS,
+  PERMS_MODULE_OPTIONS,
+  SEGMENT_PATTERN,
   STATUS_ENABLED,
   STATUS_OPTIONS,
   VISIBLE_OPTIONS,
@@ -36,19 +40,107 @@ const presetMenuType = ref<number>(MENU_TYPE_DIR)
 /** 当前表单类型（驱动条件渲染与必填规则） */
 const currentMenuType = ref<number>(MENU_TYPE_DIR)
 
-/** 父级选择树：顶级（0）+ 菜单树（按钮类型不可作父级） */
-const parentTreeData = computed<DefaultOptionType[]>(() => [
-  { label: '顶级菜单', value: '0', children: toParentOptions(props.menus) },
-])
+/** 父级类型配对规则（与后端 SysMenu.requireValidChildType 同语义）：返回 childType 允许的父级类型集合 */
+function allowedParentTypes(childType: number): number[] {
+  if (childType === MENU_TYPE_DIR) {
+    return [MENU_TYPE_DIR]
+  }
+  if (childType === MENU_TYPE_MENU) {
+    return [MENU_TYPE_DIR, MENU_TYPE_MENU]
+  }
+  // 按钮：仅菜单
+  return [MENU_TYPE_MENU]
+}
 
-function toParentOptions(nodes: MenuNodeVO[]): DefaultOptionType[] {
+/** 在树中查找节点类型（找不到返回 0，等价顶级） */
+function findNodeType(nodes: MenuNodeVO[], id: string): number {
+  for (const node of nodes) {
+    if (node.id === id) {
+      return node.menuType
+    }
+    if (node.children?.length) {
+      const found = findNodeType(node.children, id)
+      if (found !== 0) {
+        return found
+      }
+    }
+  }
+  return 0
+}
+
+/** 收集自身及全部后代 id（edit 换父级防环：候选中排除） */
+function collectSelfAndDescendants(nodes: MenuNodeVO[], rootId: string, acc: Set<string>): void {
+  for (const node of nodes) {
+    if (node.id === rootId) {
+      collectAllIds(node, acc)
+      return
+    }
+    if (node.children?.length) {
+      collectSelfAndDescendants(node.children, rootId, acc)
+    }
+  }
+}
+
+function collectAllIds(node: MenuNodeVO, acc: Set<string>): void {
+  acc.add(node.id)
+  for (const child of node.children ?? []) {
+    collectAllIds(child, acc)
+  }
+}
+
+/** 计算各节点深度（顶级=1） */
+function buildDepthMap(nodes: MenuNodeVO[], depth = 1, map = new Map<string, number>()): Map<string, number> {
+  for (const node of nodes) {
+    map.set(node.id, depth)
+    if (node.children?.length) {
+      buildDepthMap(node.children, depth + 1, map)
+    }
+  }
+  return map
+}
+
+/**
+ * 父级选择树：按当前类型配对（顶级仅目录/菜单，按钮无顶级）、edit 模式排除自身子树（防环）、
+ * 深度达上限的节点保留展示但禁用（弱约束，最终以后端 18028 兜底）。
+ */
+const parentTreeData = computed<DefaultOptionType[]>(() => {
+  const childType = currentMenuType.value
+  const forbidden = new Set<string>()
+  if (mode.value === 'edit' && editId.value) {
+    collectSelfAndDescendants(props.menus, editId.value, forbidden)
+  }
+  const depthMap = buildDepthMap(props.menus)
+  if (childType === MENU_TYPE_BUTTON) {
+    // 按钮只能挂菜单下，无顶级选项
+    return toParentOptions(props.menus, childType, forbidden, depthMap, 1)
+  }
+  return [{ label: '顶级菜单', value: '0', children: toParentOptions(props.menus, childType, forbidden, depthMap, 1) }]
+})
+
+function toParentOptions(
+  nodes: MenuNodeVO[],
+  childType: number,
+  forbidden: Set<string>,
+  depthMap: Map<string, number>,
+  depth: number,
+): DefaultOptionType[] {
+  const allowedTypes = allowedParentTypes(childType)
   return nodes
-    .filter((node) => node.menuType !== MENU_TYPE_BUTTON)
-    .map((node) => ({
-      label: node.menuName,
-      value: node.id,
-      children: node.children?.length ? toParentOptions(node.children) : undefined,
-    }))
+    .filter((node) => !forbidden.has(node.id))
+    .map((node) => {
+      // 父深度 + 1 ≤ MAX_MENU_DEPTH：深度已达上限的节点不可作父级
+      const tooDeep = (depthMap.get(node.id) ?? depth) >= MAX_MENU_DEPTH
+      const typeMismatch = !allowedTypes.includes(node.menuType)
+      const disabled = typeMismatch || tooDeep
+      return {
+        label: tooDeep && !typeMismatch ? `${node.menuName}（已达最大层级）` : node.menuName,
+        value: node.id,
+        disabled,
+        children: node.children?.length
+          ? toParentOptions(node.children, childType, forbidden, depthMap, depth + 1)
+          : undefined,
+      }
+    })
 }
 
 /** create 模式初始值工厂（AppCrudModal 每次打开时调用；默认值与后端一致） */
@@ -60,6 +152,9 @@ function initialForm(): CrudForm {
     path: '',
     component: '',
     perms: '',
+    permsModule: '',
+    permsObject: '',
+    permsAction: '',
     icon: '',
     menuSort: 0,
     visible: VISIBLE_SHOWN,
@@ -104,14 +199,47 @@ const rules = computed<CrudRules>(() => {
     rulesMap.component?.push({ required: true, message: '菜单必须配置前端组件路径' })
   }
   if (type === MENU_TYPE_BUTTON) {
+    // 按钮三段式：拼接结果天然满足整体 PERMS_PATTERN，逐段校验给出更精确的提示
+    rulesMap.permsModule = [
+      { required: true, message: '请选择模块段' },
+      { pattern: SEGMENT_PATTERN, message: '小写字母开头，仅小写字母/数字/中划线' },
+    ]
+    rulesMap.permsObject = [
+      { required: true, message: '请输入对象段' },
+      { pattern: SEGMENT_PATTERN, message: '小写字母开头，仅小写字母/数字/中划线' },
+    ]
+    rulesMap.permsAction = [
+      { required: true, message: '请输入动作段' },
+      { pattern: SEGMENT_PATTERN, message: '小写字母开头，仅小写字母/数字/中划线' },
+    ]
     rulesMap.perms?.push({ required: true, message: '按钮必须配置权限标识' })
   }
   return rulesMap
 })
 
-/** 类型切换：同步外部类型状态，触发表单项显隐与规则重算 */
-function handleMenuTypeChange(event: RadioChangeEvent): void {
+/** 模块段下拉候选（固定域） */
+const permsModuleOptions = PERMS_MODULE_OPTIONS.map((value) => ({ label: value, value }))
+
+/** 动作段自动完成候选（开放集合，允许自填） */
+const permsActionOptions = PERMS_ACTION_SUGGESTIONS.map((value) => ({ label: value, value }))
+
+/** 类型切换：同步外部类型状态、重算条件渲染，并按新类型重置非法父级 */
+function handleMenuTypeChange(event: RadioChangeEvent, form: CrudForm): void {
   currentMenuType.value = Number(event.target.value)
+  const parentId = (form.parentId as string | undefined) ?? ''
+  const parentType = parentId === '0' || parentId === '' ? 0 : findNodeType(props.menus, parentId)
+  if (currentMenuType.value === MENU_TYPE_DIR && parentType === MENU_TYPE_MENU) {
+    // 菜单→目录属类型倒挂，父级重置为顶级
+    form.parentId = '0'
+  }
+  if (currentMenuType.value === MENU_TYPE_BUTTON && parentType !== MENU_TYPE_MENU) {
+    // 按钮只能挂菜单下，清空非法父级由用户重选
+    form.parentId = undefined
+  }
+  // 切到按钮改用三段输入，清空整体值避免脏数据
+  if (currentMenuType.value === MENU_TYPE_BUTTON) {
+    form.perms = ''
+  }
 }
 
 /** 新增下级时的默认类型：目录→菜单，菜单→按钮 */
@@ -131,6 +259,13 @@ function toNullable(value: unknown): string | null {
   return text === '' ? null : text
 }
 
+/** 按钮三段拼接为整体 perms（各段已经过 SEGMENT_PATTERN 校验） */
+function joinPerms(form: CrudForm): string {
+  return [form.permsModule, form.permsObject, form.permsAction]
+    .map((seg) => (typeof seg === 'string' ? seg.trim() : ''))
+    .join(':')
+}
+
 async function handleSubmit(form: CrudForm): Promise<void> {
   const type = form.menuType as number
   const dto = {
@@ -140,7 +275,8 @@ async function handleSubmit(form: CrudForm): Promise<void> {
     // 按钮不承载路由信息；目录不承载组件路径（后端也会清空 button 的 path/component）
     path: type === MENU_TYPE_BUTTON ? null : toNullable(form.path),
     component: type === MENU_TYPE_MENU ? toNullable(form.component) : null,
-    perms: toNullable(form.perms),
+    // 按钮由三段拼接；目录/菜单选填单输入
+    perms: type === MENU_TYPE_BUTTON ? joinPerms(form) : toNullable(form.perms),
     icon: toNullable(form.icon),
     menuSort: Number(form.menuSort ?? 0),
     visible: form.visible as number,
@@ -157,6 +293,21 @@ async function handleSubmit(form: CrudForm): Promise<void> {
   emit('saved')
 }
 
+/** 编辑按钮时按第一个冒号拆分 perms 回填三段；非三段值整串放入对象段由用户修正 */
+function splitPerms(record: Record<string, unknown>): void {
+  const perms = (record.perms as string | undefined)?.trim() ?? ''
+  const [module = '', object = '', action = ''] = perms.split(':')
+  if (module && object && action) {
+    record.permsModule = module
+    record.permsObject = object
+    record.permsAction = action
+  } else {
+    record.permsModule = ''
+    record.permsObject = perms
+    record.permsAction = ''
+  }
+}
+
 /** 打开弹窗：edit 用行数据回填（含 remark/version）；create 可传父节点预设父级与类型 */
 function show(nextMode: CrudMode, record?: Record<string, unknown>, parent?: MenuNodeVO): void {
   mode.value = nextMode
@@ -165,6 +316,9 @@ function show(nextMode: CrudMode, record?: Record<string, unknown>, parent?: Men
   presetMenuType.value = defaultChildType(parent)
   currentMenuType.value =
     nextMode === 'edit' ? Number(record?.menuType ?? MENU_TYPE_DIR) : presetMenuType.value
+  if (nextMode === 'edit' && currentMenuType.value === MENU_TYPE_BUTTON) {
+    splitPerms(record as Record<string, unknown>)
+  }
   crudRef.value?.show(nextMode, record)
 }
 
@@ -190,7 +344,7 @@ defineExpose({ show })
           <a-form-item
             label="上级菜单"
             name="parentId"
-            extra="父级不可选择自身或自身下级，最多三级"
+            extra="父级不可选择自身或自身下级，最多 4 级；顶级仅可选目录/菜单"
           >
             <a-tree-select
               v-model:value="(form.parentId as string)"
@@ -207,7 +361,7 @@ defineExpose({ show })
             <a-radio-group
               v-model:value="(form.menuType as number)"
               :options="[...MENU_TYPE_OPTIONS]"
-              @change="handleMenuTypeChange"
+              @change="(event: RadioChangeEvent) => handleMenuTypeChange(event, form)"
             />
           </a-form-item>
         </a-col>
@@ -224,12 +378,38 @@ defineExpose({ show })
             />
           </a-form-item>
         </a-col>
-        <a-col :span="12">
-          <a-form-item
-            label="权限标识"
-            name="perms"
-            :extra="currentMenuType === MENU_TYPE_BUTTON ? '格式：{模块}:{对象}:{动作}' : '选填'"
-          >
+        <a-col v-if="currentMenuType === MENU_TYPE_BUTTON" :span="12">
+          <!-- 按钮三段式：模块段下拉（固定域）、对象段自由输入、动作段自动完成（可自填） -->
+          <a-row :gutter="8">
+            <a-col :span="8">
+              <a-form-item label="权限标识" name="permsModule" extra="格式：{模块}:{对象}:{动作}">
+                <a-select
+                  v-model:value="(form.permsModule as string)"
+                  :options="permsModuleOptions"
+                  placeholder="模块"
+                  show-search
+                />
+              </a-form-item>
+            </a-col>
+            <a-col :span="8">
+              <a-form-item name="permsObject" label=" " :colon="false">
+                <a-input v-model:value="(form.permsObject as string)" placeholder="对象，如 menu" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="8">
+              <a-form-item name="permsAction" label=" " :colon="false">
+                <a-auto-complete
+                  v-model:value="(form.permsAction as string)"
+                  :options="permsActionOptions"
+                  placeholder="动作，如 create"
+                  allow-clear
+                />
+              </a-form-item>
+            </a-col>
+          </a-row>
+        </a-col>
+        <a-col v-else :span="12">
+          <a-form-item label="权限标识" name="perms" extra="选填，格式：{模块}:{对象}:{动作}">
             <a-input
               v-model:value="(form.perms as string)"
               placeholder="如 system:menu:create"

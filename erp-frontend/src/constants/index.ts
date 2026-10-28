@@ -18,6 +18,35 @@ export const MENU_TYPE_MAP: Record<number, string> = {
   [MENU_TYPE_BUTTON]: '按钮',
 }
 
+/** 菜单树最大深度（模块 → 子模块 → 页面 → 按钮，对齐后端 SysMenu.MAX_DEPTH） */
+export const MAX_MENU_DEPTH = 4
+
+/* ---------- 权限标识三段式（sys_menu.perms，模块:对象:动作） ---------- */
+
+/** 模块段固定候选域（对齐后端模块划分） */
+export const PERMS_MODULE_OPTIONS = [
+  'system',
+  'base',
+  'purchase',
+  'sales',
+  'inventory',
+  'manufacturing',
+  'finance',
+] as const
+
+/** 动作段预置候选（允许自填，开放集合） */
+export const PERMS_ACTION_SUGGESTIONS = [
+  'list',
+  'query',
+  'create',
+  'update',
+  'delete',
+  'export',
+] as const
+
+/** 单段合法格式（小写字母开头，小写字母/数字/中划线，与后端 PERMS_PATTERN 段语义一致） */
+export const SEGMENT_PATTERN = /^[a-z][a-z0-9-]*$/
+
 /* ---------- 菜单可见性（sys_menu.visible） ---------- */
 export const VISIBLE_HIDDEN = 0
 export const VISIBLE_SHOWN = 1
