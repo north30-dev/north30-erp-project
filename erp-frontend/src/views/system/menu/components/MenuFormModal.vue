@@ -151,7 +151,6 @@ function initialForm(): CrudForm {
     menuType: presetMenuType.value,
     path: '',
     component: '',
-    perms: '',
     permsModule: '',
     permsObject: '',
     permsAction: '',
@@ -164,10 +163,9 @@ function initialForm(): CrudForm {
   }
 }
 
-/** 与后端 SysMenu 正则同语义：path 小写、component 允许大驼峰（与前端页面组件命名一致）、perms 三段小写 */
+/** 与后端 SysMenu 正则同语义：path 小写、component 允许大驼峰（与前端页面组件命名一致） */
 const PATH_PATTERN = /^\/[a-z0-9-]+(?:\/[a-z0-9-]+)*$/
 const COMPONENT_PATTERN = /^[a-zA-Z0-9-]+(?:\/[a-zA-Z0-9-]+)+$/
-const PERMS_PATTERN = /^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$/
 
 /** 必填与格式规则与后端充血校验一致：目录必填 path（格式）；菜单必填 path+component（格式）；按钮必填 perms（格式） */
 const rules = computed<CrudRules>(() => {
@@ -187,10 +185,6 @@ const rules = computed<CrudRules>(() => {
       { max: 200, message: '前端组件路径长度不能超过 200' },
       { pattern: COMPONENT_PATTERN, message: '格式如 system/loginLog/index（至少两级，不以 / 开头、不以 .vue 结尾）' },
     ],
-    perms: [
-      { max: 100, message: '权限标识长度不能超过 100' },
-      { pattern: PERMS_PATTERN, message: '格式如 system:menu:create（三段冒号分隔，小写）' },
-    ],
   }
   if (type === MENU_TYPE_DIR || type === MENU_TYPE_MENU) {
     rulesMap.path?.push({ required: true, message: '目录/菜单必须配置路由地址' })
@@ -199,7 +193,7 @@ const rules = computed<CrudRules>(() => {
     rulesMap.component?.push({ required: true, message: '菜单必须配置前端组件路径' })
   }
   if (type === MENU_TYPE_BUTTON) {
-    // 按钮三段式：拼接结果天然满足整体 PERMS_PATTERN，逐段校验给出更精确的提示
+    // 按钮的权限点必填；目录/菜单选填（提交时校验"填则三段完整"）
     rulesMap.permsModule = [
       { required: true, message: '请选择模块段' },
       { pattern: SEGMENT_PATTERN, message: '小写字母开头，仅小写字母/数字/中划线' },
@@ -212,7 +206,11 @@ const rules = computed<CrudRules>(() => {
       { required: true, message: '请输入动作段' },
       { pattern: SEGMENT_PATTERN, message: '小写字母开头，仅小写字母/数字/中划线' },
     ]
-    rulesMap.perms?.push({ required: true, message: '按钮必须配置权限标识' })
+  } else {
+    // 选填：仅在已填内容时校验段格式；跨段完整性由提交时兜底
+    rulesMap.permsModule = [{ pattern: SEGMENT_PATTERN, message: '小写字母开头，仅小写字母/数字/中划线' }]
+    rulesMap.permsObject = [{ pattern: SEGMENT_PATTERN, message: '小写字母开头，仅小写字母/数字/中划线' }]
+    rulesMap.permsAction = [{ pattern: SEGMENT_PATTERN, message: '小写字母开头，仅小写字母/数字/中划线' }]
   }
   return rulesMap
 })
@@ -236,10 +234,6 @@ function handleMenuTypeChange(event: RadioChangeEvent, form: CrudForm): void {
     // 按钮只能挂菜单下，清空非法父级由用户重选
     form.parentId = undefined
   }
-  // 切到按钮改用三段输入，清空整体值避免脏数据
-  if (currentMenuType.value === MENU_TYPE_BUTTON) {
-    form.perms = ''
-  }
 }
 
 /** 新增下级时的默认类型：目录→菜单，菜单→按钮 */
@@ -259,15 +253,28 @@ function toNullable(value: unknown): string | null {
   return text === '' ? null : text
 }
 
-/** 按钮三段拼接为整体 perms（各段已经过 SEGMENT_PATTERN 校验） */
-function joinPerms(form: CrudForm): string {
-  return [form.permsModule, form.permsObject, form.permsAction]
-    .map((seg) => (typeof seg === 'string' ? seg.trim() : ''))
-    .join(':')
+/** 三段是否全空 */
+function permsEmpty(form: CrudForm): boolean {
+  return [form.permsModule, form.permsObject, form.permsAction].every(
+    (seg) => !(typeof seg === 'string' && seg.trim() !== ''),
+  )
 }
 
 async function handleSubmit(form: CrudForm): Promise<void> {
   const type = form.menuType as number
+  // 选填类型（目录/菜单）：填了任意一段则三段必须完整
+  if (type !== MENU_TYPE_BUTTON && !permsEmpty(form)) {
+    const missing = [form.permsModule, form.permsObject, form.permsAction].some(
+      (seg) => !(typeof seg === 'string' && seg.trim() !== ''),
+    )
+    if (missing) {
+      message.warning('填写权限标识时，模块/对象/动作三段必须完整')
+      throw new Error('perms incomplete')
+    }
+  }
+  const segments = [form.permsModule, form.permsObject, form.permsAction].map((seg) =>
+    typeof seg === 'string' ? seg.trim() : '',
+  )
   const dto = {
     menuName: form.menuName as string,
     parentId: form.parentId as string,
@@ -275,8 +282,8 @@ async function handleSubmit(form: CrudForm): Promise<void> {
     // 按钮不承载路由信息；目录不承载组件路径（后端也会清空 button 的 path/component）
     path: type === MENU_TYPE_BUTTON ? null : toNullable(form.path),
     component: type === MENU_TYPE_MENU ? toNullable(form.component) : null,
-    // 按钮由三段拼接；目录/菜单选填单输入
-    perms: type === MENU_TYPE_BUTTON ? joinPerms(form) : toNullable(form.perms),
+    // 三段全空 = 不配置权限；否则拼接 a:b:c
+    perms: permsEmpty(form) ? null : segments.join(':'),
     icon: toNullable(form.icon),
     menuSort: Number(form.menuSort ?? 0),
     visible: form.visible as number,
@@ -293,7 +300,7 @@ async function handleSubmit(form: CrudForm): Promise<void> {
   emit('saved')
 }
 
-/** 编辑按钮时按第一个冒号拆分 perms 回填三段；非三段值整串放入对象段由用户修正 */
+/** 编辑回填：按第一个冒号拆分 perms 到三段（目录/菜单/按钮统一）；非三段值整串放入对象段由用户修正 */
 function splitPerms(record: Record<string, unknown>): void {
   const perms = (record.perms as string | undefined)?.trim() ?? ''
   const [module = '', object = '', action = ''] = perms.split(':')
@@ -316,7 +323,7 @@ function show(nextMode: CrudMode, record?: Record<string, unknown>, parent?: Men
   presetMenuType.value = defaultChildType(parent)
   currentMenuType.value =
     nextMode === 'edit' ? Number(record?.menuType ?? MENU_TYPE_DIR) : presetMenuType.value
-  if (nextMode === 'edit' && currentMenuType.value === MENU_TYPE_BUTTON) {
+  if (nextMode === 'edit') {
     splitPerms(record as Record<string, unknown>)
   }
   crudRef.value?.show(nextMode, record)
@@ -329,6 +336,7 @@ defineExpose({ show })
   <AppCrudModal
     ref="crudRef"
     title="菜单"
+    :width="760"
     :initial-form="initialForm"
     :rules="rules"
     :on-submit="handleSubmit"
@@ -378,43 +386,45 @@ defineExpose({ show })
             />
           </a-form-item>
         </a-col>
-        <a-col v-if="currentMenuType === MENU_TYPE_BUTTON" :span="12">
-          <!-- 按钮三段式：模块段下拉（固定域）、对象段自由输入、动作段自动完成（可自填） -->
-          <a-row :gutter="8">
-            <a-col :span="8">
-              <a-form-item label="权限标识" name="permsModule" extra="格式：{模块}:{对象}:{动作}">
-                <a-select
-                  v-model:value="(form.permsModule as string)"
-                  :options="permsModuleOptions"
-                  placeholder="模块"
-                  show-search
-                />
-              </a-form-item>
-            </a-col>
-            <a-col :span="8">
-              <a-form-item name="permsObject" label=" " :colon="false">
-                <a-input v-model:value="(form.permsObject as string)" placeholder="对象，如 menu" />
-              </a-form-item>
-            </a-col>
-            <a-col :span="8">
-              <a-form-item name="permsAction" label=" " :colon="false">
-                <a-auto-complete
-                  v-model:value="(form.permsAction as string)"
-                  :options="permsActionOptions"
-                  placeholder="动作，如 create"
-                  allow-clear
-                />
-              </a-form-item>
-            </a-col>
-          </a-row>
-        </a-col>
-        <a-col v-else :span="12">
-          <a-form-item label="权限标识" name="perms" extra="选填，格式：{模块}:{对象}:{动作}">
-            <a-input
-              v-model:value="(form.perms as string)"
-              placeholder="如 system:menu:create"
-              autocomplete="off"
-            />
+        <a-col :span="24">
+          <!-- 权限标识三段式：模块段下拉（固定域）、对象段自由输入、动作段自动完成（可自填）；按钮必填，目录/菜单选填 -->
+          <!-- required 仅为红星视觉标记（必填规则挂在内层三段 form-item 上） -->
+          <a-form-item
+            label="权限标识"
+            :required="currentMenuType === MENU_TYPE_BUTTON"
+            :extra="
+              currentMenuType === MENU_TYPE_BUTTON
+                ? '格式：{模块}:{对象}:{动作}，按钮必填'
+                : '选填，格式：{模块}:{对象}:{动作}；填写时三段需完整'
+            "
+          >
+            <a-row :gutter="8">
+              <a-col :span="8">
+                <a-form-item name="permsModule">
+                  <a-select
+                    v-model:value="(form.permsModule as string)"
+                    :options="permsModuleOptions"
+                    placeholder="模块，如 system"
+                    show-search
+                  />
+                </a-form-item>
+              </a-col>
+              <a-col :span="8">
+                <a-form-item name="permsObject">
+                  <a-input v-model:value="(form.permsObject as string)" placeholder="对象，如 menu" />
+                </a-form-item>
+              </a-col>
+              <a-col :span="8">
+                <a-form-item name="permsAction">
+                  <a-auto-complete
+                    v-model:value="(form.permsAction as string)"
+                    :options="permsActionOptions"
+                    placeholder="动作，如 create"
+                    allow-clear
+                  />
+                </a-form-item>
+              </a-col>
+            </a-row>
           </a-form-item>
         </a-col>
         <a-col :span="12">

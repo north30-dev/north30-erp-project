@@ -62,6 +62,33 @@ export const VISIBLE_MAP: Record<number, string> = {
   [VISIBLE_HIDDEN]: '隐藏',
 }
 
+/* ---------- 组织部门类型（sys_dept.dept_type，对齐后端 DeptCreateDTO 注释） ---------- */
+export const DEPT_TYPE_GROUP = 1
+export const DEPT_TYPE_FACTORY = 2
+export const DEPT_TYPE_BRANCH = 3
+export const DEPT_TYPE_DEPT = 4
+export const DEPT_TYPE_WORKSHOP = 5
+
+export const DEPT_TYPE_OPTIONS = [
+  { label: '集团', value: DEPT_TYPE_GROUP },
+  { label: '生产基地', value: DEPT_TYPE_FACTORY },
+  { label: '销售分公司', value: DEPT_TYPE_BRANCH },
+  { label: '部门', value: DEPT_TYPE_DEPT },
+  { label: '车间', value: DEPT_TYPE_WORKSHOP },
+] as const
+
+/** 组织类型反查（表格列渲染用） */
+export const DEPT_TYPE_MAP: Record<number, string> = {
+  [DEPT_TYPE_GROUP]: '集团',
+  [DEPT_TYPE_FACTORY]: '生产基地',
+  [DEPT_TYPE_BRANCH]: '销售分公司',
+  [DEPT_TYPE_DEPT]: '部门',
+  [DEPT_TYPE_WORKSHOP]: '车间',
+}
+
+/** 组织树最大深度（对齐后端层级上限 5 级，超限 18027） */
+export const MAX_DEPT_DEPTH = 5
+
 /* ---------- 通用状态 ---------- */
 export const STATUS_ENABLED = 1
 export const STATUS_DISABLED = 0

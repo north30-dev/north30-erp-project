@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // 用户管理列表页（F1 页面范式基准）：AppSearchForm + useTable + AppCrudModal 三件套骨架。
 // 差异仅在列定义与表单字段；扩展交互：状态开关、重置密码、分配角色、导出。
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { message, Modal } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import {
@@ -14,6 +14,7 @@ import {
 } from '@ant-design/icons-vue'
 import AppSearchForm from '../../../components/AppSearchForm/index.vue'
 import { useTable } from '../../../composables/useTable'
+import { getDeptTree } from '../../../api/dept'
 import { useAuthStore } from '../../../stores/auth'
 import {
   changeUserStatus,
@@ -23,7 +24,7 @@ import {
   getUserPage,
 } from '../../../api/user'
 import { STATUS_DISABLED, STATUS_ENABLED, STATUS_OPTIONS } from '../../../constants'
-import type { UserDetailVO, UserQueryDTO, UserVO } from '../../../types/api'
+import type { DeptTreeVO, UserDetailVO, UserQueryDTO, UserVO } from '../../../types/api'
 import UserFormModal from './components/UserFormModal.vue'
 import ResetPasswordModal from './components/ResetPasswordModal.vue'
 import AssignRolesModal from './components/AssignRolesModal.vue'
@@ -47,8 +48,19 @@ const { draftQuery, pageNum, pageSize, records, total, loading, search, reset, r
   useTable<Omit<UserQueryDTO, 'pageNum' | 'pageSize'>, UserVO>(getUserPage, {
     username: '',
     realName: '',
+    deptId: undefined,
     status: undefined,
   })
+
+/** 部门过滤下拉（F4 回接）：children 为 null 时收敛为 undefined，避免空子级渲染 */
+const deptTree = ref<DeptTreeVO[]>([])
+const deptTreeData = computed(() => toTreeNodes(deptTree.value))
+function toTreeNodes(nodes: DeptTreeVO[]): DeptTreeVO[] {
+  return nodes.map((node) => ({
+    ...node,
+    children: node.children?.length ? toTreeNodes(node.children) : undefined,
+  })) as DeptTreeVO[]
+}
 
 const formModalRef = ref<InstanceType<typeof UserFormModal> | null>(null)
 const resetModalRef = ref<InstanceType<typeof ResetPasswordModal> | null>(null)
@@ -57,9 +69,10 @@ const assignModalRef = ref<InstanceType<typeof AssignRolesModal> | null>(null)
 const exporting = ref(false)
 const statusSavingId = ref<string | null>(null)
 
-/** 进入页面即加载列表（useTable 仅提供状态机，不自动请求） */
-onMounted(() => {
+/** 进入页面即加载列表（useTable 仅提供状态机，不自动请求）；同时拉部门树供过滤下拉 */
+onMounted(async () => {
   void search()
+  deptTree.value = await getDeptTree()
 })
 
 /** 拉详情 → 打开编辑弹窗（回填 version/roleIds 等列表页没有的字段） */
@@ -128,6 +141,18 @@ async function handleExport(): Promise<void> {
         </a-form-item>
         <a-form-item label="真实姓名">
           <a-input v-model:value="draftQuery.realName" placeholder="请输入真实姓名" allow-clear />
+        </a-form-item>
+        <a-form-item label="所属部门">
+          <a-tree-select
+            v-model:value="draftQuery.deptId"
+            :tree-data="deptTreeData"
+            :field-names="{ label: 'deptName', value: 'id', children: 'children' }"
+            placeholder="请选择所属部门"
+            allow-clear
+            show-search
+            tree-node-filter-prop="deptName"
+            tree-default-expand-all
+          />
         </a-form-item>
         <a-form-item label="状态">
           <a-select

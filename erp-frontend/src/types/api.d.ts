@@ -373,7 +373,59 @@ export interface DeptTreeVO {
   phone: string | null
   deptSort: number
   status: number
+  /** 备注（编辑弹窗回填用） */
+  remark: string | null
+  /** 乐观锁版本号（编辑提交用） */
+  version: number
   children: DeptTreeVO[] | null
+}
+
+/** 组织部门树查询 DTO（5.4.1，GET 查询参数） */
+export interface DeptTreeQueryDTO {
+  deptName?: string
+  /** 类型（1：集团，2：生产基地，3：销售分公司，4：部门，5：车间） */
+  deptType?: number
+  status?: number
+}
+
+/** 创建组织部门 DTO（5.4.2） */
+export interface DeptCreateDTO {
+  deptCode: string
+  deptName: string
+  /** 上级组织 ID（0 为顶级） */
+  parentId: string
+  deptType: number
+  leader: string | null
+  phone: string | null
+  deptSort: number
+  status: number
+  remark: string | null
+}
+
+/** 更新组织部门 DTO（5.4.3，parentId 变更时服务端级联重算下级） */
+export interface DeptUpdateDTO {
+  deptName: string
+  parentId: string
+  deptType: number
+  leader: string | null
+  phone: string | null
+  deptSort: number
+  status: number
+  remark: string | null
+  version: number
+}
+
+/** 组织部门写操作响应 VO（5.4.2/5.4.3/5.4.4） */
+export interface DeptMutationVO {
+  id: string
+  /** 服务端计算/重算后的祖级路径（删除时为 null） */
+  ancestors: string | null
+  /** 服务端计算/重算后的层级（删除时为 null） */
+  deptLevel: number | null
+  /** 更新时间（新增/删除时为 null） */
+  updateTime: string | null
+  /** 逻辑删除标记（仅删除接口返回） */
+  isDeleted: number | null
 }
 
 /* ---------- 角色（role 域，对齐后端 SysRoleController /api/system/roles，接口文档 5.2） ---------- */

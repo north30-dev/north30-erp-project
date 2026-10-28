@@ -14,6 +14,8 @@ const props = defineProps<{
   rules?: CrudRules
   /** 提交回调（异步）；失败由 request 拦截器统一提示，这里不再重复弹 */
   onSubmit: CrudSubmit
+  /** 弹窗宽度（px），默认 520；字段较多的表单可传更大值 */
+  width?: number
 }>()
 
 const open = ref(false)
@@ -55,6 +57,7 @@ defineExpose({ show })
   <a-modal
     v-model:open="open"
     :title="modalTitle"
+    :width="width ?? 520"
     :confirm-loading="submitting"
     :mask-closable="false"
     destroy-on-close
