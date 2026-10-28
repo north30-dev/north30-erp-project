@@ -110,6 +110,19 @@ export const STATUS_MAP: Record<number, string> = {
   [STATUS_DISABLED]: '停用',
 }
 
+/* ---------- 数据字典（sys_dict_type / sys_dict_item，对齐后端 DictItemCreateDTO） ---------- */
+
+/** 默认语言编码（后端缺省 zh-CN） */
+export const DICT_LANG_DEFAULT = 'zh-CN'
+
+export const IS_DEFAULT_NO = 0
+export const IS_DEFAULT_YES = 1
+
+export const IS_DEFAULT_OPTIONS = [
+  { label: '否', value: IS_DEFAULT_NO },
+  { label: '是', value: IS_DEFAULT_YES },
+] as const
+
 /* ---------- 性别（sys_user.gender） ---------- */
 export const GENDER_UNKNOWN = 0
 export const GENDER_MALE = 1

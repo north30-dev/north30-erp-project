@@ -531,3 +531,102 @@ export interface RoleMenuAssignedVO {
 export interface RoleMenuIdsVO {
   menuIds: string[]
 }
+
+/* ---------- 数据字典（dict 域，对齐后端 SysDictTypeController / SysDictItemController，接口文档 5.5） ---------- */
+
+/** 通用写操作响应 VO（me.north30.erp.system.common.vo.MutationVO：新增返回 id、修改返回 updateTime、删除返回 isDeleted） */
+export interface MutationVO {
+  id: string | null
+  updateTime: string | null
+  isDeleted: number | null
+}
+
+/** 字典类型分页查询 DTO（5.5.1） */
+export interface DictTypePageQueryDTO {
+  dictType?: string
+  dictName?: string
+  status?: number
+  pageNum?: number
+  pageSize?: number
+}
+
+/** 字典类型分页记录 VO（5.5.1，itemCount 为派生计数；version/remark 供编辑弹窗回填） */
+export interface DictTypeVO {
+  id: string
+  dictType: string
+  dictName: string
+  status: number
+  remark: string | null
+  version: number
+  createTime: string
+  itemCount: number
+}
+
+/** 新增字典类型请求 DTO（5.5.2，dictType 唯一：小写字母开头，小写字母/数字/下划线） */
+export interface DictTypeCreateDTO {
+  dictType: string
+  dictName: string
+  status?: number
+  remark?: string | null
+}
+
+/** 修改字典类型请求 DTO（5.5.3，dict_type 不可修改，乐观锁 version 必填） */
+export interface DictTypeUpdateDTO {
+  dictName: string
+  status?: number
+  remark?: string | null
+  version: number
+}
+
+/** 字典项分页查询 DTO（5.5.5，dictType 后端必填，缺失 10001） */
+export interface DictItemPageQueryDTO {
+  dictType?: string
+  lang?: string
+  status?: number
+  pageNum?: number
+  pageSize?: number
+}
+
+/** 字典项分页记录 VO（5.5.5，cached 为派生缓存标识，当前恒为 false） */
+export interface DictItemVO {
+  id: string
+  dictType: string
+  itemLabel: string
+  itemValue: string
+  lang: string | null
+  itemSort: number | null
+  cssClass: string | null
+  /** 是否默认选中（0：否，1：是） */
+  isDefault: number | null
+  extJson: string | null
+  status: number
+  remark: string | null
+  version: number
+  cached: boolean
+}
+
+/** 新增字典项请求 DTO（5.5.6，dictType+itemValue+lang 唯一） */
+export interface DictItemCreateDTO {
+  dictType: string
+  itemLabel: string
+  itemValue: string
+  lang?: string | null
+  itemSort?: number | null
+  cssClass?: string | null
+  isDefault?: number | null
+  extJson?: string | null
+  status?: number
+  remark?: string | null
+}
+
+/** 修改字典项请求 DTO（5.5.7，item_value 不可修改，乐观锁 version 必填） */
+export interface DictItemUpdateDTO {
+  itemLabel?: string
+  itemSort?: number | null
+  cssClass?: string | null
+  isDefault?: number | null
+  extJson?: string | null
+  status?: number
+  remark?: string | null
+  version: number
+}
