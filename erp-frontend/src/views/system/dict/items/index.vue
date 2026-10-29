@@ -5,14 +5,16 @@ import { useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import {
+  ArrowDownOutlined,
   ArrowLeftOutlined,
+  ArrowUpOutlined,
   DeleteOutlined,
   EditOutlined,
   PlusOutlined,
 } from '@ant-design/icons-vue'
 import AppSearchForm from '../../../../components/AppSearchForm/index.vue'
 import { useTable } from '../../../../composables/useTable'
-import { deleteDictItem, getDictItemPage, updateDictItem } from '../../../../api/dict'
+import { changeDictItemStatus, deleteDictItem, getDictItemPage, moveDictItem } from '../../../../api/dict'
 import {
   DICT_LANG_DEFAULT,
   IS_DEFAULT_YES,
@@ -27,13 +29,12 @@ const columns: ColumnsType<DictItemVO> = [
   { title: '字典项标签', dataIndex: 'itemLabel', width: 160 },
   { title: '字典项值', dataIndex: 'itemValue', width: 140 },
   { title: '语言', dataIndex: 'lang', width: 90 },
-  { title: '排序', dataIndex: 'itemSort', width: 80 },
   { title: '默认', dataIndex: 'isDefault', width: 80 },
   { title: '标签样式', dataIndex: 'cssClass', width: 120 },
   { title: '状态', dataIndex: 'status', width: 90 },
   { title: '缓存', dataIndex: 'cached', width: 80 },
   { title: '备注', dataIndex: 'remark', width: 160 },
-  { title: '操作', key: 'action', width: 160, fixed: 'right' },
+  { title: '操作', key: 'action', width: 260, fixed: 'right' },
 ]
 
 const route = useRoute()
@@ -43,10 +44,14 @@ const router = useRouter()
 const currentDictType = (route.query.dictType as string) ?? ''
 
 const { draftQuery, pageNum, pageSize, records, total, loading, search, reset, reload, handleTableChange } =
-  useTable<Omit<DictItemPageQueryDTO, 'pageNum' | 'pageSize' | 'dictType'>, DictItemVO>(getDictItemPage, {
-    lang: '',
-    status: undefined,
-  })
+  useTable<Omit<DictItemPageQueryDTO, 'pageNum' | 'pageSize' | 'dictType'>, DictItemVO>(
+    // dictType 由路由注入为固定过滤条件（后端必填），不随搜索表单重置
+    (query) => getDictItemPage({ ...query, dictType: currentDictType }),
+    {
+      lang: '',
+      status: undefined,
+    },
+  )
 
 const formModalRef = ref<InstanceType<typeof DictItemFormModal> | null>(null)
 
@@ -67,23 +72,33 @@ function goBack(): void {
   void router.push('/system/dict')
 }
 
-/** 状态开关：携带行内 version 走全量更新接口提交乐观锁，成功后整表刷新 */
+/** 状态开关：走专用 status 动作接口（08 文档阶段四状态开关统一），成功后整表刷新 */
 async function handleStatusChange(record: DictItemVO, checked: boolean): Promise<void> {
   statusSavingId.value = record.id
   try {
-    await updateDictItem(record.id, {
-      itemLabel: record.itemLabel,
-      itemSort: record.itemSort,
-      cssClass: record.cssClass,
-      isDefault: record.isDefault,
-      extJson: record.extJson,
+    await changeDictItemStatus(record.id, {
       status: checked ? STATUS_ENABLED : STATUS_DISABLED,
-      remark: record.remark,
       version: record.version,
     })
     await reload()
   } finally {
     statusSavingId.value = null
+  }
+}
+
+const movingId = ref<string | null>(null)
+
+/**
+ * 上移/下移：同级规范化重排后相邻交换（08 文档阶段四排序统一）。
+ * 分页列表拿不到完整同级信息，顶/底边界不前置禁用，由后端 422 提示兜底。
+ */
+async function handleMove(record: DictItemVO, direction: 'up' | 'down'): Promise<void> {
+  movingId.value = record.id
+  try {
+    await moveDictItem(record.id, { direction })
+    await reload()
+  } finally {
+    movingId.value = null
   }
 }
 
@@ -146,7 +161,7 @@ function confirmDelete(record: DictItemVO): void {
         :columns="columns"
         :data-source="records"
         :loading="loading"
-        :scroll="{ x: 1160 }"
+        :scroll="{ x: 1180 }"
         :pagination="{
           current: pageNum,
           pageSize: pageSize,
@@ -182,6 +197,24 @@ function confirmDelete(record: DictItemVO): void {
           </template>
           <template v-else-if="column.key === 'action'">
             <a-space>
+              <a-button
+                v-perm="'system:dict:update'"
+                type="link"
+                size="small"
+                :loading="movingId === (record as DictItemVO).id"
+                @click="handleMove(record as DictItemVO, 'up')"
+              >
+                <ArrowUpOutlined /> 上移
+              </a-button>
+              <a-button
+                v-perm="'system:dict:update'"
+                type="link"
+                size="small"
+                :loading="movingId === (record as DictItemVO).id"
+                @click="handleMove(record as DictItemVO, 'down')"
+              >
+                <ArrowDownOutlined /> 下移
+              </a-button>
               <a-button
                 v-perm="'system:dict:update'"
                 type="link"

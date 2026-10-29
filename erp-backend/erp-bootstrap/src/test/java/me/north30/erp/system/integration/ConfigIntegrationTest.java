@@ -250,6 +250,80 @@ class ConfigIntegrationTest extends ApiIntegrationTest {
     }
 
     @Nested
+    @DisplayName("变更参数状态")
+    class ChangeStatusTest {
+
+        @Test
+        @DisplayName("停用后重新启用自建参数，返回变更后状态")
+        void shouldToggleStatus_whenConfigCreated() {
+            // Given（新建行乐观锁版本为 0）
+            long id = createConfig("it.config.status." + keySuffix());
+
+            // When / Then：停用
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 0, "version", 0))
+                .when().post(BASE_PATH + "/" + id + "/status")
+                .then().statusCode(200).body("code", equalTo(200))
+                .body("data.status", equalTo(0));
+
+            // When / Then：启用
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 1, "version", 1))
+                .when().post(BASE_PATH + "/" + id + "/status")
+                .then().statusCode(200).body("code", equalTo(200))
+                .body("data.status", equalTo(1));
+        }
+
+        @Test
+        @DisplayName("停用内置参数，返回422内置不可停用")
+        void shouldReturn422BuiltinUndeletable_whenStopBuiltinConfig() {
+            // Given：内置参数经分页检索 isSystem=1
+            long builtinId = given().port(port).header("Authorization", "Bearer " + adminToken())
+                .queryParam("pageSize", 200)
+                .when().get(BASE_PATH)
+                .then().statusCode(200)
+                .extract().jsonPath().getLong("data.list.find { it.isSystem == 1 }.id");
+
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 0, "version", 999))
+                .when().post(BASE_PATH + "/" + builtinId + "/status")
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.BUILTIN_CONFIG_UNDELETABLE.getCode()));
+        }
+
+        @Test
+        @DisplayName("版本号过期，返回409乐观锁冲突")
+        void shouldReturn409Conflict_whenVersionStale() {
+            // Given
+            long id = createConfig("it.config.stale." + keySuffix());
+
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 0, "version", 999))
+                .when().post(BASE_PATH + "/" + id + "/status")
+                .then().statusCode(409)
+                .body("code", equalTo(CommonErrorCode.OPTIMISTIC_LOCK_CONFLICT.getCode()));
+        }
+
+        @Test
+        @DisplayName("停用不存在的参数id，返回422参数不存在")
+        void shouldReturn422ConfigNotFound_whenIdNotExist() {
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 0, "version", 1))
+                .when().post(BASE_PATH + "/999999999/status")
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.CONFIG_NOT_FOUND.getCode()));
+        }
+    }
+
+    @Nested
     @DisplayName("鉴权校验")
     class AuthRoundTest {
 

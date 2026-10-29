@@ -18,6 +18,7 @@ import me.north30.erp.system.role.dto.RoleAssignMenuDTO;
 import me.north30.erp.system.role.dto.RoleCreateDTO;
 import me.north30.erp.system.role.dto.RoleDataScopeSaveDTO;
 import me.north30.erp.system.role.dto.RolePageQueryDTO;
+import me.north30.erp.system.role.dto.RoleStatusDTO;
 import me.north30.erp.system.role.dto.RoleUpdateDTO;
 import me.north30.erp.system.role.entity.SysRole;
 import me.north30.erp.system.role.entity.SysRoleDataScope;
@@ -35,6 +36,7 @@ import me.north30.erp.system.role.vo.RoleDataScopeItemVO;
 import me.north30.erp.system.role.vo.RoleDataScopeVO;
 import me.north30.erp.system.role.vo.RoleMenuAssignedVO;
 import me.north30.erp.system.role.vo.RoleMenuIdsVO;
+import me.north30.erp.system.role.vo.RoleStatusVO;
 import me.north30.erp.system.role.vo.RoleUpdatedVO;
 import me.north30.erp.system.role.vo.RoleVO;
 import org.springframework.stereotype.Service;
@@ -78,7 +80,7 @@ public class SysRoleApplicationServiceImpl implements SysRoleApplicationService 
                 .collect(Collectors.groupingBy(SysUserRole::getRoleId, Collectors.counting()));
         List<RoleVO> vos = page.getRecords().stream()
             .map(role -> new RoleVO(role.getId(), role.getRoleCode(), role.getRoleName(),
-                role.getRoleSort(), role.getDataScope(), role.getIsBuiltin(), role.getStatus(),
+                role.getDataScope(), role.getIsBuiltin(), role.getStatus(),
                 role.getRemark(), role.getVersion(), userCounts.getOrDefault(role.getId(), 0L).intValue()))
             .toList();
         return PageResult.of(page.getTotal(), (int) page.getCurrent(), (int) page.getSize(), vos);
@@ -116,6 +118,20 @@ public class SysRoleApplicationServiceImpl implements SysRoleApplicationService 
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public RoleStatusVO changeStatus(Long id, RoleStatusDTO dto) {
+        SysRole role = sysRoleDomainService.requireRole(id);
+        // 状态值域守卫（10001）与内置角色不可停用（18017）收敛于实体 changeStatus
+        role.changeStatus(dto.status());
+        SysRole patch = new SysRole();
+        patch.setId(id);
+        patch.setStatus(role.getStatus());
+        patch.setVersion(dto.version());
+        UpdateGuardUtil.checkOptimisticLockConflict(sysRoleMapper.updateById(patch));
+        return new RoleStatusVO(role.getStatus());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public DeleteResultVO delete(Long id) {
         SysRole role = sysRoleDomainService.requireRole(id);
         if (role.getIsBuiltin() != null && role.getIsBuiltin() == 1) {
@@ -133,7 +149,12 @@ public class SysRoleApplicationServiceImpl implements SysRoleApplicationService 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public RoleMenuAssignedVO assignMenus(Long id, RoleAssignMenuDTO dto) {
-        sysRoleDomainService.requireRole(id);
+        SysRole role = sysRoleDomainService.requireRole(id);
+        // ADMIN 超管角色不走菜单勾选（权限=代码层全量），权限集修改一律拒绝（08 文档 2.1）
+        if (SysRole.ROLE_CODE_ADMIN.equals(role.getRoleCode())) {
+            throw new BusinessException(SystemErrorCode.ROLE_BUILTIN,
+                "超级管理员角色权限为代码内置全量，不可通过菜单勾选修改");
+        }
         List<Long> menuIds = dto.menuIds().stream().distinct().toList();
         List<SysMenu> menus = List.of();
         if (!menuIds.isEmpty()) {

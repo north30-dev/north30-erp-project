@@ -24,12 +24,11 @@ public interface RoleConverter {
 
     /**
      * 新增角色 DTO → 实体。
-     * <p>roleSort/dataScope/status 缺省值与 isBuiltin 由 Service 显式处理。</p>
+     * <p>dataScope/status 缺省值与 isBuiltin 由 Service 显式处理。</p>
      */
     @BeanMapping(ignoreByDefault = true)
     @Mapping(target = "roleCode")
     @Mapping(target = "roleName")
-    @Mapping(target = "roleSort")
     @Mapping(target = "dataScope")
     @Mapping(target = "status")
     @Mapping(target = "remark")
@@ -41,9 +40,7 @@ public interface RoleConverter {
      */
     @BeanMapping(ignoreByDefault = true, nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "roleName")
-    @Mapping(target = "roleSort")
     @Mapping(target = "dataScope")
-    @Mapping(target = "status")
     @Mapping(target = "remark")
     @Mapping(target = "version")
     void updateSysRole(RoleUpdateDTO dto, @MappingTarget SysRole role);

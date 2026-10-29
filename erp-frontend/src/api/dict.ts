@@ -1,4 +1,5 @@
 import { del, get, post, put } from '../utils/request'
+import { createStatusApi } from './statusApi'
 import type {
   DeleteResultVO,
   DictItemCreateDTO,
@@ -9,11 +10,23 @@ import type {
   DictTypePageQueryDTO,
   DictTypeUpdateDTO,
   DictTypeVO,
+  MoveDTO,
   MutationVO,
   PageResult,
 } from '../types/api'
 
 /** 字典管理接口（对应后端 SysDictTypeController /api/system/dict-types 与 SysDictItemController /api/system/dict-items，接口文档 5.5） */
+
+/** 变更字典类型状态（08 文档阶段四状态开关统一） */
+export const changeDictTypeStatus = createStatusApi('dict-types').changeStatus
+
+/** 变更字典项状态（08 文档阶段四状态开关统一） */
+export const changeDictItemStatus = createStatusApi('dict-items').changeStatus
+
+/** 字典项上移/下移（08 文档阶段四排序统一，同 dict_type + lang 分组内规范化重排后相邻交换） */
+export function moveDictItem(id: string, data: MoveDTO): Promise<void> {
+  return post<void>(`/system/dict-items/${id}/move`, data).then((r) => r.data)
+}
 
 export function getDictTypePage(query: DictTypePageQueryDTO): Promise<PageResult<DictTypeVO>> {
   return get<PageResult<DictTypeVO>>('/system/dict-types', query as Record<string, unknown>).then((r) => r.data)

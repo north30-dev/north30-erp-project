@@ -137,7 +137,6 @@ class SysRoleApplicationServiceImplTest {
             assertThat(first.id()).isEqualTo(1L);
             assertThat(first.roleCode()).isEqualTo("sales");
             assertThat(first.roleName()).isEqualTo("销售专员");
-            assertThat(first.roleSort()).isEqualTo(2);
             assertThat(first.dataScope()).isEqualTo(2);
             assertThat(first.isBuiltin()).isZero();
             assertThat(first.status()).isEqualTo(1);
@@ -145,11 +144,11 @@ class SysRoleApplicationServiceImplTest {
             assertThat(first.version()).isEqualTo(3);
             assertThat(first.userCount()).isEqualTo(2);
             assertThat(result.list().get(1).userCount()).isEqualTo(1);
-            // 默认排序：create_time DESC
+            // 默认排序：id ASC（角色纯列表无展示顺序语义，08 文档阶段四）
             verify(sysRoleMapper).selectPage(argThat((Page<SysRole> page) ->
                 page.orders().size() == 1
-                    && "create_time".equals(page.orders().get(0).getColumn())
-                    && !page.orders().get(0).isAsc()), any());
+                    && "id".equals(page.orders().get(0).getColumn())
+                    && page.orders().get(0).isAsc()), any());
         }
 
         @Test
@@ -275,7 +274,6 @@ class SysRoleApplicationServiceImplTest {
             verify(sysRoleMapper).insert(argThat((SysRole role) ->
                 "R001".equals(role.getRoleCode())
                     && "操作员".equals(role.getRoleName())
-                    && Integer.valueOf(0).equals(role.getRoleSort())
                     && Integer.valueOf(1).equals(role.getDataScope())
                     && Integer.valueOf(0).equals(role.getIsBuiltin())
                     && Integer.valueOf(1).equals(role.getStatus())
@@ -301,7 +299,7 @@ class SysRoleApplicationServiceImplTest {
         @DisplayName("创建角色，数据范围配置非法时抛出异常")
         void shouldThrow18018_whenDataScopeIllegal() {
             // Given：data_scope 值域由实体 changeDataScope 守卫，编码唯一性守卫默认放行
-            RoleCreateDTO dto = new RoleCreateDTO("R001", "操作员", null, 7, null, null);
+            RoleCreateDTO dto = new RoleCreateDTO("R001", "操作员", 7, null, null);
 
             // When / Then
             assertThatThrownBy(() -> service.create(dto))
@@ -323,7 +321,7 @@ class SysRoleApplicationServiceImplTest {
             when(sysRoleDomainService.requireRole(5L)).thenReturn(RoleTestFactory.sysRole());
             when(sysRoleMapper.selectById(5L)).thenReturn(RoleTestFactory.latestRoleWithUpdateTime());
             when(sysRoleMapper.updateById(any(SysRole.class))).thenReturn(1);
-            RoleUpdateDTO dto = new RoleUpdateDTO("销售主管", 7, 3, 0, "改备注", 5);
+            RoleUpdateDTO dto = new RoleUpdateDTO("销售主管", 3, "改备注", 5);
 
             // When
             RoleUpdatedVO vo = service.update(5L, dto);
@@ -333,9 +331,7 @@ class SysRoleApplicationServiceImplTest {
             verify(sysRoleMapper).updateById(argThat((SysRole role) ->
                 Long.valueOf(5L).equals(role.getId())
                     && "销售主管".equals(role.getRoleName())
-                    && Integer.valueOf(7).equals(role.getRoleSort())
                     && Integer.valueOf(3).equals(role.getDataScope())
-                    && Integer.valueOf(0).equals(role.getStatus())
                     && "改备注".equals(role.getRemark())
                     && Integer.valueOf(5).equals(role.getVersion())
                     // role_code 不可修改：保持库中原值
@@ -350,7 +346,7 @@ class SysRoleApplicationServiceImplTest {
                 new BusinessException(SystemErrorCode.ROLE_NOT_FOUND, "角色 5 不存在"));
 
             // When / Then
-            assertThatThrownBy(() -> service.update(5L, new RoleUpdateDTO("销售主管", null, null, null, null, 5)))
+            assertThatThrownBy(() -> service.update(5L, new RoleUpdateDTO("销售主管", null, null, 5)))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(18014))
                 .hasMessage("角色 5 不存在");
@@ -363,7 +359,7 @@ class SysRoleApplicationServiceImplTest {
             when(sysRoleDomainService.requireRole(5L)).thenReturn(RoleTestFactory.sysRole());
 
             // When / Then
-            assertThatThrownBy(() -> service.update(5L, new RoleUpdateDTO(null, null, 7, null, null, 5)))
+            assertThatThrownBy(() -> service.update(5L, new RoleUpdateDTO(null, 7, null, 5)))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(18018))
                 .hasMessage("数据范围配置非法：data_scope=7");
@@ -378,7 +374,7 @@ class SysRoleApplicationServiceImplTest {
             when(sysRoleMapper.updateById(any(SysRole.class))).thenReturn(0);
 
             // When / Then
-            assertThatThrownBy(() -> service.update(5L, new RoleUpdateDTO("销售主管", null, null, null, null, 5)))
+            assertThatThrownBy(() -> service.update(5L, new RoleUpdateDTO("销售主管", null, null, 5)))
                 .isInstanceOf(OptimisticLockingFailureException.class)
                 .hasMessage("数据已被其他操作修改，请重试");
         }
@@ -392,7 +388,7 @@ class SysRoleApplicationServiceImplTest {
             when(sysRoleMapper.updateById(any(SysRole.class))).thenReturn(1);
 
             // When
-            RoleUpdatedVO vo = service.update(5L, new RoleUpdateDTO("销售主管", null, null, null, null, 5));
+            RoleUpdatedVO vo = service.update(5L, new RoleUpdateDTO("销售主管", null, null, 5));
 
             // Then
             assertThat(vo.updateTime()).isNull();

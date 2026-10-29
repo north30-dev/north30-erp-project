@@ -9,7 +9,6 @@ import jakarta.validation.constraints.Size;
  *
  * @param configValue 参数值
  * @param configName  参数名称
- * @param status      状态 0-停用 1-启用
  * @param remark      备注
  * @param version     乐观锁版本号
  */
@@ -21,8 +20,6 @@ public record ConfigUpdateDTO(
 
     @Size(max = 200, message = "参数名称长度不能超过 200")
     String configName,
-
-    Integer status,
 
     @Size(max = 500, message = "备注长度不能超过 500")
     String remark,

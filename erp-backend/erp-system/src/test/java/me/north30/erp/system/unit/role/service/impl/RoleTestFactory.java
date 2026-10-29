@@ -42,7 +42,6 @@ public final class RoleTestFactory {
         role.setId(5L);
         role.setRoleCode("R001");
         role.setRoleName("操作员");
-        role.setRoleSort(2);
         role.setDataScope(2);
         role.setIsBuiltin(0);
         role.setStatus(1);
@@ -119,8 +118,8 @@ public final class RoleTestFactory {
         return scope;
     }
 
-    /** 合法新增角色请求：roleSort/dataScope/status 留空走默认值 */
+    /** 合法新增角色请求：dataScope/status 留空走默认值 */
     public static RoleCreateDTO validRoleCreateDTO() {
-        return new RoleCreateDTO("R001", "操作员", null, null, null, "备注");
+        return new RoleCreateDTO("R001", "操作员", null, null, "备注");
     }
 }

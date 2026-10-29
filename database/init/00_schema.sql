@@ -158,7 +158,6 @@ CREATE TABLE sys_role (
     id                  BIGSERIAL       PRIMARY KEY,
     role_code           VARCHAR(50)     NOT NULL,               -- 角色编码（如 admin、sales_manager）
     role_name           VARCHAR(100)    NOT NULL,               -- 角色名称
-    role_sort           INT             NOT NULL DEFAULT 0,     -- 显示顺序
     data_scope          SMALLINT        NOT NULL DEFAULT 1,     -- 数据范围 1-全部 2-本组织及下级 3-本组织 4-本部门及下级 5-本部门 6-仅本人 9-自定义
     is_builtin          SMALLINT        NOT NULL DEFAULT 0,     -- 是否内置角色 0-否 1-是（内置不可删）
     status              SMALLINT        NOT NULL DEFAULT 1,     -- 状态 0-停用 1-启用
@@ -185,6 +184,7 @@ CREATE TABLE sys_menu (
     menu_sort           INT             NOT NULL DEFAULT 0,     -- 显示顺序
     visible             SMALLINT        NOT NULL DEFAULT 1,     -- 是否显示 0-隐藏 1-显示
     status              SMALLINT        NOT NULL DEFAULT 1,     -- 状态 0-停用 1-启用
+    is_system           SMALLINT        NOT NULL DEFAULT 0,     -- 是否内置菜单 0-否 1-是（种子菜单即内置，不可停用/删除）
     create_by           VARCHAR(50)     NOT NULL,
     create_time         TIMESTAMP       NOT NULL DEFAULT NOW(),
     update_by           VARCHAR(50)     NOT NULL,
@@ -193,7 +193,7 @@ CREATE TABLE sys_menu (
     is_deleted          SMALLINT        NOT NULL DEFAULT 0,
     remark              VARCHAR(500)
 );
-COMMENT ON TABLE sys_menu IS '菜单与按钮权限点表（SYS-03，三级：目录/菜单/按钮）';
+COMMENT ON TABLE sys_menu IS '菜单与按钮权限点表（SYS-03，三级：目录/菜单/按钮；种子菜单 is_system=1 受保护）';
 
 -- 4. sys_user_role 用户-角色关联表
 CREATE TABLE sys_user_role (

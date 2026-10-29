@@ -99,6 +99,62 @@ class MenuIntegrationTest extends ApiIntegrationTest {
     }
 
     @Nested
+    @DisplayName("菜单上移/下移")
+    class MoveTest {
+
+        @Test
+        @DisplayName("上移成功，树中同级顺序交换")
+        void shouldMoveUpAndSwapOrder_whenMoveUp() {
+            // Given：两个顶级目录，创建顺序 A→B（B sort 为 max+10 排在 A 之后）
+            long idA = createMenu(Map.of());
+            long idB = createMenu(Map.of());
+
+            // When：B 上移
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("direction", "up"))
+                .when().post(BASE_PATH + "/" + idB + "/move")
+                .then().statusCode(200).body("code", equalTo(200));
+
+            // Then：树中 B 排在 A 之前
+            List<Map<String, Object>> roots = getTree().jsonPath().getList("data");
+            List<String> names = roots.stream().map(n -> String.valueOf(n.get("menuName"))).toList();
+            String nameOfA = roots.stream().filter(n -> String.valueOf(n.get("id")).equals(String.valueOf(idA)))
+                .findFirst().map(n -> String.valueOf(n.get("menuName"))).orElseThrow();
+            String nameOfB = roots.stream().filter(n -> String.valueOf(n.get("id")).equals(String.valueOf(idB)))
+                .findFirst().map(n -> String.valueOf(n.get("menuName"))).orElseThrow();
+            assertThat(names.indexOf(nameOfB)).isLessThan(names.indexOf(nameOfA));
+        }
+
+        @Test
+        @DisplayName("已处于同级底部时下移，返回422参数错误")
+        void shouldReturn422ParamError_whenMoveDownAtBottom() {
+            // Given：新建顶级目录 sort 为同级 max+10，必处于底部
+            long id = createMenu(Map.of());
+
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("direction", "down"))
+                .when().post(BASE_PATH + "/" + id + "/move")
+                .then().statusCode(422)
+                .body("code", equalTo(CommonErrorCode.PARAM_ERROR.getCode()));
+        }
+
+        @Test
+        @DisplayName("移动不存在的菜单id，返回422菜单不存在")
+        void shouldReturn422MenuNotFound_whenIdNotExist() {
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("direction", "up"))
+                .when().post(BASE_PATH + "/999999999/move")
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.MENU_NOT_FOUND.getCode()));
+        }
+    }
+
+    @Nested
     @DisplayName("新增菜单")
     class CreateTest {
 
@@ -389,6 +445,91 @@ class MenuIntegrationTest extends ApiIntegrationTest {
     }
 
     @Nested
+    @DisplayName("变更菜单状态")
+    class ChangeStatusTest {
+
+        @Test
+        @DisplayName("停用后重新启用自建菜单，返回变更后状态")
+        void shouldToggleStatus_whenMenuCreated() {
+            // Given（新建行乐观锁版本为 0）
+            long dirId = createMenu(Map.of());
+
+            // When / Then：停用
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 0, "version", 0))
+                .when().post(BASE_PATH + "/" + dirId + "/status")
+                .then().statusCode(200).body("code", equalTo(200))
+                .body("data.status", equalTo(0));
+
+            // When / Then：重新启用（超管停用后可恢复闭环）
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 1, "version", 1))
+                .when().post(BASE_PATH + "/" + dirId + "/status")
+                .then().statusCode(200).body("code", equalTo(200))
+                .body("data.status", equalTo(1));
+        }
+
+        @Test
+        @DisplayName("停用内置菜单，返回422内置保护（18039）")
+        void shouldReturn422SystemMenuProtected_whenStopBuiltinMenu() {
+            // Given：从菜单树取任一内置节点（isSystem=1）及其 version
+            Map<String, Object> builtin = findFirstSystemNode(getTree().jsonPath().getList("data"));
+            assertThat(builtin).as("种子菜单应存在内置节点").isNotNull();
+
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 0, "version", 999))
+                .when().post(BASE_PATH + "/" + builtin.get("id") + "/status")
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.SYSTEM_MENU_PROTECTED.getCode()));
+        }
+
+        @Test
+        @DisplayName("删除内置菜单，返回422内置保护（18039）")
+        void shouldReturn422SystemMenuProtected_whenDeleteBuiltinMenu() {
+            // Given：从菜单树取任一内置节点
+            Map<String, Object> builtin = findFirstSystemNode(getTree().jsonPath().getList("data"));
+            assertThat(builtin).as("种子菜单应存在内置节点").isNotNull();
+
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .when().delete(BASE_PATH + "/" + builtin.get("id"))
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.SYSTEM_MENU_PROTECTED.getCode()));
+        }
+
+        @Test
+        @DisplayName("版本号过期，返回409乐观锁冲突")
+        void shouldReturn409Conflict_whenVersionStale() {
+            // Given
+            long dirId = createMenu(Map.of());
+
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 0, "version", 999))
+                .when().post(BASE_PATH + "/" + dirId + "/status")
+                .then().statusCode(409)
+                .body("code", equalTo(10601));
+        }
+
+        @Test
+        @DisplayName("停用不存在的菜单id，返回422菜单不存在")
+        void shouldReturn422MenuNotFound_whenIdNotExist() {
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 0, "version", 1))
+                .when().post(BASE_PATH + "/999999999/status")
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.MENU_NOT_FOUND.getCode()));
+        }
+    }
+
+    @Nested
     @DisplayName("鉴权")
     class AuthTest {
 
@@ -432,6 +573,25 @@ class MenuIntegrationTest extends ApiIntegrationTest {
         Map<String, Object> node = findNodeById(getTree().jsonPath().getList("data"), id);
         assertThat(node).as("树中应存在菜单 id=" + id).isNotNull();
         return Integer.parseInt(String.valueOf(node.get("version")));
+    }
+
+    /** 深度优先查找第一个内置节点（isSystem=1），找不到返回 null */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> findFirstSystemNode(List<Map<String, Object>> nodes) {
+        if (nodes == null) {
+            return null;
+        }
+        for (Map<String, Object> node : nodes) {
+            if (Integer.valueOf(1).equals(((Number) node.get("isSystem")).intValue())) {
+                return node;
+            }
+            Map<String, Object> inChildren = findFirstSystemNode(
+                (List<Map<String, Object>>) node.get("children"));
+            if (inChildren != null) {
+                return inChildren;
+            }
+        }
+        return null;
     }
 
     @SuppressWarnings("unchecked")

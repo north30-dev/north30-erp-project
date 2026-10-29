@@ -85,11 +85,11 @@ public final class MenuTestFactory {
     }
 
     /**
-     * 修改菜单请求 DTO（全字段，icon/visible/status/remark 固定为 null 表示不修改）。
+     * 修改菜单请求 DTO（全字段，icon/visible/remark 固定为 null 表示不修改，状态变更走 changeStatus）。
      */
     public static MenuUpdateDTO updateDTO(Integer version, String menuName, Long parentId, Integer menuType,
                                           String path, String component, String perms, Integer menuSort) {
-        return new MenuUpdateDTO(menuName, parentId, menuType, path, component, perms, null, menuSort, null, null, null, version);
+        return new MenuUpdateDTO(menuName, parentId, menuType, path, component, perms, null, menuSort, null, null, version);
     }
 
     /**

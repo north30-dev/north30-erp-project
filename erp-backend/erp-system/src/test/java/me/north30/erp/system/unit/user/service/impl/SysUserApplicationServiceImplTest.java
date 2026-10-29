@@ -29,6 +29,8 @@ import me.north30.erp.system.user.strategy.UserAssembleStrategy;
 import me.north30.erp.system.user.strategy.UserQueryStrategy;
 import me.north30.erp.system.user.strategy.UserRoleStrategy;
 import me.north30.erp.system.user.strategy.UserSessionRevokeStrategy;
+import me.north30.erp.system.auth.service.UserAccessService;
+import me.north30.erp.system.security.LoginUser;
 import me.north30.erp.system.user.vo.UserAssignRolesVO;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.user.vo.UserDetailVO;
@@ -45,6 +47,8 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.nio.charset.StandardCharsets;
@@ -95,6 +99,9 @@ class SysUserApplicationServiceImplTest {
     private SysUserDomainService sysUserDomainService;
 
     @Mock
+    private UserAccessService userAccessService;
+
+    @Mock
     private UserSessionRevokeStrategy userSessionRevokeStrategy;
 
     @Mock
@@ -120,7 +127,8 @@ class SysUserApplicationServiceImplTest {
             new UserAssembleStrategy(sysDeptMapper, sysUserRoleMapper, sysRoleMapper, userConverter);
         UserRoleStrategy userRoleStrategy =
             new UserRoleStrategy(sysRoleDomainService, sysUserRoleService);
-        service = new SysUserApplicationServiceImpl(sysUserMapper, sysDeptDomainService, passwordEncoder,
+        service = new SysUserApplicationServiceImpl(sysUserMapper, sysDeptDomainService,
+            sysRoleDomainService, userAccessService, passwordEncoder,
             userConverter, sysUserDomainService, userQueryStrategy, userAssembleStrategy,
             userRoleStrategy, userSessionRevokeStrategy);
     }
@@ -467,7 +475,7 @@ class SysUserApplicationServiceImplTest {
             when(sysDeptDomainService.requireDept(3L)).thenReturn(UserTestFactory.sysDept());
             when(sysUserMapper.updateById(any(SysUser.class))).thenReturn(1);
             UserUpdateDTO dto = new UserUpdateDTO("李四", 3L, List.of(1L, 2L),
-                "13900001111", "ls@north30.com", 2, 0, "更新备注", 5);
+                "13900001111", "ls@north30.com", 2, "更新备注", 5);
 
             // When
             String updateTime = service.update(10L, dto);
@@ -482,25 +490,9 @@ class SysUserApplicationServiceImplTest {
                     && "13900001111".equals(entity.getPhone())
                     && "ls@north30.com".equals(entity.getEmail())
                     && Integer.valueOf(2).equals(entity.getGender())
-                    && Integer.valueOf(0).equals(entity.getStatus())
                     && "更新备注".equals(entity.getRemark())
                     && Integer.valueOf(5).equals(entity.getVersion())
                     && entity.getUpdateTime() != null));
-        }
-
-        @Test
-        void shouldThrow18012_whenDisableAdminUser() {
-            // Given
-            when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.adminUser());
-            UserUpdateDTO dto = new UserUpdateDTO(null, null, null, null, null, null, 0, null, 5);
-
-            // When / Then
-            assertThatThrownBy(() -> service.update(10L, dto))
-                .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(18012))
-                .hasMessage("内置超级管理员不可删除或停用");
-            verify(sysUserMapper, never()).updateById(any(SysUser.class));
-            verifyNoInteractions(sysDeptDomainService);
         }
 
         @Test
@@ -508,7 +500,7 @@ class SysUserApplicationServiceImplTest {
             // Given
             when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
             when(sysUserMapper.updateById(any(SysUser.class))).thenReturn(0);
-            UserUpdateDTO dto = new UserUpdateDTO("李四", null, null, null, null, null, null, null, 5);
+            UserUpdateDTO dto = new UserUpdateDTO("李四", null, null, null, null, null, null, 5);
 
             // When / Then
             assertThatThrownBy(() -> service.update(10L, dto))
@@ -522,7 +514,7 @@ class SysUserApplicationServiceImplTest {
             when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
             when(sysDeptDomainService.requireDept(99L)).thenThrow(
                 new BusinessException(SystemErrorCode.DEPT_NOT_FOUND, "组织 99 不存在"));
-            UserUpdateDTO dto = new UserUpdateDTO(null, 99L, null, null, null, null, null, null, 5);
+            UserUpdateDTO dto = new UserUpdateDTO(null, 99L, null, null, null, null, null, 5);
 
             // When / Then
             assertThatThrownBy(() -> service.update(10L, dto))
@@ -537,7 +529,7 @@ class SysUserApplicationServiceImplTest {
             // Given
             when(sysUserDomainService.requireUser(99L)).thenThrow(
                 new BusinessException(SystemErrorCode.USER_NOT_FOUND, "用户 99 不存在"));
-            UserUpdateDTO dto = new UserUpdateDTO("李四", null, null, null, null, null, null, null, 5);
+            UserUpdateDTO dto = new UserUpdateDTO("李四", null, null, null, null, null, null, 5);
 
             // When / Then
             assertThatThrownBy(() -> service.update(99L, dto))
@@ -855,6 +847,44 @@ class SysUserApplicationServiceImplTest {
                 .hasMessage("角色不存在，请刷新角色列表后重试");
             verify(sysUserRoleService, never()).deleteByUserId(any());
             verify(sysUserRoleService, never()).createForUser(any(), any());
+        }
+
+        @Test
+        void shouldThrow18040_whenNonSuperAdminAssignsAdminRole() {
+            // Given：目标角色含 ADMIN，操作者非超管（提权守卫 18040）
+            when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
+            when(sysRoleDomainService.listByIds(any()))
+                .thenReturn(List.of(UserTestFactory.sysRole(1L, "ADMIN")));
+            SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(new LoginUser(2L, "zhangsan", "jti", "rjti"), null));
+            when(userAccessService.isSuperAdmin(2L)).thenReturn(false);
+
+            // When / Then
+            assertThatThrownBy(() -> service.assignRoles(10L, new UserAssignRolesDTO(List.of(1L))))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode())
+                        .isEqualTo(SystemErrorCode.ONLY_SUPER_ADMIN_ASSIGN_ADMIN.getCode()));
+            verify(sysUserRoleService, never()).deleteByUserId(any());
+            SecurityContextHolder.clearContext();
+        }
+
+        @Test
+        void shouldAssignAdminRole_whenOperatorIsSuperAdmin() {
+            // Given：操作者为超管（持 ADMIN 角色），分配合法
+            when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
+            when(sysRoleDomainService.listByIds(any()))
+                .thenReturn(List.of(UserTestFactory.sysRole(1L, "ADMIN")));
+            SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(new LoginUser(1L, "admin", "jti", "rjti"), null));
+            when(userAccessService.isSuperAdmin(1L)).thenReturn(true);
+
+            // When
+            UserAssignRolesVO vo = service.assignRoles(10L, new UserAssignRolesDTO(List.of(1L)));
+
+            // Then
+            assertThat(vo.roleIds()).containsExactly(1L);
+            verify(sysUserRoleService).createForUser(10L, 1L);
+            SecurityContextHolder.clearContext();
         }
     }
 

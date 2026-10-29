@@ -1,5 +1,8 @@
 package me.north30.erp.system.dept.service.impl;
 
+import java.util.List;
+import java.util.Objects;
+
 import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.system.common.enums.SystemErrorCode;
@@ -19,6 +22,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 @Service
 @RequiredArgsConstructor
 public class SysDeptDomainServiceImpl implements SysDeptDomainService {
+
+    /** 顶级组织父 ID */
+    private static final long ROOT_PARENT_ID = 0L;
 
     private final SysDeptMapper sysDeptMapper;
     private final SysUserDomainService sysUserDomainService;
@@ -68,4 +74,26 @@ public class SysDeptDomainServiceImpl implements SysDeptDomainService {
                 "组织 " + dept.getDeptName() + " 存在下级组织或绑定用户，不可删除");
         }
     }
+
+    
+    @Override
+    @Transactional(readOnly = true)
+    public List<SysDept> listSiblings(Long parentId) {
+        long pid = parentId == null ? ROOT_PARENT_ID : parentId;
+        return sysDeptMapper.selectList(new LambdaQueryWrapper<SysDept>()
+            .eq(SysDept::getParentId, pid)
+            .orderByAsc(SysDept::getDeptSort)
+            .orderByAsc(SysDept::getId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int nextDeptSort(Long parentId) {
+        return listSiblings(parentId).stream()
+            .map(SysDept::getDeptSort)
+            .filter(Objects::nonNull)
+            .max(Integer::compareTo)
+            .orElse(0) + 10;
+    }
+
 }

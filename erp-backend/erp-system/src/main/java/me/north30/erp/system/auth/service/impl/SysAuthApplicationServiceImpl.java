@@ -254,8 +254,8 @@ public class SysAuthApplicationServiceImpl implements SysAuthApplicationService 
         if (user == null) {
             throw new BusinessException(SystemErrorCode.USER_NOT_FOUND, "用户 " + currentUser.username() + " 不存在");
         }
-        // 菜单取数编排收敛至聚合服务：admin 全量组树，普通用户按角色并集一次查全量启用菜单内存补父链
-        return userAccessService.listMenuTree(user.getId(), user.isAdmin());
+        // 菜单取数编排收敛至聚合服务：超管（is_admin 或持 ADMIN 角色）全量组树，普通用户按角色并集一次查全量启用菜单内存补父链
+        return userAccessService.listMenuTree(user.getId(), userAccessService.isSuperAdmin(user.getId()));
     }
 
     @Override

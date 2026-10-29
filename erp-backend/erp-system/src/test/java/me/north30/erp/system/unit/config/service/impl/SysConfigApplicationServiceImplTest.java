@@ -318,7 +318,7 @@ class SysConfigApplicationServiceImplTest {
             config.setUpdateTime(LocalDateTime.of(2026, 9, 28, 10, 0, 0));
             given(sysConfigMapper.selectById(1L)).willReturn(config);
             given(sysConfigMapper.updateById(any(SysConfig.class))).willReturn(1);
-            var dto = ConfigTestFactory.updateDTO("120", "新名称", 0, "阈值调整", 5);
+            var dto = ConfigTestFactory.updateDTO("120", "新名称", "阈值调整", 5);
 
             // When
             ConfigUpdateVO vo = service.update(1L, dto);
@@ -329,7 +329,7 @@ class SysConfigApplicationServiceImplTest {
             verify(sysConfigMapper).updateById(configCaptor.capture());
             assertThat(configCaptor.getValue().getConfigValue()).isEqualTo("120");
             assertThat(configCaptor.getValue().getConfigName()).isEqualTo("新名称");
-            assertThat(configCaptor.getValue().getStatus()).isZero();
+            assertThat(configCaptor.getValue().getStatus()).isOne();
             assertThat(configCaptor.getValue().getRemark()).isEqualTo("阈值调整");
             assertThat(configCaptor.getValue().getVersion()).isEqualTo(5);
         }
@@ -343,7 +343,7 @@ class SysConfigApplicationServiceImplTest {
             config.setRemark("原备注");
             given(sysConfigMapper.selectById(1L)).willReturn(config);
             given(sysConfigMapper.updateById(any(SysConfig.class))).willReturn(1);
-            var dto = ConfigTestFactory.updateDTO("200", null, null, null, 3);
+            var dto = ConfigTestFactory.updateDTO("200", null, null, 3);
 
             // When
             service.update(1L, dto);
@@ -364,7 +364,7 @@ class SysConfigApplicationServiceImplTest {
             given(sysConfigMapper.selectById(1L)).willReturn(null);
 
             // When + Then
-            assertThatThrownBy(() -> service.update(1L, ConfigTestFactory.updateDTO("120", null, null, null, 1)))
+            assertThatThrownBy(() -> service.update(1L, ConfigTestFactory.updateDTO("120", null, null, 1)))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.CONFIG_NOT_FOUND.getCode()))
                 .hasMessage("系统参数 1 不存在");
@@ -378,7 +378,7 @@ class SysConfigApplicationServiceImplTest {
             SysConfig config = ConfigTestFactory.config(1L, "sales.enabled", "销售启用", "true",
                 3, "SALES", 0, 1);
             given(sysConfigMapper.selectById(1L)).willReturn(config);
-            var dto = ConfigTestFactory.updateDTO("9", null, null, null, 1);
+            var dto = ConfigTestFactory.updateDTO("9", null, null, 1);
 
             // When + Then
             assertThatThrownBy(() -> service.update(1L, dto))
@@ -398,7 +398,7 @@ class SysConfigApplicationServiceImplTest {
             given(sysConfigMapper.updateById(any(SysConfig.class))).willReturn(0);
 
             // When + Then
-            assertThatThrownBy(() -> service.update(1L, ConfigTestFactory.updateDTO("120", null, null, null, 9)))
+            assertThatThrownBy(() -> service.update(1L, ConfigTestFactory.updateDTO("120", null, null, 9)))
                 .isInstanceOf(OptimisticLockingFailureException.class)
                 .hasMessage("数据已被其他操作修改，请重试");
         }
@@ -454,6 +454,131 @@ class SysConfigApplicationServiceImplTest {
                     ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.CONFIG_NOT_FOUND.getCode()))
                 .hasMessage("系统参数 1 不存在");
             verify(sysConfigMapper, never()).deleteById(anyLong());
+        }
+    }
+
+    @Nested
+    @DisplayName("changeStatus：变更系统参数状态")
+    class ChangeStatusTest {
+
+        @Test
+        @DisplayName("成功启用，仅更新状态与乐观锁版本")
+        void shouldEnableConfig_whenStatusOne() {
+            // Given：非内置参数存在且当前停用
+            SysConfig config = ConfigTestFactory.config(1L, "inventory.stagnant.days", "滞销天数阈值", "90",
+                2, "INVENTORY", 0, 0);
+            given(sysConfigMapper.selectById(1L)).willReturn(config);
+            given(sysConfigMapper.updateById(any(SysConfig.class))).willReturn(1);
+
+            // When
+            var vo = service.changeStatus(1L, ConfigTestFactory.statusDTO(1, 2));
+
+            // Then：patch 实体仅承载 id/status/version
+            assertThat(vo.status()).isEqualTo(1);
+            verify(sysConfigMapper).updateById(configCaptor.capture());
+            SysConfig patch = configCaptor.getValue();
+            assertThat(patch.getId()).isEqualTo(1L);
+            assertThat(patch.getStatus()).isEqualTo(1);
+            assertThat(patch.getVersion()).isEqualTo(2);
+            assertThat(patch.getConfigKey()).isNull();
+        }
+
+        @Test
+        @DisplayName("成功停用（非内置参数）")
+        void shouldDisableConfig_whenStatusZero() {
+            // Given：非内置参数存在且当前启用
+            SysConfig config = ConfigTestFactory.config(1L, "inventory.stagnant.days", "滞销天数阈值", "90",
+                2, "INVENTORY", 0, 1);
+            given(sysConfigMapper.selectById(1L)).willReturn(config);
+            given(sysConfigMapper.updateById(any(SysConfig.class))).willReturn(1);
+
+            // When
+            var vo = service.changeStatus(1L, ConfigTestFactory.statusDTO(0, 3));
+
+            // Then
+            assertThat(vo.status()).isZero();
+            verify(sysConfigMapper).updateById(configCaptor.capture());
+            assertThat(configCaptor.getValue().getStatus()).isZero();
+            assertThat(configCaptor.getValue().getVersion()).isEqualTo(3);
+        }
+
+        @Test
+        @DisplayName("内置参数停用被拒，抛出 18033")
+        void shouldThrow18033_whenDisableBuiltinConfig() {
+            // Given：内置参数（isSystem=1）不可停用
+            SysConfig config = ConfigTestFactory.config(1L, "inventory.stagnant.days", "滞销天数阈值", "90",
+                2, "INVENTORY", 1, 1);
+            given(sysConfigMapper.selectById(1L)).willReturn(config);
+
+            // When + Then
+            assertThatThrownBy(() -> service.changeStatus(1L, ConfigTestFactory.statusDTO(0, 2)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.BUILTIN_CONFIG_UNDELETABLE.getCode()))
+                .hasMessage("内置系统参数 inventory.stagnant.days 不可停用");
+            verify(sysConfigMapper, never()).updateById(any(SysConfig.class));
+        }
+
+        @Test
+        @DisplayName("内置参数允许启用")
+        void shouldEnableBuiltinConfig_whenStatusOne() {
+            // Given：内置参数存在且当前停用（启用不受内置保护限制）
+            SysConfig config = ConfigTestFactory.config(1L, "inventory.stagnant.days", "滞销天数阈值", "90",
+                2, "INVENTORY", 1, 0);
+            given(sysConfigMapper.selectById(1L)).willReturn(config);
+            given(sysConfigMapper.updateById(any(SysConfig.class))).willReturn(1);
+
+            // When
+            var vo = service.changeStatus(1L, ConfigTestFactory.statusDTO(1, 2));
+
+            // Then
+            assertThat(vo.status()).isEqualTo(1);
+            verify(sysConfigMapper).updateById(configCaptor.capture());
+            assertThat(configCaptor.getValue().getStatus()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("状态值非法，抛出 10001")
+        void shouldThrow10001_whenStatusValueIllegal() {
+            // Given
+            SysConfig config = ConfigTestFactory.config(1L, "inventory.stagnant.days", "滞销天数阈值", "90",
+                2, "INVENTORY", 0, 1);
+            given(sysConfigMapper.selectById(1L)).willReturn(config);
+
+            // When + Then
+            assertThatThrownBy(() -> service.changeStatus(1L, ConfigTestFactory.statusDTO(2, 2)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
+                .hasMessage("状态取值非法，仅支持 0-停用 1-启用");
+            verify(sysConfigMapper, never()).updateById(any(SysConfig.class));
+        }
+
+        @Test
+        @DisplayName("系统参数不存在，抛出 18032")
+        void shouldThrow18032_whenConfigNotFound() {
+            // Given：参数不存在
+            given(sysConfigMapper.selectById(99L)).willReturn(null);
+
+            // When + Then
+            assertThatThrownBy(() -> service.changeStatus(99L, ConfigTestFactory.statusDTO(1, 2)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.CONFIG_NOT_FOUND.getCode()))
+                .hasMessage("系统参数 99 不存在");
+            verify(sysConfigMapper, never()).updateById(any(SysConfig.class));
+        }
+
+        @Test
+        @DisplayName("乐观锁冲突（更新 0 行），抛出 10601")
+        void shouldThrow10601_whenOptimisticLockConflict() {
+            // Given
+            SysConfig config = ConfigTestFactory.config(1L, "inventory.stagnant.days", "滞销天数阈值", "90",
+                2, "INVENTORY", 0, 1);
+            given(sysConfigMapper.selectById(1L)).willReturn(config);
+            given(sysConfigMapper.updateById(any(SysConfig.class))).willReturn(0);
+
+            // When + Then
+            assertThatThrownBy(() -> service.changeStatus(1L, ConfigTestFactory.statusDTO(1, 9)))
+                .isInstanceOf(OptimisticLockingFailureException.class)
+                .hasMessage("数据已被其他操作修改，请重试");
         }
     }
 }

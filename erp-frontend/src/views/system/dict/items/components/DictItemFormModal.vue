@@ -28,7 +28,6 @@ function initialForm(): CrudForm {
     itemLabel: '',
     itemValue: '',
     lang: DICT_LANG_DEFAULT,
-    itemSort: 0,
     cssClass: '',
     isDefault: IS_DEFAULT_NO,
     extJson: '',
@@ -74,7 +73,6 @@ async function handleSubmit(form: CrudForm): Promise<void> {
       itemLabel: form.itemLabel as string,
       itemValue: form.itemValue as string,
       lang: (form.lang as string) || null,
-      itemSort: (form.itemSort as number) ?? null,
       cssClass: (form.cssClass as string) || null,
       isDefault: form.isDefault as number,
       extJson,
@@ -85,11 +83,9 @@ async function handleSubmit(form: CrudForm): Promise<void> {
   } else {
     await updateDictItem(editId.value as string, {
       itemLabel: form.itemLabel as string,
-      itemSort: (form.itemSort as number) ?? null,
       cssClass: (form.cssClass as string) || null,
       isDefault: form.isDefault as number,
       extJson,
-      status: form.status as number,
       remark: (form.remark as string) || null,
       version: form.version as number,
     })
@@ -146,11 +142,6 @@ defineExpose({ show })
           </a-form-item>
         </a-col>
         <a-col :span="12">
-          <a-form-item label="显示顺序" name="itemSort">
-            <a-input-number v-model:value="(form.itemSort as number)" :min="0" class="w-full" />
-          </a-form-item>
-        </a-col>
-        <a-col :span="12">
           <a-form-item label="标签样式" name="cssClass">
             <a-input v-model:value="(form.cssClass as string)" placeholder="前端标签样式，选填" />
           </a-form-item>
@@ -160,7 +151,7 @@ defineExpose({ show })
             <a-radio-group v-model:value="(form.isDefault as number)" :options="[...IS_DEFAULT_OPTIONS]" />
           </a-form-item>
         </a-col>
-        <a-col :span="12">
+        <a-col v-if="mode === 'create'" :span="12">
           <a-form-item label="状态" name="status">
             <a-radio-group v-model:value="(form.status as number)" :options="[...STATUS_OPTIONS]" />
           </a-form-item>

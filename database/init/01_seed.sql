@@ -22,14 +22,17 @@ INSERT INTO sys_dept (id, dept_code, dept_name, parent_id, dept_type, dept_level
 SELECT setval('sys_dept_id_seq', (SELECT MAX(id) FROM sys_dept));
 
 -- 4.2 角色（SYS-03/SYS-04；数据范围 1-全部 3-本组织 4-本部门及下级 6-仅本人）
-INSERT INTO sys_role (id, role_code, role_name, role_sort, data_scope, is_builtin, status, create_by, update_by) VALUES
-(1, 'ADMIN', '超级管理员', 1, 1, 1, 1, 'admin', 'admin'),
-(2, 'SALES_DIRECTOR', '销售总监', 2, 1, 1, 1, 'admin', 'admin'),
-(3, 'SALES_USER', '销售业务员', 3, 6, 1, 1, 'admin', 'admin'),
-(4, 'BUYER', '采购员', 4, 6, 1, 1, 'admin', 'admin'),
-(5, 'WAREHOUSE_KEEPER', '仓管员', 5, 3, 1, 1, 'admin', 'admin'),
-(6, 'PRODUCTION_PLANNER', '生产计划员', 6, 4, 1, 1, 'admin', 'admin'),
-(7, 'FINANCE_MANAGER', '财务经理', 7, 1, 1, 1, 'admin', 'admin');
+--   ADMIN/SYSTEM_ADMIN 为管理内置角色；SYSTEM_ADMIN 预勾选全部 /system 菜单
+--   （角色-菜单授权由应用 AdminInitializer 启动时幂等完成）。
+INSERT INTO sys_role (id, role_code, role_name, data_scope, is_builtin, status, create_by, update_by) VALUES
+(1, 'ADMIN', '超级管理员', 1, 1, 1, 'admin', 'admin'),
+(2, 'SYSTEM_ADMIN', '系统管理员', 1, 1, 1, 'admin', 'admin'),
+(3, 'SALES_DIRECTOR', '销售总监', 1, 1, 1, 'admin', 'admin'),
+(4, 'SALES_USER', '销售业务员', 6, 1, 1, 'admin', 'admin'),
+(5, 'BUYER', '采购员', 6, 1, 1, 'admin', 'admin'),
+(6, 'WAREHOUSE_KEEPER', '仓管员', 3, 1, 1, 'admin', 'admin'),
+(7, 'PRODUCTION_PLANNER', '生产计划员', 4, 1, 1, 'admin', 'admin'),
+(8, 'FINANCE_MANAGER', '财务经理', 1, 1, 1, 'admin', 'admin');
 SELECT setval('sys_role_id_seq', (SELECT MAX(id) FROM sys_role));
 
 -- 4.3 4 个中心仓库（INV-01 裁定：原材料仓、半成品仓、苏州成品仓、东莞成品仓）
@@ -303,10 +306,11 @@ INSERT INTO fin_period (period, period_year, period_month, start_date, end_date,
  date_trunc('month', NOW())::DATE, (date_trunc('month', NOW()) + INTERVAL '1 month' - INTERVAL '1 day')::DATE,
  1, 1, 'admin', 'admin');
 
--- 4.11 admin 账号与 admin-角色绑定（由应用 AdminInitializer 幂等创建，脚本不写入明文口令）
---   创建规则：username='admin'，password=BCrypt(强度 10, 明文遵循 SYS-09 口令策略)，
---   is_admin=1、status=1、首次登录强制修改口令；随后写入 sys_user_role 绑定 ADMIN 角色。
---   本脚本不提供该 INSERT，以避免在脚本中固化口令与口令哈希（安全要求 S-04/S-06）。
+-- 4.11 管理员账号与角色绑定（由应用 AdminInitializer 幂等创建，脚本不写入明文口令）
+--   创建规则：超级管理员 username='admin'、userCode='ADMIN'、is_admin=1，绑定 ADMIN 角色；
+--             系统管理员 username='sysadmin'、userCode='SYSADMIN'、is_admin=0，绑定 SYSTEM_ADMIN 角色。
+--   password=BCrypt(强度 10, 明文由 application.yml 的 erp.admin 配置/环境变量注入，
+--   默认 Admin@123456 首次登录强制修改)；本脚本不提供 INSERT（安全要求 S-04/S-06）。
 
 COMMIT;
 

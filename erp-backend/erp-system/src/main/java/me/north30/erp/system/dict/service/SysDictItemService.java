@@ -4,9 +4,12 @@ import me.north30.erp.common.result.PageResult;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.common.vo.MutationVO;
 import me.north30.erp.system.dict.dto.DictItemCreateDTO;
+import me.north30.erp.system.dict.dto.DictItemMoveDTO;
 import me.north30.erp.system.dict.dto.DictItemQueryDTO;
+import me.north30.erp.system.dict.dto.DictItemStatusDTO;
 import me.north30.erp.system.dict.dto.DictItemUpdateDTO;
 import me.north30.erp.system.dict.entity.SysDictItem;
+import me.north30.erp.system.dict.vo.DictItemStatusVO;
 import me.north30.erp.system.dict.vo.DictItemVO;
 
 /**
@@ -47,6 +50,24 @@ public interface SysDictItemService {
      * @return 删除结果
      */
     DeleteResultVO deleteItem(Long id);
+
+    /**
+     * 变更字典项状态（启用/停用，08 文档阶段四状态开关统一）。
+     *
+     * @param id  字典项 ID
+     * @param dto 状态变更参数
+     * @return 状态变更结果
+     */
+    DictItemStatusVO changeStatusItem(Long id, DictItemStatusDTO dto);
+
+    /**
+     * 字典项上移/下移（同 dict_type + lang 分组内规范化重排 10,20,30… 后相邻交换，
+     * 08 文档阶段四排序统一）。
+     *
+     * @param id  字典项 ID
+     * @param dto 移动方向参数
+     */
+    void moveItem(Long id, DictItemMoveDTO dto);
 
     /**
      * 校验字典项可用（同 dict_type + item_value + lang 未被占用），已存在抛 18031 业务异常。

@@ -8,6 +8,7 @@ import me.north30.erp.common.result.PageResult;
 import me.north30.erp.system.config.converter.ConfigConverter;
 import me.north30.erp.system.config.dto.ConfigCreateDTO;
 import me.north30.erp.system.config.dto.ConfigQueryDTO;
+import me.north30.erp.system.config.dto.ConfigStatusDTO;
 import me.north30.erp.system.config.dto.ConfigUpdateDTO;
 import me.north30.erp.system.config.entity.SysConfig;
 import me.north30.erp.system.common.enums.SystemErrorCode;
@@ -17,6 +18,7 @@ import me.north30.erp.system.config.service.SysConfigApplicationService;
 import me.north30.erp.common.util.DateTimeFormatUtil;
 import me.north30.erp.common.util.QueryGuardUtil;
 import me.north30.erp.common.util.UpdateGuardUtil;
+import me.north30.erp.system.config.vo.ConfigStatusVO;
 import me.north30.erp.system.config.vo.ConfigUpdateVO;
 import me.north30.erp.system.config.vo.ConfigVO;
 import me.north30.erp.system.common.vo.DeleteResultVO;
@@ -94,5 +96,20 @@ public class SysConfigApplicationServiceImpl implements SysConfigApplicationServ
         config.validateIsSystem();
         sysConfigMapper.deleteById(id);
         return new DeleteResultVO(id, 1);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ConfigStatusVO changeStatus(Long id, ConfigStatusDTO dto) {
+        SysConfig config = QueryGuardUtil.requirePresent(sysConfigMapper.selectById(id),
+            SystemErrorCode.CONFIG_NOT_FOUND, "系统参数 " + id + " 不存在");
+        // 状态值域守卫（10001）与内置参数不可停用（18033）收敛于实体 changeStatus
+        config.changeStatus(dto.status());
+        SysConfig patch = new SysConfig();
+        patch.setId(id);
+        patch.setStatus(config.getStatus());
+        patch.setVersion(dto.version());
+        UpdateGuardUtil.checkOptimisticLockConflict(sysConfigMapper.updateById(patch));
+        return new ConfigStatusVO(config.getStatus());
     }
 }

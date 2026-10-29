@@ -15,7 +15,6 @@ import jakarta.validation.constraints.Size;
  * @param icon      图标
  * @param menuSort  显示顺序
  * @param visible   是否显示 0-隐藏 1-显示
- * @param status    状态 0-停用 1-启用
  * @param remark    备注
  * @param version   乐观锁版本号
  */
@@ -43,8 +42,6 @@ public record MenuUpdateDTO(
     Integer menuSort,
 
     Integer visible,
-
-    Integer status,
 
     @Size(max = 500, message = "备注长度不能超过 500")
     String remark,

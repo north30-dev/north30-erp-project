@@ -89,7 +89,6 @@ function initialForm(): CrudForm {
     deptType: DEPT_TYPE_DEPT,
     leader: '',
     phone: '',
-    deptSort: 0,
     status: STATUS_ENABLED,
     remark: '',
     version: 0,
@@ -119,13 +118,14 @@ function toNullable(value: unknown): string | null {
 }
 
 async function handleSubmit(form: CrudForm): Promise<void> {
+  // 状态变更统一走列表页专用开关接口（/status），update 载荷不含状态字段
   const dto = {
     deptName: form.deptName as string,
     parentId: form.parentId as string,
     deptType: form.deptType as number,
     leader: toNullable(form.leader),
     phone: toNullable(form.phone),
-    deptSort: Number(form.deptSort ?? 0),
+    // deptSort 不再手填：新增走后端同级 max+10 缺省，调整顺序用列表页上移/下移（08 文档阶段四）
     status: form.status as number,
     remark: toNullable(form.remark),
   }
@@ -133,7 +133,8 @@ async function handleSubmit(form: CrudForm): Promise<void> {
     await createDept({ ...dto, deptCode: form.deptCode as string })
     message.success('新增组织成功')
   } else {
-    await updateDept(editId.value as string, { ...dto, version: form.version as number })
+    const { status: _ignoredStatus, ...updateDto } = dto
+    await updateDept(editId.value as string, { ...updateDto, version: form.version as number })
     message.success('修改组织成功')
   }
   emit('saved')
@@ -205,12 +206,7 @@ defineExpose({ show })
             <a-input v-model:value="(form.phone as string)" placeholder="选填" />
           </a-form-item>
         </a-col>
-        <a-col :span="12">
-          <a-form-item label="显示顺序" name="deptSort">
-            <a-input-number v-model:value="(form.deptSort as number)" :min="0" class="w-full" />
-          </a-form-item>
-        </a-col>
-        <a-col :span="12">
+        <a-col v-if="mode === 'create'" :span="12">
           <a-form-item label="状态" name="status">
             <a-radio-group v-model:value="(form.status as number)" :options="[...STATUS_OPTIONS]" />
           </a-form-item>

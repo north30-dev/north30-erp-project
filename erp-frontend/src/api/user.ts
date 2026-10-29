@@ -1,4 +1,5 @@
 import { del, get, getBlob, post, put } from '../utils/request'
+import { createStatusApi } from './statusApi'
 import type {
   DeleteResultVO,
   PageResult,
@@ -38,7 +39,7 @@ export function deleteUser(id: string): Promise<DeleteResultVO> {
 }
 
 export function changeUserStatus(id: string, data: UserStatusDTO): Promise<UserStatusVO> {
-  return post<UserStatusVO>(`/system/users/${id}/status`, data).then((r) => r.data)
+  return createStatusApi('users').changeStatus(id, data).then((r) => r as UserStatusVO)
 }
 
 export function resetUserPassword(id: string, data: UserResetPasswordDTO): Promise<UserResetPasswordVO> {

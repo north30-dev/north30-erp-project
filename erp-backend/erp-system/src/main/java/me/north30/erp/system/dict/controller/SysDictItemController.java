@@ -7,12 +7,18 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import me.north30.erp.common.audit.AuditLog;
+import me.north30.erp.common.audit.AuditModuleEnum;
+import me.north30.erp.common.audit.OperateTypeEnum;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.common.result.Result;
 import me.north30.erp.system.dict.dto.DictItemCreateDTO;
+import me.north30.erp.system.dict.dto.DictItemMoveDTO;
 import me.north30.erp.system.dict.dto.DictItemQueryDTO;
+import me.north30.erp.system.dict.dto.DictItemStatusDTO;
 import me.north30.erp.system.dict.dto.DictItemUpdateDTO;
 import me.north30.erp.system.dict.service.SysDictItemService;
+import me.north30.erp.system.dict.vo.DictItemStatusVO;
 import me.north30.erp.system.dict.vo.DictItemVO;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.common.vo.MutationVO;
@@ -90,5 +96,34 @@ public class SysDictItemController {
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<DeleteResultVO> delete(@PathVariable Long id) {
         return Result.success(sysDictItemService.deleteItem(id));
+    }
+
+    /**
+     * 变更字典项状态（启用/停用，08 文档阶段四状态开关统一）。
+     */
+    @PostMapping("/{id}/status")
+    @PreAuthorize("hasAuthority('system:dict:update')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
+    @Operation(summary = "变更字典项状态", description = "权限点 system:dict:update；乐观锁冲突返回 409/10601")
+    @ApiResponse(responseCode = "422", description = "业务校验失败（10004 字典项不存在）",
+        content = @Content(mediaType = "application/json",
+            examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
+    public Result<DictItemStatusVO> changeStatus(@PathVariable Long id, @Valid @RequestBody DictItemStatusDTO dto) {
+        return Result.success(sysDictItemService.changeStatusItem(id, dto));
+    }
+
+    /**
+     * 字典项上移/下移（08 文档阶段四排序统一）。
+     */
+    @PostMapping("/{id}/move")
+    @PreAuthorize("hasAuthority('system:dict:update')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
+    @Operation(summary = "字典项上移/下移", description = "权限点 system:dict:update；同 dict_type+lang 分组内规范化重排（10,20,30…）后相邻交换，乐观锁冲突返回 409/10601，已处于顶部/底部返回 422/10001")
+    @ApiResponse(responseCode = "422", description = "业务校验失败（10004 字典项不存在/10001 无法移动）",
+        content = @Content(mediaType = "application/json",
+            examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
+    public Result<Void> move(@PathVariable Long id, @Valid @RequestBody DictItemMoveDTO dto) {
+        sysDictItemService.moveItem(id, dto);
+        return Result.success();
     }
 }

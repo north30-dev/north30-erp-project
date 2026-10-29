@@ -44,7 +44,6 @@ public interface ConfigConverter {
     @BeanMapping(ignoreByDefault = true, nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "configValue")
     @Mapping(target = "configName")
-    @Mapping(target = "status")
     @Mapping(target = "remark")
     void updateConfig(ConfigUpdateDTO dto, @MappingTarget SysConfig config);
 

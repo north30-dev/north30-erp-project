@@ -53,7 +53,6 @@ public interface MenuConverter {
     @Mapping(target = "icon")
     @Mapping(target = "menuSort")
     @Mapping(target = "visible")
-    @Mapping(target = "status")
     @Mapping(target = "remark")
     void updateSysMenu(MenuUpdateDTO dto, @MappingTarget SysMenu menu);
 

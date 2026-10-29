@@ -23,23 +23,26 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 管理员初始化器：应用启动时幂等创建超级管理员账号、内置角色与系统管理基础菜单。
- * <p>幂等策略：查无 admin 用户才执行创建；角色按 roleCode、菜单按 menuName 二次去重，
- * 中途失败重启可续建。口令为 BCrypt 密文，禁止明文入库。</p>
+ * 管理员初始化器：应用启动时幂等创建超级管理员与系统管理员两个内置账号，
+ * 以及系统管理基础菜单。ADMIN / SYSTEM_ADMIN 内置角色由 seed.sql 种子脚本提供。
+ * <p>幂等策略：账号按 username、角色按 roleCode、菜单按 menuName 幂等；
+ * 中途失败重启可续建。口令为 BCrypt 密文，初始口令由 erp.admin 配置注入，禁止明文入库。</p>
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class AdminInitializer implements ApplicationRunner {
 
-    /** 初始管理员用户名 */
-    private static final String ADMIN_USERNAME = "admin";
-    /** 初始管理员口令（首次登录后应立即修改） */
-    private static final String ADMIN_PASSWORD = "Admin@123456";
-    /** 初始管理员用户编号 */
+    /** 默认初始口令（检测到未覆盖时告警，生产环境应通过环境变量注入） */
+    private static final String DEFAULT_PASSWORD = "Admin@123456";
+    /** 超级管理员用户编号 */
     private static final String ADMIN_USER_CODE = "ADMIN";
+    /** 系统管理员用户编号 */
+    private static final String SYSTEM_ADMIN_USER_CODE = "SYSADMIN";
     /** 超级管理员角色编码 */
     private static final String ADMIN_ROLE_CODE = "ADMIN";
+    /** 系统管理员内置角色编码（seed.sql 种子提供，预勾选全部 /system 菜单，权限集可由超管调整） */
+    private static final String SYSTEM_ADMIN_ROLE_CODE = "SYSTEM_ADMIN";
 
     /** 菜单类型：目录 */
     private static final int TYPE_DIR = 1;
@@ -55,6 +58,7 @@ public class AdminInitializer implements ApplicationRunner {
     private final SysRoleMenuService sysRoleMenuService;
     private final PasswordEncoder passwordEncoder;
     private final RoleConverter roleConverter;
+    private final AdminProperties adminProperties;
 
     /**
      * 菜单种子节点：声明式描述菜单树，由 {@link #ensureTree} 递归落库。
@@ -88,20 +92,47 @@ public class AdminInitializer implements ApplicationRunner {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void run(ApplicationArguments args) {
-        // 账号/角色幂等短路，但菜单树同步必须始终执行（种子新增权限点或修正 perms 时，
-        // 老库依赖 ensureTree 幂等续建，admin 权限取全表 perms 并集，不同步会导致接口 403）
-        SysRole role = sysRoleDomainService.getByRoleCode(ADMIN_ROLE_CODE);
-        if (role == null) {
-            role = createAdminRole();
+        // 启动复位（08 文档 2.4 万能钥匙兜底）：内置菜单强制恢复启用，防误停导致管理端不可用
+        int resetCount = sysMenuDomainService.resetSystemMenus();
+        if (resetCount > 0) {
+            log.warn("已复位 {} 个被停用的内置菜单", resetCount);
         }
-        Long roleId = role.getId();
 
-        SysUser user = sysUserDomainService.getByUsername(ADMIN_USERNAME);
-        boolean userCreated = false;
-        if (user == null) {
-            user = createAdminUser();
-            sysUserRoleService.createForUser(user.getId(), roleId);
-            userCreated = true;
+        // ADMIN 角色：由 seed.sql 种子提供；查无时兜底创建（引导账号登录强依赖，不可缺席）
+        SysRole adminRole = sysRoleDomainService.getByRoleCode(ADMIN_ROLE_CODE);
+        if (adminRole == null) {
+            adminRole = createAdminRole();
+        }
+        // SYSTEM_ADMIN 角色：仅由 seed.sql 种子提供，查无时告警并跳过（不在代码里兜底造角色）
+        SysRole systemAdminRole = sysRoleDomainService.getByRoleCode(SYSTEM_ADMIN_ROLE_CODE);
+        if (systemAdminRole == null) {
+            log.warn("内置角色 {} 未由种子脚本创建（seed.sql 未执行），系统管理员账号及其菜单授权将跳过",
+                    SYSTEM_ADMIN_ROLE_CODE);
+        }
+
+        // 超级管理员账号（is_admin=1，仅绑定 ADMIN 角色）
+        AdminProperties.AdminAccount superAccount =
+                requireAccount(adminProperties.superAdmin(), "erp.admin.super-admin");
+        SysUser adminUser = sysUserDomainService.getByUsername(superAccount.username());
+        boolean superAdminCreated = false;
+        if (adminUser == null) {
+            adminUser = createUser(superAccount, ADMIN_USER_CODE, "超级管理员", 1);
+            superAdminCreated = true;
+        }
+        // admin 账号幂等确保持有 ADMIN 角色（引导身份与角色身份并存）
+        ensureUserRole(adminUser.getId(), adminRole.getId());
+
+        // 系统管理员账号（is_admin=0，仅绑定 SYSTEM_ADMIN 角色，权限集可由超管调整）
+        boolean systemAdminCreated = false;
+        if (systemAdminRole != null) {
+            AdminProperties.AdminAccount systemAccount =
+                    requireAccount(adminProperties.systemAdmin(), "erp.admin.system-admin");
+            SysUser systemAdminUser = sysUserDomainService.getByUsername(systemAccount.username());
+            if (systemAdminUser == null) {
+                systemAdminUser = createUser(systemAccount, SYSTEM_ADMIN_USER_CODE, "系统管理员", 0);
+                systemAdminCreated = true;
+            }
+            ensureUserRole(systemAdminUser.getId(), systemAdminRole.getId());
         }
 
         List<SysMenu> allMenus = new ArrayList<>();
@@ -109,27 +140,55 @@ public class AdminInitializer implements ApplicationRunner {
         ensureTree(0L, menuTree(), allMenus, createdMenus);
 
         // 全新初始化授予全量菜单；老库只补本次新增菜单
-        List<SysMenu> toGrant = userCreated ? allMenus : createdMenus;
+        List<SysMenu> toGrant = superAdminCreated || systemAdminCreated ? allMenus : createdMenus;
 
+        // 角色-菜单授权：ADMIN 必授；SYSTEM_ADMIN 存在时同授
+        List<Long> grantRoleIds = systemAdminRole == null
+                ? List.of(adminRole.getId())
+                : List.of(adminRole.getId(), systemAdminRole.getId());
         List<SysRoleMenu> roleMenus = new ArrayList<>();
         for (SysMenu menu : toGrant) {
-            roleMenus.add(roleConverter.toSysRoleMenu(roleId, menu.getId()));
+            for (Long roleId : grantRoleIds) {
+                roleMenus.add(roleConverter.toSysRoleMenu(roleId, menu.getId()));
+            }
         }
         if (!roleMenus.isEmpty()) {
             sysRoleMenuService.createBatch(roleMenus);
         }
-        log.info("管理员初始化完成 | username: {} | 用户已创建: {} | 新增菜单数: {} | 补授权菜单数: {}",
-                ADMIN_USERNAME, userCreated, createdMenus.size(), roleMenus.size());
+        log.info("管理员初始化完成 | 超管: {} (已创建: {}) | 系统管理员已创建: {} | 新增菜单数: {} | 补授权菜单数: {}",
+                superAccount.username(), superAdminCreated, systemAdminCreated,
+                createdMenus.size(), roleMenus.size());
     }
 
     /**
-     * 创建超级管理员角色。
+     * 校验并取回初始账号配置，防止空配置静默落库；沿用默认口令时告警提示。
+     */
+    private AdminProperties.AdminAccount requireAccount(AdminProperties.AdminAccount account, String configKey) {
+        if (account == null || account.isBlank()) {
+            throw new IllegalStateException("管理员初始账号配置缺失或不完整，请检查 " + configKey);
+        }
+        if (DEFAULT_PASSWORD.equals(account.password())) {
+            log.warn("账号 {} 仍在使用默认初始口令，生产环境请通过环境变量覆盖 {}", account.username(), configKey + ".password");
+        }
+        return account;
+    }
+
+    /**
+     * 幂等确保持有指定角色：无关联时写入（老库 admin 账号补持 ADMIN 角色等场景）。
+     */
+    private void ensureUserRole(Long userId, Long roleId) {
+        if (!sysUserRoleService.listRoleIdsByUserId(userId).contains(roleId)) {
+            sysUserRoleService.createForUser(userId, roleId);
+        }
+    }
+
+    /**
+     * 创建超级管理员角色（仅当 seed.sql 未执行时的兜底）。
      */
     private SysRole createAdminRole() {
         SysRole role = new SysRole();
         role.setRoleCode(ADMIN_ROLE_CODE);
         role.setRoleName("超级管理员");
-        role.setRoleSort(1);
         role.setDataScope(1);
         role.setIsBuiltin(1);
         role.setStatus(1);
@@ -138,17 +197,22 @@ public class AdminInitializer implements ApplicationRunner {
     }
 
     /**
-     * 创建初始管理员用户。
+     * 创建初始管理员账号：统一 BCrypt 加密口令、状态启用、口令更新时间置当前。
+     *
+     * @param account  初始账号配置（用户名与明文口令）
+     * @param userCode 用户编号
+     * @param realName 姓名
+     * @param isAdmin  是否超管万能身份（1-是 0-否）
      */
-    private SysUser createAdminUser() {
+    private SysUser createUser(AdminProperties.AdminAccount account, String userCode, String realName, int isAdmin) {
         SysUser user = new SysUser();
-        user.setUserCode(ADMIN_USER_CODE);
-        user.setUsername(ADMIN_USERNAME);
-        user.setPassword(passwordEncoder.encode(ADMIN_PASSWORD));
-        user.setRealName("系统管理员");
+        user.setUserCode(userCode);
+        user.setUsername(account.username());
+        user.setPassword(passwordEncoder.encode(account.password()));
+        user.setRealName(realName);
         user.setGender(0);
         user.setStatus(1);
-        user.setIsAdmin(1);
+        user.setIsAdmin(isAdmin);
         user.setLoginFailCount(0);
         user.setPasswordUpdateTime(LocalDateTime.now());
         sysUserDomainService.createUser(user);
@@ -225,10 +289,15 @@ public class AdminInitializer implements ApplicationRunner {
                 menu.setMenuSort(seed.sort());
                 menu.setVisible(seed.type() == TYPE_BUTTON ? 0 : 1);
                 menu.setStatus(1);
+                menu.setIsSystem(1);
                 sysMenuDomainService.createMenu(menu);
                 createdMenus.add(menu);
-            } else if (seed.perms() != null && !seed.perms().equals(menu.getPerms())) {
-                sysMenuDomainService.updatePerms(menu.getId(), seed.perms());
+            } else {
+                // 种子菜单即内置菜单（08 文档 2.2）：老库未标记 is_system 的幂等补标
+                sysMenuDomainService.markSystem(menu);
+                if (seed.perms() != null && !seed.perms().equals(menu.getPerms())) {
+                    sysMenuDomainService.updatePerms(menu.getId(), seed.perms());
+                }
             }
             allMenus.add(menu);
             ensureTree(menu.getId(), seed.children(), allMenus, createdMenus);

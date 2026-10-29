@@ -54,7 +54,6 @@ public interface UserConverter {
     @Mapping(target = "phone")
     @Mapping(target = "email")
     @Mapping(target = "gender")
-    @Mapping(target = "status")
     @Mapping(target = "remark")
     @Mapping(target = "version")
     SysUser updateUser(UserUpdateDTO dto);

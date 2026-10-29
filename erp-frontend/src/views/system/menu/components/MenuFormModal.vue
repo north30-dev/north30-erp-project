@@ -155,7 +155,6 @@ function initialForm(): CrudForm {
     permsObject: '',
     permsAction: '',
     icon: '',
-    menuSort: 0,
     visible: VISIBLE_SHOWN,
     status: STATUS_ENABLED,
     remark: '',
@@ -285,7 +284,7 @@ async function handleSubmit(form: CrudForm): Promise<void> {
     // 三段全空 = 不配置权限；否则拼接 a:b:c
     perms: permsEmpty(form) ? null : segments.join(':'),
     icon: toNullable(form.icon),
-    menuSort: Number(form.menuSort ?? 0),
+    // menuSort 不再手填：新增走后端同级 max+10 缺省，调整顺序用列表页上移/下移（08 文档阶段四）
     visible: form.visible as number,
     status: form.status as number,
     remark: toNullable(form.remark),
@@ -294,7 +293,9 @@ async function handleSubmit(form: CrudForm): Promise<void> {
     await createMenu(dto)
     message.success('新增菜单成功')
   } else {
-    await updateMenu(editId.value as string, { ...dto, version: form.version as number })
+    // 状态变更统一走列表页专用开关接口（/status），update 载荷不含状态字段
+    const { status: _ignoredStatus, ...updateDto } = dto
+    await updateMenu(editId.value as string, { ...updateDto, version: form.version as number })
     message.success('修改菜单成功')
   }
   emit('saved')
@@ -433,16 +434,11 @@ defineExpose({ show })
           </a-form-item>
         </a-col>
         <a-col :span="8">
-          <a-form-item label="排序号" name="menuSort">
-            <a-input-number v-model:value="(form.menuSort as number)" :min="0" class="w-full" />
-          </a-form-item>
-        </a-col>
-        <a-col :span="8">
           <a-form-item label="是否显示" name="visible">
             <a-radio-group v-model:value="(form.visible as number)" :options="[...VISIBLE_OPTIONS]" />
           </a-form-item>
         </a-col>
-        <a-col :span="8">
+        <a-col v-if="mode === 'create'" :span="8">
           <a-form-item label="状态" name="status">
             <a-radio-group v-model:value="(form.status as number)" :options="[...STATUS_OPTIONS]" />
           </a-form-item>

@@ -201,4 +201,63 @@ class SysMenuTest {
             assertThat(page.getComponent()).isEqualTo("system/user/index");
         }
     }
+
+    @Nested
+    @DisplayName("状态变更守卫（changeStatus）")
+    class ChangeStatusTest {
+
+        @Test
+        @DisplayName("普通菜单停用：放行并写回 status=0")
+        void shouldAllowDisable_whenNormalMenu() {
+            // Given
+            SysMenu menu = menu(SysMenu.TYPE_MENU, "/system/user", "system/user/index", null);
+            menu.setIsSystem(0);
+
+            // When
+            menu.changeStatus(0);
+
+            // Then
+            assertThat(menu.getStatus()).isEqualTo(0);
+        }
+
+        @Test
+        @DisplayName("内置菜单停用：抛 18039")
+        void shouldThrow18039_whenDisableSystemMenu() {
+            // Given
+            SysMenu menu = menu(SysMenu.TYPE_MENU, "/system/user", "system/user/index", null);
+            menu.setIsSystem(1);
+
+            // When + Then
+            assertThatThrownBy(() -> menu.changeStatus(0))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(18039));
+        }
+
+        @Test
+        @DisplayName("内置菜单启用：放行")
+        void shouldAllowEnable_whenSystemMenu() {
+            // Given
+            SysMenu menu = menu(SysMenu.TYPE_MENU, "/system/user", "system/user/index", null);
+            menu.setIsSystem(1);
+            menu.setStatus(0);
+
+            // When
+            menu.changeStatus(1);
+
+            // Then
+            assertThat(menu.getStatus()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("非法状态值：抛 10001")
+        void shouldThrowParamError_whenStatusInvalid() {
+            // Given
+            SysMenu menu = menu(SysMenu.TYPE_MENU, "/system/user", "system/user/index", null);
+
+            // When + Then
+            assertThatThrownBy(() -> menu.changeStatus(2))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()));
+        }
+    }
 }

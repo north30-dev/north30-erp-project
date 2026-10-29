@@ -101,7 +101,6 @@ async function handleSubmit(form: CrudForm): Promise<void> {
       phone: (form.phone as string) || null,
       email: (form.email as string) || null,
       gender: form.gender as number,
-      status: form.status as number,
       remark: (form.remark as string) || null,
       version: form.version as number,
     })
@@ -201,7 +200,7 @@ defineExpose({ show })
             <a-input v-model:value="(form.email as string)" placeholder="选填" />
           </a-form-item>
         </a-col>
-        <a-col :span="12">
+        <a-col v-if="mode === 'create'" :span="12">
           <a-form-item label="状态" name="status">
             <a-radio-group v-model:value="(form.status as number)" :options="[...STATUS_OPTIONS]" />
           </a-form-item>

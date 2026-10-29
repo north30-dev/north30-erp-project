@@ -70,9 +70,29 @@ public class SysMenu extends BaseEntity {
     /** 状态 0-停用 1-启用 */
     private Integer status;
 
+    /** 是否内置菜单 0-否 1-是（种子菜单即内置，不可停用/删除，不随父级继承） */
+    private Integer isSystem;
+
+    /**
+     * 变更状态：值域守卫（10001）+ 内置菜单不可停用守卫（18039）。
+     * <p>内置菜单（isSystem=1）允许启用、拒绝停用；停用内置子树级联拦截由
+     * DomainService 查库承载（本方法不查库）。</p>
+     *
+     * @param targetStatus 目标状态 0-停用 1-启用
+     */
+    public void changeStatus(Integer targetStatus) {
+        if (targetStatus == null || (targetStatus != 0 && targetStatus != 1)) {
+            throw new BusinessException(CommonErrorCode.PARAM_ERROR, "状态值非法：" + targetStatus);
+        }
+        if (targetStatus == 0 && Integer.valueOf(1).equals(isSystem)) {
+            throw new BusinessException(SystemErrorCode.SYSTEM_MENU_PROTECTED);
+        }
+        this.status = targetStatus;
+    }
+
     /**
      * 创建时应用默认值。
-     * <p>默认值：menuSort=0, visible=1, status=1</p>
+     * <p>默认值：menuSort=0, visible=1, status=1, isSystem=0</p>
      * <p>仅在创建时调用，更新时不调用。</p>
      */
     public void applyCreateDefaults() {
@@ -84,6 +104,9 @@ public class SysMenu extends BaseEntity {
         }
         if (status == null) {
             status = 1;
+        }
+        if (isSystem == null) {
+            isSystem = 0;
         }
     }
 

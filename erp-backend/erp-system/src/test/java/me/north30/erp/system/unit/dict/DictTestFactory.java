@@ -2,9 +2,11 @@ package me.north30.erp.system.unit.dict;
 
 import me.north30.erp.system.dict.dto.DictItemCreateDTO;
 import me.north30.erp.system.dict.dto.DictItemQueryDTO;
+import me.north30.erp.system.dict.dto.DictItemStatusDTO;
 import me.north30.erp.system.dict.dto.DictItemUpdateDTO;
 import me.north30.erp.system.dict.dto.DictTypeCreateDTO;
 import me.north30.erp.system.dict.dto.DictTypeQueryDTO;
+import me.north30.erp.system.dict.dto.DictTypeStatusDTO;
 import me.north30.erp.system.dict.dto.DictTypeUpdateDTO;
 import me.north30.erp.system.dict.entity.SysDictItem;
 import me.north30.erp.system.dict.entity.SysDictType;
@@ -54,10 +56,10 @@ public final class DictTestFactory {
     }
 
     /**
-     * 修改字典类型请求 DTO。
+     * 修改字典类型请求 DTO（状态变更统一走 changeStatus）。
      */
-    public static DictTypeUpdateDTO typeUpdateDTO(String dictName, Integer status, String remark, Integer version) {
-        return new DictTypeUpdateDTO(dictName, status, remark, version);
+    public static DictTypeUpdateDTO typeUpdateDTO(String dictName, String remark, Integer version) {
+        return new DictTypeUpdateDTO(dictName, remark, version);
     }
 
     /**
@@ -77,10 +79,10 @@ public final class DictTestFactory {
     }
 
     /**
-     * 修改字典项请求 DTO（未传字段表示不修改，itemValue 不在修改范围）。
+     * 修改字典项请求 DTO（未传字段表示不修改，itemValue 不在修改范围，状态变更走 changeStatus）。
      */
-    public static DictItemUpdateDTO itemUpdateDTO(Integer version, String itemLabel, Integer itemSort, Integer status) {
-        return new DictItemUpdateDTO(itemLabel, itemSort, null, null, null, status, null, version);
+    public static DictItemUpdateDTO itemUpdateDTO(Integer version, String itemLabel, Integer itemSort) {
+        return new DictItemUpdateDTO(itemLabel, itemSort, null, null, null, null, version);
     }
 
     /**
@@ -89,5 +91,19 @@ public final class DictTestFactory {
     public static DictItemQueryDTO itemQueryDTO(String dictType, String lang, Integer status,
                                                 Integer pageNum, Integer pageSize) {
         return new DictItemQueryDTO(dictType, lang, status, pageNum, pageSize);
+    }
+
+    /**
+     * 字典类型状态变更请求 DTO。
+     */
+    public static DictTypeStatusDTO typeStatusDTO(Integer status, Integer version) {
+        return new DictTypeStatusDTO(status, version);
+    }
+
+    /**
+     * 字典项状态变更请求 DTO。
+     */
+    public static DictItemStatusDTO itemStatusDTO(Integer status, Integer version) {
+        return new DictItemStatusDTO(status, version);
     }
 }

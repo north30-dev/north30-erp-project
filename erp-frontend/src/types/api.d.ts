@@ -142,6 +142,8 @@ export interface MenuNodeVO {
   /** 是否可见（0：隐藏，1：显示） */
   visible: number
   status: number
+  /** 是否内置菜单（0：否，1：是；内置不可停用/删除） */
+  isSystem: number
   /** 备注（编辑弹窗回填用） */
   remark: string | null
   /** 乐观锁版本号（编辑提交用） */
@@ -166,7 +168,7 @@ export interface MenuCreateDTO {
   path?: string | null
   component?: string | null
   perms?: string | null
-  icon?: string | null
+  /** 缺省走后端同级 max+10，调整顺序用 move 接口（08 文档阶段四） */
   menuSort?: number
   visible?: number
   status?: number
@@ -184,7 +186,6 @@ export interface MenuUpdateDTO {
   icon?: string | null
   menuSort?: number
   visible?: number
-  status?: number
   remark?: string | null
   version: number
 }
@@ -316,7 +317,6 @@ export interface UserUpdateDTO {
   phone: string | null
   email: string | null
   gender: number
-  status: number
   remark: string | null
   version: number
 }
@@ -325,6 +325,25 @@ export interface UserUpdateDTO {
 export interface UserStatusDTO {
   status: number
   version: number
+}
+
+/* ---------- 通用状态/排序动作（08 文档阶段四：六域 status + 树域 move 统一） ---------- */
+
+/** 变更状态请求 DTO（POST /{resource}/{id}/status，乐观锁 version 必填） */
+export interface StatusDTO {
+  status: number
+  version: number
+}
+
+/** 变更状态响应 VO */
+export interface StatusVO {
+  status: number
+}
+
+/** 上移/下移请求 DTO（POST /{resource}/{id}/move） */
+export interface MoveDTO {
+  /** up-上移 down-下移 */
+  direction: 'up' | 'down'
 }
 
 /** 更新用户状态响应 VO（5.1.6：变更后状态与会话是否已失效） */
@@ -397,7 +416,8 @@ export interface DeptCreateDTO {
   deptType: number
   leader: string | null
   phone: string | null
-  deptSort: number
+  /** 缺省走后端同级 max+10，调整顺序用 move 接口（08 文档阶段四） */
+  deptSort?: number
   status: number
   remark: string | null
 }
@@ -409,8 +429,7 @@ export interface DeptUpdateDTO {
   deptType: number
   leader: string | null
   phone: string | null
-  deptSort: number
-  status: number
+  deptSort?: number
   remark: string | null
   version: number
 }
@@ -441,12 +460,11 @@ export interface RolePageQueryDTO {
   orderDirection?: string
 }
 
-/** 角色分页记录 VO（5.2.1，userCount 为派生计数；version/remark 供编辑弹窗回填） */
+/** 角色分页记录 VO（5.2.1，userCount 为派生计数；version/remark 供编辑弹窗回填；08 文档阶段四删除 role_sort） */
 export interface RoleVO {
   id: string
   roleCode: string
   roleName: string
-  roleSort: number
   dataScope: number
   isBuiltin: number
   status: number
@@ -459,7 +477,6 @@ export interface RoleVO {
 export interface RoleCreateDTO {
   roleCode: string
   roleName: string
-  roleSort?: number
   dataScope?: number
   status?: number
   remark?: string | null
@@ -468,9 +485,7 @@ export interface RoleCreateDTO {
 /** 修改角色请求 DTO（5.2.3，role_code 不可修改，乐观锁 version 必填） */
 export interface RoleUpdateDTO {
   roleName: string
-  roleSort?: number
   dataScope?: number
-  status?: number
   remark?: string | null
   version: number
 }
@@ -573,7 +588,6 @@ export interface DictTypeCreateDTO {
 /** 修改字典类型请求 DTO（5.5.3，dict_type 不可修改，乐观锁 version 必填） */
 export interface DictTypeUpdateDTO {
   dictName: string
-  status?: number
   remark?: string | null
   version: number
 }
@@ -626,7 +640,6 @@ export interface DictItemUpdateDTO {
   cssClass?: string | null
   isDefault?: number | null
   extJson?: string | null
-  status?: number
   remark?: string | null
   version: number
 }

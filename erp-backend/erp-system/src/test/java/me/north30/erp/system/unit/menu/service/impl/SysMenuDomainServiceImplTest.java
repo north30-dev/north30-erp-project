@@ -27,7 +27,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -515,6 +517,93 @@ class SysMenuDomainServiceImplTest {
 
             // When + Then
             assertThatCode(() -> service.requireSubtreeDepthWithinLimit(9L, 99L)).doesNotThrowAnyException();
+        }
+    }
+
+    @Nested
+    @DisplayName("内置菜单保护（is_system）")
+    class SystemMenuProtectTest {
+
+        @Test
+        @DisplayName("requireSubtreeNotSystem：自身为内置菜单时抛 18039")
+        void shouldThrow18039_whenSelfIsSystem() {
+            // Given
+            SysMenu menu = MenuTestFactory.dirMenu(1L, "系统管理", 0L, 1);
+            menu.setIsSystem(1);
+            given(sysMenuMapper.selectList(any())).willReturn(List.of(menu));
+
+            // When + Then
+            assertThatThrownBy(() -> service.requireSubtreeNotSystem(1L))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.SYSTEM_MENU_PROTECTED.getCode()));
+        }
+
+        @Test
+        @DisplayName("requireSubtreeNotSystem：子树含内置节点时抛 18039")
+        void shouldThrow18039_whenDescendantIsSystem() {
+            // Given：普通父目录挂内置子菜单
+            SysMenu parent = MenuTestFactory.dirMenu(1L, "业务目录", 0L, 1);
+            SysMenu child = MenuTestFactory.pageMenu(2L, "内置页面", 1L, "biz/page/index", "biz:page:list", 1);
+            child.setIsSystem(1);
+            given(sysMenuMapper.selectList(any())).willReturn(List.of(parent, child));
+
+            // When + Then
+            assertThatThrownBy(() -> service.requireSubtreeNotSystem(1L))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.SYSTEM_MENU_PROTECTED.getCode()));
+        }
+
+        @Test
+        @DisplayName("requireSubtreeNotSystem：普通子树放行")
+        void shouldPass_whenSubtreeAllNormal() {
+            // Given
+            given(sysMenuMapper.selectList(any())).willReturn(List.of(
+                MenuTestFactory.dirMenu(1L, "业务目录", 0L, 1),
+                MenuTestFactory.pageMenu(2L, "业务页面", 1L, "biz/page/index", "biz:page:list", 1)));
+
+            // When + Then
+            assertThatCode(() -> service.requireSubtreeNotSystem(1L)).doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("markSystem：未标记的菜单置 is_system=1 并更新")
+        void shouldSetAndPersist_whenNotMarkedYet() {
+            // Given
+            SysMenu menu = MenuTestFactory.dirMenu(1L, "系统管理", 0L, 1);
+
+            // When
+            service.markSystem(menu);
+
+            // Then
+            assertThat(menu.getIsSystem()).isEqualTo(1);
+            verify(sysMenuMapper).updateById(menu);
+        }
+
+        @Test
+        @DisplayName("markSystem：已标记的菜单幂等跳过，不触发更新")
+        void shouldSkip_whenAlreadyMarked() {
+            // Given
+            SysMenu menu = MenuTestFactory.dirMenu(1L, "系统管理", 0L, 1);
+            menu.setIsSystem(1);
+
+            // When
+            service.markSystem(menu);
+
+            // Then
+            verify(sysMenuMapper, never()).updateById(isA(SysMenu.class));
+        }
+
+        @Test
+        @DisplayName("resetSystemMenus：执行条件更新并返回行数")
+        void shouldReturnUpdatedRows_whenReset() {
+            // Given
+            given(sysMenuMapper.update(any(), any())).willReturn(3);
+
+            // When
+            int count = service.resetSystemMenus();
+
+            // Then
+            assertThat(count).isEqualTo(3);
         }
     }
 }

@@ -332,10 +332,10 @@ class UserAccessServiceImplTest {
     class ListMenuTreeTest {
 
         @Test
-        @DisplayName("admin 用户：全量启用菜单过滤按钮后组树，不查角色关联")
+        @DisplayName("超管：全量菜单（含停用）过滤按钮后组树，不查角色关联")
         void shouldBuildFullTree_whenAdmin() {
             // Given
-            when(sysMenuDomainService.listEnabled()).thenReturn(List.of(
+            when(sysMenuDomainService.listAll()).thenReturn(List.of(
                 menu(1L, 0L, 1, null), menu(2L, 1L, 2, null), menu(3L, 1L, 3, null)));
             // When
             List<MenuTreeVO> tree = userAccessService.listMenuTree(USER_ID, true);
@@ -465,6 +465,81 @@ class UserAccessServiceImplTest {
             verify(sysMenuDomainService).listEnabledByIds(argThat(ids ->
                 ids != null && ids.size() == 2 && ids.containsAll(Set.of(100L, 101L))));
             verify(sysMenuDomainService, never()).listAllPerms();
+        }
+    }
+
+    @Nested
+    @DisplayName("超级管理员判定")
+    class IsSuperAdminTest {
+
+        @Test
+        @DisplayName("is_admin=1：直接判定为超管，不查角色")
+        void shouldReturnTrue_whenUserIsAdmin() {
+            // Given
+            when(sysUserDomainService.getById(ADMIN_USER_ID)).thenReturn(adminUser());
+            // When
+            boolean result = userAccessService.isSuperAdmin(ADMIN_USER_ID);
+            // Then
+            assertThat(result).isTrue();
+            verifyNoInteractions(sysUserRoleService, sysRoleDomainService);
+        }
+
+        @Test
+        @DisplayName("普通用户持有启用 ADMIN 角色：判定为超管")
+        void shouldReturnTrue_whenHoldsEnabledAdminRole() {
+            // Given
+            when(sysUserDomainService.getById(USER_ID)).thenReturn(user());
+            when(sysUserRoleService.listByUserId(USER_ID))
+                .thenReturn(List.of(userRole(USER_ID, ROLE_ID_A)));
+            when(sysRoleDomainService.listByIds(List.of(ROLE_ID_A)))
+                .thenReturn(List.of(role(ROLE_ID_A, "ADMIN", 1, 1)));
+            // When
+            boolean result = userAccessService.isSuperAdmin(USER_ID);
+            // Then
+            assertThat(result).isTrue();
+        }
+
+        @Test
+        @DisplayName("普通用户持停用 ADMIN 角色：不判定为超管")
+        void shouldReturnFalse_whenAdminRoleDisabled() {
+            // Given
+            when(sysUserDomainService.getById(USER_ID)).thenReturn(user());
+            when(sysUserRoleService.listByUserId(USER_ID))
+                .thenReturn(List.of(userRole(USER_ID, ROLE_ID_A)));
+            when(sysRoleDomainService.listByIds(List.of(ROLE_ID_A)))
+                .thenReturn(List.of(role(ROLE_ID_A, "ADMIN", 0, 1)));
+            // When
+            boolean result = userAccessService.isSuperAdmin(USER_ID);
+            // Then
+            assertThat(result).isFalse();
+        }
+
+        @Test
+        @DisplayName("普通用户仅持普通角色：不判定为超管")
+        void shouldReturnFalse_whenOnlyNormalRoles() {
+            // Given
+            when(sysUserDomainService.getById(USER_ID)).thenReturn(user());
+            when(sysUserRoleService.listByUserId(USER_ID))
+                .thenReturn(List.of(userRole(USER_ID, ROLE_ID_A)));
+            when(sysRoleDomainService.listByIds(List.of(ROLE_ID_A)))
+                .thenReturn(List.of(role(ROLE_ID_A, "sales", 1, 2)));
+            // When
+            boolean result = userAccessService.isSuperAdmin(USER_ID);
+            // Then
+            assertThat(result).isFalse();
+        }
+
+        @Test
+        @DisplayName("用户不存在：不判定为超管")
+        void shouldReturnFalse_whenUserNotExists() {
+            // Given
+            when(sysUserDomainService.getById(USER_ID)).thenReturn(null);
+            when(sysUserRoleService.listByUserId(USER_ID)).thenReturn(List.of());
+            when(sysRoleDomainService.listByIds(List.of())).thenReturn(List.of());
+            // When
+            boolean result = userAccessService.isSuperAdmin(USER_ID);
+            // Then
+            assertThat(result).isFalse();
         }
     }
 }

@@ -7,7 +7,6 @@ package me.north30.erp.system.role.vo;
  * @param id        角色 ID
  * @param roleCode  角色编码
  * @param roleName  角色名称
- * @param roleSort  排序号
  * @param dataScope 数据范围
  * @param isBuiltin 是否内置角色
  * @param status    状态
@@ -19,7 +18,6 @@ public record RoleVO(
     Long id,
     String roleCode,
     String roleName,
-    Integer roleSort,
     Integer dataScope,
     Integer isBuiltin,
     Integer status,

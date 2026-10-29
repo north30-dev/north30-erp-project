@@ -1,6 +1,7 @@
 package me.north30.erp.system.menu.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
@@ -17,6 +18,7 @@ import org.springframework.util.StringUtils;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -46,6 +48,32 @@ public class SysMenuDomainServiceImpl implements SysMenuDomainService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<SysMenu> listSiblings(Long parentId) {
+        long pid = parentId == null ? ROOT_PARENT_ID : parentId;
+        return sysMenuMapper.selectList(new LambdaQueryWrapper<SysMenu>()
+            .eq(SysMenu::getParentId, pid)
+            .orderByAsc(SysMenu::getMenuSort)
+            .orderByAsc(SysMenu::getId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int nextMenuSort(Long parentId) {
+        return listSiblings(parentId).stream()
+            .map(SysMenu::getMenuSort)
+            .filter(Objects::nonNull)
+            .max(Integer::compareTo)
+            .orElse(0) + 10;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SysMenu> listAll() {
+        return sysMenuMapper.selectList(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<SysMenu> listEnabledByIds(Collection<Long> ids) {
         if (CollectionUtils.isEmpty(ids)) {
             return List.of();
@@ -64,10 +92,13 @@ public class SysMenuDomainServiceImpl implements SysMenuDomainService {
         return sysMenuMapper.selectByIds(ids);
     }
 
+    /**
+     * 查询全量权限点标识（超管全量权限用，不限菜单状态——停用菜单对超管无感知）。
+     */
     @Override
     @Transactional(readOnly = true)
     public List<String> listAllPerms() {
-        return listEnabled().stream()
+        return sysMenuMapper.selectList(null).stream()
             .map(SysMenu::getPerms)
             .filter(perms -> perms != null && !perms.isBlank())
             .distinct()
@@ -89,6 +120,52 @@ public class SysMenuDomainServiceImpl implements SysMenuDomainService {
         }
         menu.setPerms(perms);
         sysMenuMapper.updateById(menu);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void markSystem(SysMenu menu) {
+        if (Integer.valueOf(1).equals(menu.getIsSystem())) {
+            return;
+        }
+        menu.setIsSystem(1);
+        sysMenuMapper.updateById(menu);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void requireSubtreeNotSystem(Long menuId) {
+        Map<Long, SysMenu> menuMap = loadMenuMap();
+        if (containsSystem(menuId, menuMap)) {
+            throw new BusinessException(SystemErrorCode.SYSTEM_MENU_PROTECTED,
+                "目标菜单及其子树包含内置菜单，不可停用");
+        }
+    }
+
+    /** 递归判定节点及其子孙是否含内置菜单。 */
+    private boolean containsSystem(Long menuId, Map<Long, SysMenu> menuMap) {
+        SysMenu menu = menuMap.get(menuId);
+        if (menu == null) {
+            return false;
+        }
+        if (Integer.valueOf(1).equals(menu.getIsSystem())) {
+            return true;
+        }
+        for (SysMenu child : menuMap.values()) {
+            if (menuId.equals(child.getParentId()) && containsSystem(child.getId(), menuMap)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int resetSystemMenus() {
+        return sysMenuMapper.update(null, new LambdaUpdateWrapper<SysMenu>()
+            .eq(SysMenu::getIsSystem, 1)
+            .eq(SysMenu::getStatus, 0)
+            .set(SysMenu::getStatus, 1));
     }
 
     @Override

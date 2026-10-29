@@ -5,13 +5,15 @@ import { computed, onMounted, ref } from 'vue'
 import { message, Modal } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import {
+  ArrowUpOutlined,
+  ArrowDownOutlined,
   DeleteOutlined,
   EditOutlined,
   PlusOutlined,
   PlusSquareOutlined,
 } from '@ant-design/icons-vue'
 import AppSearchForm from '../../../components/AppSearchForm/index.vue'
-import { deleteDept, getDeptTree } from '../../../api/dept'
+import { changeDeptStatus, deleteDept, getDeptTree, moveDept } from '../../../api/dept'
 import {
   DEPT_TYPE_BRANCH,
   DEPT_TYPE_DEPT,
@@ -21,7 +23,8 @@ import {
   DEPT_TYPE_OPTIONS,
   DEPT_TYPE_WORKSHOP,
   MAX_DEPT_DEPTH,
-  STATUS_MAP,
+  STATUS_DISABLED,
+  STATUS_ENABLED,
   STATUS_OPTIONS,
 } from '../../../constants'
 import type { DeptTreeQueryDTO, DeptTreeVO } from '../../../types/api'
@@ -44,9 +47,8 @@ const columns: ColumnsType<DeptTreeVO> = [
   { title: '层级', dataIndex: 'deptLevel', width: 80 },
   { title: '负责人', dataIndex: 'leader', width: 120 },
   { title: '联系电话', dataIndex: 'phone', width: 140 },
-  { title: '排序', dataIndex: 'deptSort', width: 80 },
-  { title: '状态', dataIndex: 'status', width: 80 },
-  { title: '操作', key: 'action', width: 260, fixed: 'right' },
+  { title: '状态', dataIndex: 'status', width: 90 },
+  { title: '操作', key: 'action', width: 340, fixed: 'right' },
 ]
 
 const initialQuery: DeptTreeQueryDTO = { deptName: '', deptType: undefined, status: undefined }
@@ -136,6 +138,59 @@ function openEdit(record: DeptTreeVO): void {
   formModalRef.value?.show('edit', { ...record })
 }
 
+const statusSavingId = ref<string | null>(null)
+const movingId = ref<string | null>(null)
+
+/** 状态开关：走专用 status 动作接口（08 文档阶段四状态开关统一），成功后整树刷新 */
+async function handleStatusChange(record: DeptTreeVO, checked: boolean): Promise<void> {
+  statusSavingId.value = record.id
+  try {
+    await changeDeptStatus(record.id, {
+      status: checked ? STATUS_ENABLED : STATUS_DISABLED,
+      version: record.version,
+    })
+    await load()
+  } finally {
+    statusSavingId.value = null
+  }
+}
+
+/** 上移/下移：同级规范化重排后相邻交换（08 文档阶段四排序统一），成功后整树刷新 */
+async function handleMove(record: DeptTreeVO, direction: 'up' | 'down'): Promise<void> {
+  movingId.value = record.id
+  try {
+    await moveDept(record.id, { direction })
+    await load()
+  } finally {
+    movingId.value = null
+  }
+}
+
+/** 定位节点的同级兄弟列表（树数据按 sort ASC, id ASC 排列，天然反映展示顺序） */
+function siblingsOf(record: DeptTreeVO): DeptTreeVO[] {
+  function find(nodes: DeptTreeVO[]): DeptTreeVO[] | null {
+    for (const node of nodes) {
+      const children = node.children ?? []
+      if (children.some((child) => child.id === record.id)) {
+        return children
+      }
+      const nested = find(children)
+      if (nested) {
+        return nested
+      }
+    }
+    return null
+  }
+  return find(treeData.value) ?? treeData.value
+}
+
+/** 是否同级首行（上移禁用）/ 末行（下移禁用） */
+function isAtEdge(record: DeptTreeVO, up: boolean): boolean {
+  const siblings = siblingsOf(record)
+  const index = siblings.findIndex((node) => node.id === record.id)
+  return up ? index <= 0 : index < 0 || index >= siblings.length - 1
+}
+
 /** 删除确认（有子节点时按钮禁用；挂靠用户由后端 18025 拦截） */
 function confirmDelete(record: DeptTreeVO): void {
   Modal.confirm({
@@ -210,9 +265,13 @@ onMounted(() => {
             {{ (record as DeptTreeVO).phone ?? '-' }}
           </template>
           <template v-else-if="column.dataIndex === 'status'">
-            <a-tag :color="(record as DeptTreeVO).status === 1 ? 'success' : 'default'">
-              {{ STATUS_MAP[(record as DeptTreeVO).status] ?? '-' }}
-            </a-tag>
+            <a-switch
+              :checked="(record as DeptTreeVO).status === STATUS_ENABLED"
+              :loading="statusSavingId === (record as DeptTreeVO).id"
+              checked-children="启用"
+              un-checked-children="停用"
+              @change="(checked: boolean) => handleStatusChange(record as DeptTreeVO, checked)"
+            />
           </template>
           <template v-else-if="column.key === 'action'">
             <a-space>
@@ -231,6 +290,30 @@ onMounted(() => {
                   @click="openCreate(record as DeptTreeVO)"
                 >
                   <PlusSquareOutlined /> 新增下级
+                </a-button>
+              </a-tooltip>
+              <a-tooltip :title="isAtEdge(record as DeptTreeVO, true) ? '已处于同级顶部' : ''">
+                <a-button
+                  v-perm="'system:dept:update'"
+                  type="link"
+                  size="small"
+                  :loading="movingId === (record as DeptTreeVO).id"
+                  :disabled="isAtEdge(record as DeptTreeVO, true)"
+                  @click="handleMove(record as DeptTreeVO, 'up')"
+                >
+                  <ArrowUpOutlined /> 上移
+                </a-button>
+              </a-tooltip>
+              <a-tooltip :title="isAtEdge(record as DeptTreeVO, false) ? '已处于同级底部' : ''">
+                <a-button
+                  v-perm="'system:dept:update'"
+                  type="link"
+                  size="small"
+                  :loading="movingId === (record as DeptTreeVO).id"
+                  :disabled="isAtEdge(record as DeptTreeVO, false)"
+                  @click="handleMove(record as DeptTreeVO, 'down')"
+                >
+                  <ArrowDownOutlined /> 下移
                 </a-button>
               </a-tooltip>
               <a-button

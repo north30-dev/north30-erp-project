@@ -12,12 +12,15 @@ import me.north30.erp.common.audit.AuditModuleEnum;
 import me.north30.erp.common.audit.OperateTypeEnum;
 import me.north30.erp.common.result.Result;
 import me.north30.erp.system.menu.dto.MenuCreateDTO;
+import me.north30.erp.system.menu.dto.MenuMoveDTO;
+import me.north30.erp.system.menu.dto.MenuStatusDTO;
 import me.north30.erp.system.menu.dto.MenuTreeQueryDTO;
 import me.north30.erp.system.menu.dto.MenuUpdateDTO;
 import me.north30.erp.system.menu.service.SysMenuApplicationService;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.menu.vo.MenuCreatedVO;
 import me.north30.erp.system.menu.vo.MenuNodeVO;
+import me.north30.erp.system.menu.vo.MenuStatusVO;
 import me.north30.erp.system.menu.vo.MenuUpdatedVO;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -85,6 +88,35 @@ public class SysMenuController {
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<MenuUpdatedVO> update(@PathVariable Long id, @Valid @RequestBody MenuUpdateDTO dto) {
         return Result.success(sysMenuApplicationService.update(id, dto));
+    }
+
+    /**
+     * 变更菜单状态（启用/停用，08 文档阶段四状态开关统一）。
+     */
+    @PostMapping("/{id}/status")
+    @PreAuthorize("hasAuthority('system:menu:update')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
+    @Operation(summary = "变更菜单状态", description = "权限点 system:menu:update；内置菜单（isSystem=1）及其子树不可停用（18039），乐观锁冲突返回 409/10601")
+    @ApiResponse(responseCode = "422", description = "业务校验失败（18019 菜单不存在/18039 内置菜单不可停用）",
+        content = @Content(mediaType = "application/json",
+            examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
+    public Result<MenuStatusVO> changeStatus(@PathVariable Long id, @Valid @RequestBody MenuStatusDTO dto) {
+        return Result.success(sysMenuApplicationService.changeStatus(id, dto));
+    }
+
+    /**
+     * 菜单上移/下移（08 文档阶段四排序统一）。
+     */
+    @PostMapping("/{id}/move")
+    @PreAuthorize("hasAuthority('system:menu:update')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
+    @Operation(summary = "菜单上移/下移", description = "权限点 system:menu:update；同级规范化重排（10,20,30…）后相邻交换，乐观锁冲突返回 409/10601，已处于顶部/底部返回 422/10001")
+    @ApiResponse(responseCode = "422", description = "业务校验失败（18019 菜单不存在/10001 无法移动）",
+        content = @Content(mediaType = "application/json",
+            examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
+    public Result<Void> move(@PathVariable Long id, @Valid @RequestBody MenuMoveDTO dto) {
+        sysMenuApplicationService.move(id, dto);
+        return Result.success();
     }
 
     /**

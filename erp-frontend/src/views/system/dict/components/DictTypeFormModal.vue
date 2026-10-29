@@ -53,7 +53,6 @@ async function handleSubmit(form: CrudForm): Promise<void> {
   } else {
     await updateDictType(editId.value as string, {
       dictName: form.dictName as string,
-      status: form.status as number,
       remark: (form.remark as string) || null,
       version: form.version as number,
     })
@@ -97,7 +96,7 @@ defineExpose({ show })
             <a-input v-model:value="(form.dictName as string)" placeholder="请输入类型名称" />
           </a-form-item>
         </a-col>
-        <a-col :span="12">
+        <a-col v-if="mode === 'create'" :span="12">
           <a-form-item label="状态" name="status">
             <a-radio-group v-model:value="(form.status as number)" :options="[...STATUS_OPTIONS]" />
           </a-form-item>

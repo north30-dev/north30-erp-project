@@ -285,6 +285,131 @@ class DeptIntegrationTest extends ApiIntegrationTest {
     }
 
     @Nested
+    @DisplayName("变更部门状态")
+    class ChangeStatusTest {
+
+        @Test
+        @DisplayName("停用后重新启用自建部门，返回变更后状态")
+        void shouldToggleStatus_whenDeptCreated() {
+            // Given（新建行乐观锁版本为 0）
+            List<String> codes = new ArrayList<>();
+            createAndReturnCode(0L, codes);
+            long id = findIdByCode(codes.get(0));
+
+            // When / Then：停用
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 0, "version", 0))
+                .when().post(BASE_PATH + "/" + id + "/status")
+                .then().statusCode(200).body("code", equalTo(200))
+                .body("data.status", equalTo(0));
+
+            // When / Then：启用
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 1, "version", 1))
+                .when().post(BASE_PATH + "/" + id + "/status")
+                .then().statusCode(200).body("code", equalTo(200))
+                .body("data.status", equalTo(1));
+        }
+
+        @Test
+        @DisplayName("版本号过期，返回409乐观锁冲突")
+        void shouldReturn409Conflict_whenVersionStale() {
+            // Given
+            List<String> codes = new ArrayList<>();
+            createAndReturnCode(0L, codes);
+            long id = findIdByCode(codes.get(0));
+
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 0, "version", 999))
+                .when().post(BASE_PATH + "/" + id + "/status")
+                .then().statusCode(409)
+                .body("code", equalTo(CommonErrorCode.OPTIMISTIC_LOCK_CONFLICT.getCode()));
+        }
+
+        @Test
+        @DisplayName("停用不存在的部门id，返回422部门不存在")
+        void shouldReturn422DeptNotFound_whenIdNotExist() {
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 0, "version", 1))
+                .when().post(BASE_PATH + "/999999999/status")
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.DEPT_NOT_FOUND.getCode()));
+        }
+    }
+
+    @Nested
+    @DisplayName("组织上移/下移")
+    class MoveTest {
+
+        /** 读取根级部门编码顺序 */
+        private List<String> rootDeptCodes() {
+            Response response = given().port(port).header("Authorization", "Bearer " + adminToken())
+                .when().get(BASE_PATH + "/tree")
+                .then().statusCode(200)
+                .extract().response();
+            List<Map<String, Object>> roots = response.jsonPath().getList("data");
+            return roots.stream().map(n -> String.valueOf(n.get("deptCode"))).toList();
+        }
+
+        @Test
+        @DisplayName("下移成功，树中同级顺序交换")
+        void shouldMoveDownAndSwapOrder_whenMoveDown() {
+            // Given：两个顶级部门，创建顺序 A→B（A sort=10 在前）
+            List<String> codes = new ArrayList<>();
+            createAndReturnCode(0L, codes);
+            createAndReturnCode(0L, codes);
+            long idA = findIdByCode(codes.get(0));
+
+            // When：A 下移
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("direction", "down"))
+                .when().post(BASE_PATH + "/" + idA + "/move")
+                .then().statusCode(200).body("code", equalTo(200));
+
+            // Then：树中 B 排在 A 之前
+            List<String> order = rootDeptCodes();
+            org.assertj.core.api.Assertions.assertThat(order.indexOf(codes.get(1)))
+                .isLessThan(order.indexOf(codes.get(0)));
+        }
+
+        @Test
+        @DisplayName("已处于同级底部时下移，返回422参数错误")
+        void shouldReturn422ParamError_whenMoveDownAtBottom() {
+            // Given：新建顶级部门 sort 为同级 max+10，必处于底部（含种子部门干扰也不受影响）
+            List<String> codes = new ArrayList<>();
+            createAndReturnCode(0L, codes);
+            long idA = findIdByCode(codes.get(0));
+
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("direction", "down"))
+                .when().post(BASE_PATH + "/" + idA + "/move")
+                .then().statusCode(422)
+                .body("code", equalTo(CommonErrorCode.PARAM_ERROR.getCode()));
+        }
+
+        @Test
+        @DisplayName("移动不存在的部门id，返回422部门不存在")
+        void shouldReturn422DeptNotFound_whenIdNotExist() {
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("direction", "up"))
+                .when().post(BASE_PATH + "/999999999/move")
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.DEPT_NOT_FOUND.getCode()));
+        }
+    }
+
+    @Nested
     @DisplayName("鉴权校验")
     class AuthRoundTest {
 

@@ -8,7 +8,6 @@ import jakarta.validation.constraints.Size;
  *
  * @param roleCode  角色编码（≤50 字符）
  * @param roleName  角色名称（≤100 字符）
- * @param roleSort  排序号
  * @param dataScope 数据范围
  * @param status    状态
  * @param remark    备注（≤500 字符）
@@ -22,8 +21,6 @@ public record RoleCreateDTO(
     @NotBlank(message = "角色名称不能为空")
     @Size(max = 100, message = "角色名称长度不能超过 100")
     String roleName,
-
-    Integer roleSort,
 
     Integer dataScope,
 

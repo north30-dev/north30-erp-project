@@ -7,12 +7,17 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import me.north30.erp.common.audit.AuditLog;
+import me.north30.erp.common.audit.AuditModuleEnum;
+import me.north30.erp.common.audit.OperateTypeEnum;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.common.result.Result;
 import me.north30.erp.system.dict.dto.DictTypeCreateDTO;
 import me.north30.erp.system.dict.dto.DictTypeQueryDTO;
+import me.north30.erp.system.dict.dto.DictTypeStatusDTO;
 import me.north30.erp.system.dict.dto.DictTypeUpdateDTO;
 import me.north30.erp.system.dict.service.SysDictTypeService;
+import me.north30.erp.system.dict.vo.DictTypeStatusVO;
 import me.north30.erp.system.dict.vo.DictTypeVO;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.common.vo.MutationVO;
@@ -90,5 +95,19 @@ public class SysDictTypeController {
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<DeleteResultVO> delete(@PathVariable Long id) {
         return Result.success(sysDictTypeService.deleteType(id));
+    }
+
+    /**
+     * 变更字典类型状态（启用/停用，08 文档阶段四状态开关统一）。
+     */
+    @PostMapping("/{id}/status")
+    @PreAuthorize("hasAuthority('system:dict:update')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
+    @Operation(summary = "变更字典类型状态", description = "权限点 system:dict:update；乐观锁冲突返回 409/10601")
+    @ApiResponse(responseCode = "422", description = "业务校验失败（18028 字典类型不存在）",
+        content = @Content(mediaType = "application/json",
+            examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
+    public Result<DictTypeStatusVO> changeStatus(@PathVariable Long id, @Valid @RequestBody DictTypeStatusDTO dto) {
+        return Result.success(sysDictTypeService.changeStatusType(id, dto));
     }
 }

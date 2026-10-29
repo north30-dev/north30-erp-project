@@ -7,12 +7,17 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import me.north30.erp.common.audit.AuditLog;
+import me.north30.erp.common.audit.AuditModuleEnum;
+import me.north30.erp.common.audit.OperateTypeEnum;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.common.result.Result;
 import me.north30.erp.system.config.dto.ConfigCreateDTO;
 import me.north30.erp.system.config.dto.ConfigQueryDTO;
+import me.north30.erp.system.config.dto.ConfigStatusDTO;
 import me.north30.erp.system.config.dto.ConfigUpdateDTO;
 import me.north30.erp.system.config.service.SysConfigApplicationService;
+import me.north30.erp.system.config.vo.ConfigStatusVO;
 import me.north30.erp.system.config.vo.ConfigUpdateVO;
 import me.north30.erp.system.config.vo.ConfigVO;
 import me.north30.erp.system.common.vo.DeleteResultVO;
@@ -91,5 +96,19 @@ public class SysConfigController {
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<DeleteResultVO> delete(@PathVariable Long id) {
         return Result.success(sysConfigApplicationService.delete(id));
+    }
+
+    /**
+     * 变更系统参数状态（启用/停用，08 文档阶段四状态开关统一）。
+     */
+    @PostMapping("/{id}/status")
+    @PreAuthorize("hasAuthority('system:config:update')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
+    @Operation(summary = "变更系统参数状态", description = "权限点 system:config:update；内置参数（is_system=1）不可停用（18033），乐观锁冲突返回 409/10601")
+    @ApiResponse(responseCode = "422", description = "业务校验失败（18032 系统参数不存在、18033 内置系统参数不可停用）",
+        content = @Content(mediaType = "application/json",
+            examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
+    public Result<ConfigStatusVO> changeStatus(@PathVariable Long id, @Valid @RequestBody ConfigStatusDTO dto) {
+        return Result.success(sysConfigApplicationService.changeStatus(id, dto));
     }
 }

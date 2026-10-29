@@ -18,6 +18,7 @@ import java.util.List;
  * @param menuSort  显示顺序
  * @param visible   是否显示 0-隐藏 1-显示
  * @param status    状态 0-停用 1-启用
+ * @param isSystem  是否内置菜单 0-否 1-是（内置不可停用/删除，前端禁用开关与删除按钮）
  * @param remark    备注（编辑弹窗回填用）
  * @param version   乐观锁版本号（编辑提交用）
  * @param children  子节点（同级递归结构，无子节点时为 null）
@@ -46,6 +47,8 @@ public record MenuNodeVO(
     Integer visible,
 
     Integer status,
+
+    Integer isSystem,
 
     String remark,
 

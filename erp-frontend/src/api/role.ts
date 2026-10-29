@@ -1,4 +1,5 @@
 import { del, get, post, put } from '../utils/request'
+import { createStatusApi } from './statusApi'
 import type {
   DeleteResultVO,
   PageResult,
@@ -16,6 +17,9 @@ import type {
 } from '../types/api'
 
 /** 角色管理接口（对应后端 SysRoleController /api/system/roles，接口文档 5.2） */
+
+/** 变更角色状态（08 文档阶段四状态开关统一，内置角色后端 18017 拒绝） */
+export const changeRoleStatus = createStatusApi('roles').changeStatus
 
 export function getRolePage(query: RolePageQueryDTO): Promise<PageResult<RoleVO>> {
   return get<PageResult<RoleVO>>('/system/roles', query as Record<string, unknown>).then((r) => r.data)

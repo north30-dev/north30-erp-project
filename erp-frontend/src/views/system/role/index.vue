@@ -12,7 +12,7 @@ import {
 } from '@ant-design/icons-vue'
 import AppSearchForm from '../../../components/AppSearchForm/index.vue'
 import { useTable } from '../../../composables/useTable'
-import { deleteRole, getRolePage, updateRole } from '../../../api/role'
+import { changeRoleStatus, deleteRole, getRolePage } from '../../../api/role'
 import {
   DATA_SCOPE_MAP,
   STATUS_DISABLED,
@@ -27,7 +27,6 @@ import AssignMenusModal from './components/AssignMenusModal.vue'
 const columns: ColumnsType<RoleVO> = [
   { title: '角色编码', dataIndex: 'roleCode', width: 160 },
   { title: '角色名称', dataIndex: 'roleName', width: 160 },
-  { title: '排序号', dataIndex: 'roleSort', width: 90 },
   { title: '数据范围', dataIndex: 'dataScope', width: 130 },
   { title: '内置', dataIndex: 'isBuiltin', width: 80 },
   { title: '状态', dataIndex: 'status', width: 90 },
@@ -53,16 +52,12 @@ onMounted(() => {
   void search()
 })
 
-/** 状态开关：携带行内 version 走全量更新接口提交乐观锁，成功后整表刷新 */
+/** 状态开关：走专用 status 动作接口（08 文档阶段四状态开关统一），成功后整表刷新 */
 async function handleStatusChange(record: RoleVO, checked: boolean): Promise<void> {
   statusSavingId.value = record.id
   try {
-    await updateRole(record.id, {
-      roleName: record.roleName,
-      roleSort: record.roleSort,
-      dataScope: record.dataScope,
+    await changeRoleStatus(record.id, {
       status: checked ? STATUS_ENABLED : STATUS_DISABLED,
-      remark: record.remark,
       version: record.version,
     })
     await reload()
@@ -119,7 +114,7 @@ function confirmDelete(record: RoleVO): void {
         :columns="columns"
         :data-source="records"
         :loading="loading"
-        :scroll="{ x: 1220 }"
+        :scroll="{ x: 1130 }"
         :pagination="{
           current: pageNum,
           pageSize: pageSize,

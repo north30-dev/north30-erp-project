@@ -9,9 +9,12 @@ import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.util.DateTimeFormatUtil;
 import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.common.util.MenuTreeUtil;
+import me.north30.erp.system.common.util.SiblingSortUtil;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.menu.converter.MenuConverter;
 import me.north30.erp.system.menu.dto.MenuCreateDTO;
+import me.north30.erp.system.menu.dto.MenuMoveDTO;
+import me.north30.erp.system.menu.dto.MenuStatusDTO;
 import me.north30.erp.system.menu.dto.MenuTreeQueryDTO;
 import me.north30.erp.system.menu.dto.MenuUpdateDTO;
 import me.north30.erp.system.menu.entity.SysMenu;
@@ -20,6 +23,7 @@ import me.north30.erp.system.menu.service.SysMenuApplicationService;
 import me.north30.erp.system.menu.service.SysMenuDomainService;
 import me.north30.erp.system.menu.vo.MenuCreatedVO;
 import me.north30.erp.system.menu.vo.MenuNodeVO;
+import me.north30.erp.system.menu.vo.MenuStatusVO;
 import me.north30.erp.system.menu.vo.MenuUpdatedVO;
 import me.north30.erp.system.role.service.SysRoleMenuService;
 import org.springframework.stereotype.Service;
@@ -67,6 +71,10 @@ public class SysMenuApplicationServiceImpl implements SysMenuApplicationService 
         sysMenuDomainService.requirePermsAvailable(menu.getPerms(), null);
         menu.applyCreateDefaults();
         menu.clearRouteFieldsIfButton();
+        // 未显式指定显示顺序时取同级 max(menuSort)+10（08 文档阶段四排序统一）
+        if (dto.menuSort() == null) {
+            menu.setMenuSort(sysMenuDomainService.nextMenuSort(menu.getParentId()));
+        }
         sysMenuMapper.insert(menu);
         return new MenuCreatedVO(menu.getId());
     }
@@ -108,8 +116,43 @@ public class SysMenuApplicationServiceImpl implements SysMenuApplicationService 
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public void move(Long id, MenuMoveDTO dto) {
+        SysMenu menu = sysMenuDomainService.requireMenu(id);
+        // 同级按 sort ASC, id ASC 一次查出，规范化重排 + 相邻交换，变更行逐一乐观锁落库
+        List<SysMenu> siblings = sysMenuDomainService.listSiblings(menu.getParentId());
+        List<SysMenu> changed = SiblingSortUtil.moveSibling(siblings, menu,
+            "up".equals(dto.direction()), SysMenu::getId, SysMenu::getMenuSort, SysMenu::setMenuSort);
+        for (SysMenu row : changed) {
+            UpdateGuardUtil.checkOptimisticLockConflict(sysMenuMapper.updateById(row));
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public MenuStatusVO changeStatus(Long id, MenuStatusDTO dto) {
+        SysMenu menu = sysMenuDomainService.requireMenu(id);
+        // 停用前校验子树不含内置菜单（18039）；状态值域（10001）与自身内置保护收敛于实体 changeStatus
+        if (dto.status() == 0) {
+            sysMenuDomainService.requireSubtreeNotSystem(id);
+        }
+        menu.changeStatus(dto.status());
+        SysMenu patch = new SysMenu();
+        patch.setId(id);
+        patch.setStatus(menu.getStatus());
+        patch.setVersion(dto.version());
+        UpdateGuardUtil.checkOptimisticLockConflict(sysMenuMapper.updateById(patch));
+        return new MenuStatusVO(menu.getStatus());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public DeleteResultVO delete(Long id) {
         SysMenu menu = sysMenuDomainService.requireMenu(id);
+        // 内置菜单不可删除（18039）
+        if (Integer.valueOf(1).equals(menu.getIsSystem())) {
+            throw new BusinessException(SystemErrorCode.SYSTEM_MENU_PROTECTED,
+                "内置菜单 " + menu.getMenuName() + " 不可删除");
+        }
         Long childCount = sysMenuMapper.selectCount(
             new LambdaQueryWrapper<SysMenu>().eq(SysMenu::getParentId, id));
         if (childCount != null && childCount > 0) {

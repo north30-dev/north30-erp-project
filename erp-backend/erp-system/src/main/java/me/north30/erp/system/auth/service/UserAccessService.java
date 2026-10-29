@@ -25,6 +25,16 @@ public interface UserAccessService {
     UserSecurityData loadByUserId(Long userId);
 
     /**
+     * 超级管理员判定：is_admin=1 或持有 role_code='ADMIN' 的启用角色（08 文档 2.1）。
+     * <p>超管拥有全量权限、绕过菜单状态过滤、免疫菜单自锁；调用方（菜单树/权限点装载、
+     * 分配角色提权守卫）一律经由本方法判定，不再直读 user.isAdmin。</p>
+     *
+     * @param userId 用户 ID
+     * @return 是否超级管理员
+     */
+    boolean isSuperAdmin(Long userId);
+
+    /**
      * 按用户名查询账号（登录认证用，逻辑删除过滤）。
      */
     SysUser getByUsername(String username);

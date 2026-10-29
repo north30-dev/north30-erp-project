@@ -175,18 +175,19 @@ class RoleIntegrationTest extends ApiIntegrationTest {
             String roleCode = "it_role_" + suffix();
             long id = createRole(Map.of("roleCode", roleCode));
 
-            // When
+            // When（update 不含 status 字段，状态变更统一走 /status 接口）
             given().port(port).header("Authorization", "Bearer " + adminToken())
                 .contentType(ContentType.JSON)
-                .body(Map.of("roleName", "集成测试角色_已修改", "version", 0, "status", 1))
+                .body(Map.of("roleName", "集成测试角色_已修改", "version", 0))
                 .when().put(BASE_PATH + "/" + id)
                 .then().statusCode(200).body("code", equalTo(200));
 
-            // Then
+            // Then（名称已改、状态保持新建时的启用）
             given().port(port).header("Authorization", "Bearer " + adminToken())
                 .queryParam("roleCode", roleCode).queryParam("pageSize", 10)
                 .when().get(BASE_PATH)
-                .then().body("data.list[0].roleName", equalTo("集成测试角色_已修改"));
+                .then().body("data.list[0].roleName", equalTo("集成测试角色_已修改"))
+                .body("data.list[0].status", equalTo(1));
         }
     }
 
@@ -350,6 +351,80 @@ class RoleIntegrationTest extends ApiIntegrationTest {
             // When / Then
             given().port(port).header("Authorization", "Bearer " + adminToken())
                 .when().get(BASE_PATH + "/999999999/data-scopes")
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.ROLE_NOT_FOUND.getCode()));
+        }
+    }
+
+    @Nested
+    @DisplayName("变更角色状态")
+    class ChangeStatusTest {
+
+        @Test
+        @DisplayName("停用后重新启用自建角色，返回变更后状态")
+        void shouldToggleStatus_whenRoleCreated() {
+            // Given
+            long id = createRole(Map.of());
+
+            // When / Then：停用
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 0, "version", 0))
+                .when().post(BASE_PATH + "/" + id + "/status")
+                .then().statusCode(200).body("code", equalTo(200))
+                .body("data.status", equalTo(0));
+
+            // When / Then：启用
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 1, "version", 1))
+                .when().post(BASE_PATH + "/" + id + "/status")
+                .then().statusCode(200).body("code", equalTo(200))
+                .body("data.status", equalTo(1));
+        }
+
+        @Test
+        @DisplayName("停用内置角色，返回422内置保护（18017）")
+        void shouldReturn422RoleBuiltin_whenStopBuiltinRole() {
+            // Given：内置角色经分页检索 isBuiltin=1
+            long builtinId = given().port(port).header("Authorization", "Bearer " + adminToken())
+                .queryParam("pageSize", 200)
+                .when().get(BASE_PATH)
+                .then().statusCode(200)
+                .extract().jsonPath().getLong("data.list.find { it.isBuiltin == 1 }.id");
+
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 0, "version", 999))
+                .when().post(BASE_PATH + "/" + builtinId + "/status")
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.ROLE_BUILTIN.getCode()));
+        }
+
+        @Test
+        @DisplayName("版本号过期，返回409乐观锁冲突")
+        void shouldReturn409Conflict_whenVersionStale() {
+            // Given
+            long id = createRole(Map.of());
+
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 0, "version", 999))
+                .when().post(BASE_PATH + "/" + id + "/status")
+                .then().statusCode(409)
+                .body("code", equalTo(CommonErrorCode.OPTIMISTIC_LOCK_CONFLICT.getCode()));
+        }
+
+        @Test
+        @DisplayName("停用不存在的角色id，返回422角色不存在")
+        void shouldReturn422RoleNotFound_whenIdNotExist() {
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 0, "version", 1))
+                .when().post(BASE_PATH + "/999999999/status")
                 .then().statusCode(422)
                 .body("code", equalTo(SystemErrorCode.ROLE_NOT_FOUND.getCode()));
         }

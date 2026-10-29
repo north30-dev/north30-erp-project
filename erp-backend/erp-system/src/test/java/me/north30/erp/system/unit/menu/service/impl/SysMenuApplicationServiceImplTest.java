@@ -10,6 +10,7 @@ import me.north30.erp.system.unit.menu.MenuTestFactory;
 import me.north30.erp.system.menu.converter.MenuConverter;
 import me.north30.erp.system.menu.converter.MenuConverterImpl;
 import me.north30.erp.system.menu.dto.MenuCreateDTO;
+import me.north30.erp.system.menu.dto.MenuMoveDTO;
 import me.north30.erp.system.menu.dto.MenuUpdateDTO;
 import me.north30.erp.system.menu.entity.SysMenu;
 import me.north30.erp.system.menu.mapper.SysMenuMapper;
@@ -41,6 +42,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -586,6 +588,100 @@ class SysMenuApplicationServiceImplTest {
                     ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.MENU_NOT_FOUND.getCode()))
                 .hasMessage("菜单不存在");
             verifyNoInteractions(sysRoleMenuService);
+        }
+
+        @Test
+        @DisplayName("删除内置菜单：抛 18039")
+        void shouldThrow18039_whenDeleteSystemMenu() {
+            // Given
+            SysMenu menu = MenuTestFactory.dirMenu(1L, "系统管理", 0L, 1);
+            menu.setIsSystem(1);
+            given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
+
+            // When + Then
+            assertThatThrownBy(() -> service.delete(1L))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.SYSTEM_MENU_PROTECTED.getCode()))
+                .hasMessage("内置菜单 系统管理 不可删除");
+            verify(sysMenuMapper, never()).deleteById(anyLong());
+            verifyNoInteractions(sysRoleMenuService);
+        }
+    }
+
+    @Nested
+    @DisplayName("move：菜单上移/下移")
+    class MoveTest {
+
+        @Test
+        @DisplayName("上移时与前一节点交换并规范化重排，仅变更行落库")
+        void shouldSwapWithNeighborAndNormalize_whenMoveUp() {
+            // Given：同级三个目录 sort=10/20/30，目标为第二个
+            SysMenu first = MenuTestFactory.dirMenu(1L, "基础数据", 0L, 10);
+            SysMenu target = MenuTestFactory.dirMenu(2L, "系统管理", 0L, 20);
+            SysMenu third = MenuTestFactory.dirMenu(3L, "监控中心", 0L, 30);
+            given(sysMenuDomainService.requireMenu(2L)).willReturn(target);
+            given(sysMenuDomainService.listSiblings(0L)).willReturn(List.of(first, target, third));
+            given(sysMenuMapper.updateById(any(SysMenu.class))).willReturn(1);
+
+            // When
+            service.move(2L, new MenuMoveDTO("up"));
+
+            // Then：交换后 target=10、first=20，third 不变；仅两行落库
+            assertThat(target.getMenuSort()).isEqualTo(10);
+            assertThat(first.getMenuSort()).isEqualTo(20);
+            assertThat(third.getMenuSort()).isEqualTo(30);
+            verify(sysMenuMapper, times(2)).updateById(any(SysMenu.class));
+        }
+
+        @Test
+        @DisplayName("下移时与后一节点交换")
+        void shouldSwapWithNext_whenMoveDown() {
+            // Given：目标为同级第一行
+            SysMenu target = MenuTestFactory.dirMenu(1L, "基础数据", 0L, 10);
+            SysMenu second = MenuTestFactory.dirMenu(2L, "系统管理", 0L, 20);
+            given(sysMenuDomainService.requireMenu(1L)).willReturn(target);
+            given(sysMenuDomainService.listSiblings(0L)).willReturn(List.of(target, second));
+            given(sysMenuMapper.updateById(any(SysMenu.class))).willReturn(1);
+
+            // When
+            service.move(1L, new MenuMoveDTO("down"));
+
+            // Then
+            assertThat(target.getMenuSort()).isEqualTo(20);
+            assertThat(second.getMenuSort()).isEqualTo(10);
+            verify(sysMenuMapper, times(2)).updateById(any(SysMenu.class));
+        }
+
+        @Test
+        @DisplayName("已处于同级顶部时上移抛 10001")
+        void shouldThrow10001_whenMoveUpAtTop() {
+            // Given：目标为同级第一行
+            SysMenu target = MenuTestFactory.dirMenu(1L, "基础数据", 0L, 10);
+            given(sysMenuDomainService.requireMenu(1L)).willReturn(target);
+            given(sysMenuDomainService.listSiblings(0L)).willReturn(List.of(target));
+
+            // When + Then
+            assertThatThrownBy(() -> service.move(1L, new MenuMoveDTO("up")))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
+                .hasMessage("已处于同级顶部，无法上移");
+            verify(sysMenuMapper, never()).updateById(any(SysMenu.class));
+        }
+
+        @Test
+        @DisplayName("乐观锁冲突（更新 0 行），抛出 10601")
+        void shouldThrow10601_whenOptimisticLockConflict() {
+            // Given
+            SysMenu target = MenuTestFactory.dirMenu(1L, "基础数据", 0L, 10);
+            SysMenu second = MenuTestFactory.dirMenu(2L, "系统管理", 0L, 20);
+            given(sysMenuDomainService.requireMenu(1L)).willReturn(target);
+            given(sysMenuDomainService.listSiblings(0L)).willReturn(List.of(target, second));
+            given(sysMenuMapper.updateById(any(SysMenu.class))).willReturn(0);
+
+            // When + Then
+            assertThatThrownBy(() -> service.move(1L, new MenuMoveDTO("down")))
+                .isInstanceOf(OptimisticLockingFailureException.class)
+                .hasMessage("数据已被其他操作修改，请重试");
         }
     }
 }

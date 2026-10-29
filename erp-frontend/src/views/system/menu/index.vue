@@ -5,20 +5,23 @@ import { computed, onMounted, ref } from 'vue'
 import { message, Modal } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import {
+  ArrowUpOutlined,
+  ArrowDownOutlined,
   DeleteOutlined,
   EditOutlined,
   PlusOutlined,
   PlusSquareOutlined,
 } from '@ant-design/icons-vue'
 import AppSearchForm from '../../../components/AppSearchForm/index.vue'
-import { deleteMenu, getMenuTree } from '../../../api/menu'
+import { changeMenuStatus, deleteMenu, getMenuTree, moveMenu } from '../../../api/menu'
 import {
   MAX_MENU_DEPTH,
   MENU_TYPE_BUTTON,
   MENU_TYPE_DIR,
   MENU_TYPE_MAP,
   MENU_TYPE_MENU,
-  STATUS_MAP,
+  STATUS_DISABLED,
+  STATUS_ENABLED,
   STATUS_OPTIONS,
   VISIBLE_MAP,
 } from '../../../constants'
@@ -40,10 +43,9 @@ const columns: ColumnsType<MenuNodeVO> = [
   { title: '组件路径', dataIndex: 'component', width: 180 },
   { title: '权限标识', dataIndex: 'perms', width: 180 },
   { title: '图标', dataIndex: 'icon', width: 120 },
-  { title: '排序', dataIndex: 'menuSort', width: 80 },
   { title: '可见', dataIndex: 'visible', width: 80 },
-  { title: '状态', dataIndex: 'status', width: 80 },
-  { title: '操作', key: 'action', width: 280, fixed: 'right' },
+  { title: '状态', dataIndex: 'status', width: 90 },
+  { title: '操作', key: 'action', width: 340, fixed: 'right' },
 ]
 
 const initialQuery: MenuTreeQueryDTO = { menuName: '', perms: '', status: undefined }
@@ -156,6 +158,59 @@ function openEdit(record: MenuNodeVO): void {
   formModalRef.value?.show('edit', { ...record })
 }
 
+const statusSavingId = ref<string | null>(null)
+const movingId = ref<string | null>(null)
+
+/** 状态开关：走专用 status 动作接口（08 文档阶段四状态开关统一），成功后整树刷新 */
+async function handleStatusChange(record: MenuNodeVO, checked: boolean): Promise<void> {
+  statusSavingId.value = record.id
+  try {
+    await changeMenuStatus(record.id, {
+      status: checked ? STATUS_ENABLED : STATUS_DISABLED,
+      version: record.version,
+    })
+    await load()
+  } finally {
+    statusSavingId.value = null
+  }
+}
+
+/** 上移/下移：同级规范化重排后相邻交换（08 文档阶段四排序统一），成功后整树刷新 */
+async function handleMove(record: MenuNodeVO, direction: 'up' | 'down'): Promise<void> {
+  movingId.value = record.id
+  try {
+    await moveMenu(record.id, { direction })
+    await load()
+  } finally {
+    movingId.value = null
+  }
+}
+
+/** 定位节点的同级兄弟列表（树数据按 sort ASC, id ASC 排列，天然反映展示顺序） */
+function siblingsOf(record: MenuNodeVO): MenuNodeVO[] {
+  function find(nodes: MenuNodeVO[]): MenuNodeVO[] | null {
+    for (const node of nodes) {
+      const children = node.children ?? []
+      if (children.some((child) => child.id === record.id)) {
+        return children
+      }
+      const nested = find(children)
+      if (nested) {
+        return nested
+      }
+    }
+    return null
+  }
+  return find(treeData.value) ?? treeData.value
+}
+
+/** 是否同级首行（上移禁用）/ 末行（下移禁用） */
+function isAtEdge(record: MenuNodeVO, up: boolean): boolean {
+  const siblings = siblingsOf(record)
+  const index = siblings.findIndex((node) => node.id === record.id)
+  return up ? index <= 0 : index < 0 || index >= siblings.length - 1
+}
+
 /** 删除确认（有子节点时按钮禁用；角色引用由后端 18021 拦截） */
 function confirmDelete(record: MenuNodeVO): void {
   Modal.confirm({
@@ -210,7 +265,7 @@ onMounted(() => {
         :data-source="displayTree"
         :loading="loading"
         :pagination="false"
-        :scroll="{ x: 1450 }"
+        :scroll="{ x: 1370 }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.dataIndex === 'menuType'">
@@ -236,9 +291,19 @@ onMounted(() => {
             </a-tag>
           </template>
           <template v-else-if="column.dataIndex === 'status'">
-            <a-tag :color="(record as MenuNodeVO).status === 1 ? 'success' : 'default'">
-              {{ STATUS_MAP[(record as MenuNodeVO).status] ?? '-' }}
-            </a-tag>
+            <!-- 内置菜单（is_system=1）不可停用/删除，开关禁用并给出说明（08 文档阶段二） -->
+            <a-tooltip
+              :title="(record as MenuNodeVO).isSystem === 1 ? '内置菜单不可停用/删除' : ''"
+            >
+              <a-switch
+                :checked="(record as MenuNodeVO).status === STATUS_ENABLED"
+                :loading="statusSavingId === (record as MenuNodeVO).id"
+                :disabled="(record as MenuNodeVO).isSystem === 1"
+                checked-children="启用"
+                un-checked-children="停用"
+                @change="(checked: boolean) => handleStatusChange(record as MenuNodeVO, checked)"
+              />
+            </a-tooltip>
           </template>
           <template v-else-if="column.key === 'action'">
             <a-space>
@@ -258,6 +323,30 @@ onMounted(() => {
                   @click="openCreate(record as MenuNodeVO)"
                 >
                   <PlusSquareOutlined /> 新增下级
+                </a-button>
+              </a-tooltip>
+              <a-tooltip :title="isAtEdge(record as MenuNodeVO, true) ? '已处于同级顶部' : ''">
+                <a-button
+                  v-perm="'system:menu:update'"
+                  type="link"
+                  size="small"
+                  :loading="movingId === (record as MenuNodeVO).id"
+                  :disabled="isAtEdge(record as MenuNodeVO, true)"
+                  @click="handleMove(record as MenuNodeVO, 'up')"
+                >
+                  <ArrowUpOutlined /> 上移
+                </a-button>
+              </a-tooltip>
+              <a-tooltip :title="isAtEdge(record as MenuNodeVO, false) ? '已处于同级底部' : ''">
+                <a-button
+                  v-perm="'system:menu:update'"
+                  type="link"
+                  size="small"
+                  :loading="movingId === (record as MenuNodeVO).id"
+                  :disabled="isAtEdge(record as MenuNodeVO, false)"
+                  @click="handleMove(record as MenuNodeVO, 'down')"
+                >
+                  <ArrowDownOutlined /> 下移
                 </a-button>
               </a-tooltip>
               <a-button

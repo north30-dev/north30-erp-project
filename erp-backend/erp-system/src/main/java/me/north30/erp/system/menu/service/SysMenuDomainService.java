@@ -20,10 +20,34 @@ public interface SysMenuDomainService {
 
     /**
      * 查询全部启用菜单（单次查询，内存组树防 N+1）。
-     * 
+     *
      * @return 启用菜单列表
      */
     List<SysMenu> listEnabled();
+
+    /**
+     * 查询指定父级下的同级菜单（sort ASC, id ASC，move 规范化重排用）。
+     *
+     * @param parentId 父级菜单 ID（顶级传 null 或 0）
+     * @return 同级菜单列表
+     */
+    List<SysMenu> listSiblings(Long parentId);
+
+    /**
+     * 计算同级下一个显示顺序（当前同级 max(menuSort) + 10，空同级返回 10）。
+     * <p>新增菜单未显式指定 menuSort 时调用（08 文档阶段四排序统一）。</p>
+     *
+     * @param parentId 父级菜单 ID（顶级传 null 或 0）
+     * @return 下一个显示顺序值
+     */
+    int nextMenuSort(Long parentId);
+
+    /**
+     * 查询全量菜单（含停用，超管菜单树专用——自锁兜底，08 文档 2.3）。
+     *
+     * @return 全量菜单列表
+     */
+    List<SysMenu> listAll();
 
     /**
      * 按主键集合批量查询启用菜单。 
@@ -58,11 +82,33 @@ public interface SysMenuDomainService {
 
     /**
      * 更新菜单权限标识（AdminInitializer 幂等续建时同步种子与库内 perms 差异）。
-     * 
+     *
      * @param menuId 菜单 ID
      * @param perms 权限标识
      */
     void updatePerms(Long menuId, String perms);
+
+    /**
+     * 标记菜单为内置（is_system=1）：种子菜单落库时写入；已有行未标记时补标。
+     *
+     * @param menu 已加载的菜单实体（原地置 isSystem=1 后更新）
+     */
+    void markSystem(SysMenu menu);
+
+    /**
+     * 内置菜单停用级联守卫：目标节点或其子孙含 is_system=1 时拒绝停用（18039）。
+     * <p>仅停用场景调用（启用无需拦截）；一次全量查询后内存判定，禁止循环查库。</p>
+     *
+     * @param menuId 待停用的菜单 ID
+     */
+    void requireSubtreeNotSystem(Long menuId);
+
+    /**
+     * 启动复位：is_system=1 且 status=0 的内置菜单强制恢复启用（08 文档 2.4 万能钥匙兜底）。
+     *
+     * @return 复位行数
+     */
+    int resetSystemMenus();
 
     /**
      * 校验菜单存在，不存在抛 19002（@TableLogic 自动过滤已删除行）。

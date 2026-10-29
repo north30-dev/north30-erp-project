@@ -417,6 +417,186 @@ class DictIntegrationTest extends ApiIntegrationTest {
     }
 
     @Nested
+    @DisplayName("变更字典类型状态")
+    class TypeChangeStatusTest {
+
+        @Test
+        @DisplayName("停用后重新启用自建类型，返回变更后状态")
+        void shouldToggleStatus_whenTypeCreated() {
+            // Given（新建行乐观锁版本为 0）
+            CreatedType type = createType();
+
+            // When / Then：停用
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 0, "version", 0))
+                .when().post(TYPE_PATH + "/" + type.id() + "/status")
+                .then().statusCode(200).body("code", equalTo(200))
+                .body("data.status", equalTo(0));
+
+            // When / Then：启用
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 1, "version", 1))
+                .when().post(TYPE_PATH + "/" + type.id() + "/status")
+                .then().statusCode(200).body("code", equalTo(200))
+                .body("data.status", equalTo(1));
+        }
+
+        @Test
+        @DisplayName("版本号过期，返回409乐观锁冲突")
+        void shouldReturn409Conflict_whenVersionStale() {
+            // Given
+            CreatedType type = createType();
+
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 0, "version", 999))
+                .when().post(TYPE_PATH + "/" + type.id() + "/status")
+                .then().statusCode(409)
+                .body("code", equalTo(CommonErrorCode.OPTIMISTIC_LOCK_CONFLICT.getCode()));
+        }
+
+        @Test
+        @DisplayName("停用不存在的类型id，返回422字典类型不存在")
+        void shouldReturn422DictTypeNotFound_whenIdNotExist() {
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 0, "version", 1))
+                .when().post(TYPE_PATH + "/999999999/status")
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.DICT_TYPE_NOT_FOUND.getCode()));
+        }
+    }
+
+    @Nested
+    @DisplayName("变更字典项状态")
+    class ItemChangeStatusTest {
+
+        @Test
+        @DisplayName("停用后重新启用自建字典项，返回变更后状态")
+        void shouldToggleStatus_whenItemCreated() {
+            // Given
+            CreatedType type = createType();
+            long itemId = createItem(type.dictType(), "V1");
+            try {
+                // When / Then：停用
+                given().port(port).header("Authorization", "Bearer " + adminToken())
+                    .contentType(ContentType.JSON)
+                    .body(Map.of("status", 0, "version", 0))
+                    .when().post(ITEM_PATH + "/" + itemId + "/status")
+                    .then().statusCode(200).body("code", equalTo(200))
+                    .body("data.status", equalTo(0));
+
+                // When / Then：启用
+                given().port(port).header("Authorization", "Bearer " + adminToken())
+                    .contentType(ContentType.JSON)
+                    .body(Map.of("status", 1, "version", 1))
+                    .when().post(ITEM_PATH + "/" + itemId + "/status")
+                    .then().statusCode(200).body("code", equalTo(200))
+                    .body("data.status", equalTo(1));
+            } finally {
+                cleanupItems(type.dictType());
+                given().port(port).header("Authorization", "Bearer " + adminToken())
+                    .when().delete(TYPE_PATH + "/" + type.id());
+            }
+        }
+
+        @Test
+        @DisplayName("版本号过期，返回409乐观锁冲突")
+        void shouldReturn409Conflict_whenVersionStale() {
+            // Given
+            CreatedType type = createType();
+            long itemId = createItem(type.dictType(), "V1");
+            try {
+                // When / Then
+                given().port(port).header("Authorization", "Bearer " + adminToken())
+                    .contentType(ContentType.JSON)
+                    .body(Map.of("status", 0, "version", 999))
+                    .when().post(ITEM_PATH + "/" + itemId + "/status")
+                    .then().statusCode(409)
+                    .body("code", equalTo(CommonErrorCode.OPTIMISTIC_LOCK_CONFLICT.getCode()));
+            } finally {
+                cleanupItems(type.dictType());
+                given().port(port).header("Authorization", "Bearer " + adminToken())
+                    .when().delete(TYPE_PATH + "/" + type.id());
+            }
+        }
+
+        @Test
+        @DisplayName("停用不存在的字典项id，返回422资源不存在")
+        void shouldReturn422NotFound_whenIdNotExist() {
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 0, "version", 1))
+                .when().post(ITEM_PATH + "/999999999/status")
+                .then().statusCode(422)
+                .body("code", equalTo(CommonErrorCode.NOT_FOUND.getCode()));
+        }
+    }
+
+    @Nested
+    @DisplayName("字典项上移/下移")
+    class ItemMoveTest {
+
+        @Test
+        @DisplayName("上移成功，同分组内顺序交换")
+        void shouldMoveUpAndSwapOrder_whenMoveUp() {
+            // Given：同类型下创建两项，创建顺序 A→B（B sort 为 max+10 排在 A 之后）
+            CreatedType type = createType();
+            long idA = createItem(type.dictType(), "IT_A");
+            long idB = createItem(type.dictType(), "IT_B");
+
+            // When：B 上移
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("direction", "up"))
+                .when().post(ITEM_PATH + "/" + idB + "/move")
+                .then().statusCode(200).body("code", equalTo(200));
+
+            // Then：分页列表中 B 排在 A 之前
+            List<Map<String, Object>> list = given().port(port).header("Authorization", "Bearer " + adminToken())
+                .queryParam("dictType", type.dictType()).queryParam("pageSize", 50)
+                .when().get(ITEM_PATH)
+                .then().statusCode(200)
+                .extract().jsonPath().getList("data.list");
+            List<Long> ids = list.stream().map(i -> Long.parseLong(String.valueOf(i.get("id")))).toList();
+            assertThat(ids.indexOf(idB)).isLessThan(ids.indexOf(idA));
+        }
+
+        @Test
+        @DisplayName("已处于分组底部时下移，返回422参数错误")
+        void shouldReturn422ParamError_whenMoveDownAtBottom() {
+            // Given：新建字典项 sort 为分组 max+10，必处于底部
+            CreatedType type = createType();
+            long id = createItem(type.dictType(), "IT_BOTTOM");
+
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("direction", "down"))
+                .when().post(ITEM_PATH + "/" + id + "/move")
+                .then().statusCode(422)
+                .body("code", equalTo(CommonErrorCode.PARAM_ERROR.getCode()));
+        }
+
+        @Test
+        @DisplayName("移动不存在的字典项id，返回422资源不存在")
+        void shouldReturn422NotFound_whenIdNotExist() {
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("direction", "up"))
+                .when().post(ITEM_PATH + "/999999999/move")
+                .then().statusCode(422)
+                .body("code", equalTo(CommonErrorCode.NOT_FOUND.getCode()));
+        }
+    }
+
+    @Nested
     @DisplayName("鉴权校验")
     class AuthRoundTest {
 

@@ -5,12 +5,14 @@ import me.north30.erp.system.role.dto.RoleAssignMenuDTO;
 import me.north30.erp.system.role.dto.RoleCreateDTO;
 import me.north30.erp.system.role.dto.RoleDataScopeSaveDTO;
 import me.north30.erp.system.role.dto.RolePageQueryDTO;
+import me.north30.erp.system.role.dto.RoleStatusDTO;
 import me.north30.erp.system.role.dto.RoleUpdateDTO;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.role.vo.RoleCreatedVO;
 import me.north30.erp.system.role.vo.RoleDataScopeVO;
 import me.north30.erp.system.role.vo.RoleMenuAssignedVO;
 import me.north30.erp.system.role.vo.RoleMenuIdsVO;
+import me.north30.erp.system.role.vo.RoleStatusVO;
 import me.north30.erp.system.role.vo.RoleUpdatedVO;
 import me.north30.erp.system.role.vo.RoleVO;
 
@@ -40,6 +42,15 @@ public interface SysRoleApplicationService {
      * @return 角色更新 VO
      */
     RoleUpdatedVO update(Long id, RoleUpdateDTO dto);
+
+    /**
+     * 变更角色状态（内置角色不可停用，18017；乐观锁更新）。
+     *
+     * @param id  角色 ID
+     * @param dto 状态变更参数
+     * @return RoleStatusVO 状态变更响应
+     */
+    RoleStatusVO changeStatus(Long id, RoleStatusDTO dto);
 
     /**
      * 删除角色（逻辑删除；内置角色、已分配用户角色不可删）。

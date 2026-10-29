@@ -191,16 +191,22 @@ async function handleExport(): Promise<void> {
         @change="handleTableChange"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="(record as UserVO).deptName === undefined" />
           <template v-if="column.dataIndex === 'roles'">
             <a-tag v-for="role in (record as UserVO).roles" :key="role" color="blue">{{ role }}</a-tag>
             <span v-if="!(record as UserVO).roles?.length">-</span>
+          </template>
+          <template v-else-if="column.dataIndex === 'username'">
+            {{ (record as UserVO).username }}
+            <!-- 内置超管（isAdmin=1）仅由启动初始化器设置，任何接口不可修改/删除 -->
+            <a-tooltip v-if="(record as UserVO).isAdmin === 1" title="内置用户不可停用/删除">
+              <a-tag color="purple" class="builtin-tag">内置</a-tag>
+            </a-tooltip>
           </template>
           <template v-else-if="column.dataIndex === 'status'">
             <a-switch
               :checked="(record as UserVO).status === STATUS_ENABLED"
               :loading="statusSavingId === (record as UserVO).id"
-              :disabled="!auth.hasPerm('system:user:update')"
+              :disabled="(record as UserVO).isAdmin === 1 || !auth.hasPerm('system:user:update')"
               checked-children="启用"
               un-checked-children="停用"
               @change="(checked: boolean) => handleStatusChange(record as UserVO, checked)"
@@ -240,6 +246,7 @@ async function handleExport(): Promise<void> {
                 type="link"
                 size="small"
                 danger
+                :disabled="(record as UserVO).isAdmin === 1"
                 @click="confirmDelete(record as UserVO)"
               >
                 <DeleteOutlined /> 删除
@@ -259,5 +266,9 @@ async function handleExport(): Promise<void> {
 <style scoped>
 .toolbar {
   margin-bottom: 16px;
+}
+
+.builtin-tag {
+  margin-inline-start: 4px;
 }
 </style>

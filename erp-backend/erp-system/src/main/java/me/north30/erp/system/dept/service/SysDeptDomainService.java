@@ -1,5 +1,7 @@
 package me.north30.erp.system.dept.service;
 
+import java.util.List;
+
 import me.north30.erp.system.dept.entity.SysDept;
 
 /**
@@ -43,4 +45,21 @@ public interface SysDeptDomainService {
      * @param dept 组织实体
      */
     void requireDeptHasNoUsers(SysDept dept);
+
+    /**
+     * 查询指定父级下的同级组织（dept_sort ASC, id ASC，move 规范化重排用）。
+     *
+     * @param parentId 父级组织 ID（顶级传 null 或 0）
+     * @return 同级组织列表
+     */
+    List<SysDept> listSiblings(Long parentId);
+
+    /**
+     * 计算同级下一个显示顺序（当前同级 max(deptSort) + 10，空同级返回 10）。
+     * <p>新增组织未显式指定 deptSort 时调用（08 文档阶段四排序统一）。</p>
+     *
+     * @param parentId 父级组织 ID（顶级传 null 或 0）
+     * @return 下一个显示顺序值
+     */
+    int nextDeptSort(Long parentId);
 }

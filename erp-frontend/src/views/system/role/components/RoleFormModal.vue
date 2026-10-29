@@ -19,7 +19,6 @@ function initialForm(): CrudForm {
   return {
     roleCode: '',
     roleName: '',
-    roleSort: 0,
     dataScope: DATA_SCOPE_ALL,
     status: STATUS_ENABLED,
     remark: '',
@@ -44,7 +43,6 @@ async function handleSubmit(form: CrudForm): Promise<void> {
     await createRole({
       roleCode: form.roleCode as string,
       roleName: form.roleName as string,
-      roleSort: form.roleSort as number,
       dataScope: form.dataScope as number,
       status: form.status as number,
       remark: (form.remark as string) || null,
@@ -53,9 +51,7 @@ async function handleSubmit(form: CrudForm): Promise<void> {
   } else {
     await updateRole(editId.value as string, {
       roleName: form.roleName as string,
-      roleSort: form.roleSort as number,
       dataScope: form.dataScope as number,
-      status: form.status as number,
       remark: (form.remark as string) || null,
       version: form.version as number,
     })
@@ -100,16 +96,11 @@ defineExpose({ show })
           </a-form-item>
         </a-col>
         <a-col :span="12">
-          <a-form-item label="排序号" name="roleSort">
-            <a-input-number v-model:value="(form.roleSort as number)" :min="0" class="w-full" />
-          </a-form-item>
-        </a-col>
-        <a-col :span="12">
           <a-form-item label="数据范围" name="dataScope">
             <a-select v-model:value="(form.dataScope as number)" :options="[...DATA_SCOPE_OPTIONS]" />
           </a-form-item>
         </a-col>
-        <a-col :span="12">
+        <a-col v-if="mode === 'create'" :span="12">
           <a-form-item label="状态" name="status">
             <a-radio-group v-model:value="(form.status as number)" :options="[...STATUS_OPTIONS]" />
           </a-form-item>

@@ -18,11 +18,14 @@ import java.util.Set;
 @Component
 public class RoleQueryStrategy {
 
-    /** 默认排序字段 */
-    private static final String DEFAULT_ORDER_BY = "create_time";
+    /** 默认排序字段（角色为纯列表无展示顺序语义，固定按 id 升序，08 文档阶段四） */
+    private static final String DEFAULT_ORDER_BY = "id";
+
+    /** 默认排序方向：id 升序 */
+    private static final boolean DEFAULT_ORDER_ASC = true;
 
     /** 排序字段白名单（接口文档 1.4：orderBy 必须命中白名单，否则抛 10001） */
-    private static final Set<String> ORDER_BY_WHITELIST = Set.of("create_time", "role_code", "role_sort", "role_name");
+    private static final Set<String> ORDER_BY_WHITELIST = Set.of("id", "create_time", "role_code", "role_name");
 
     /**
      * 构造分页对象：分页参数与排序方向校验不合法抛 10001，排序字段命中白名单后写入 Page。
@@ -42,7 +45,7 @@ public class RoleQueryStrategy {
         }
         boolean asc;
         if (query.orderDirection() == null || query.orderDirection().isBlank()) {
-            asc = false;
+            asc = DEFAULT_ORDER_ASC;
         } else if ("ASC".equalsIgnoreCase(query.orderDirection())) {
             asc = true;
         } else if ("DESC".equalsIgnoreCase(query.orderDirection())) {

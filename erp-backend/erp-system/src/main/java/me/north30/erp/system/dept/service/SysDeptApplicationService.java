@@ -1,9 +1,12 @@
 package me.north30.erp.system.dept.service;
 
 import me.north30.erp.system.dept.dto.DeptCreateDTO;
+import me.north30.erp.system.dept.dto.DeptMoveDTO;
+import me.north30.erp.system.dept.dto.DeptStatusDTO;
 import me.north30.erp.system.dept.dto.DeptTreeQueryDTO;
 import me.north30.erp.system.dept.dto.DeptUpdateDTO;
 import me.north30.erp.system.dept.vo.DeptMutationVO;
+import me.north30.erp.system.dept.vo.DeptStatusVO;
 import me.north30.erp.system.dept.vo.DeptTreeVO;
 
 import java.util.List;
@@ -41,9 +44,26 @@ public interface SysDeptApplicationService {
 
     /**
      * 删除组织部门（逻辑删除）：有下级组织或绑定用户不可删。
-     * 
+     *
      * @param id 组织部门 ID
      * @return 删除结果
      */
     DeptMutationVO delete(Long id);
+
+    /**
+     * 变更组织部门状态（启用/停用，08 文档阶段四状态开关统一）。
+     *
+     * @param id  组织部门 ID
+     * @param dto 状态变更参数
+     * @return 状态变更结果
+     */
+    DeptStatusVO changeStatus(Long id, DeptStatusDTO dto);
+
+    /**
+     * 组织上移/下移（同级规范化重排 10,20,30… 后相邻交换，08 文档阶段四排序统一）。
+     *
+     * @param id  组织部门 ID
+     * @param dto 移动方向参数
+     */
+    void move(Long id, DeptMoveDTO dto);
 }

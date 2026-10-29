@@ -99,6 +99,23 @@ public class SysConfig extends BaseEntity {
     }
 
     /**
+     * 变更状态：值域守卫（10001）+ 内置参数不可停用守卫（18033）。
+     * <p>内置参数（isSystem=1）允许启用、拒绝停用；仅校验/修改自身状态，不查库。</p>
+     *
+     * @param targetStatus 目标状态 0-停用 1-启用
+     */
+    public void changeStatus(Integer targetStatus) {
+        if (targetStatus == null || (targetStatus != 0 && targetStatus != 1)) {
+            throw new BusinessException(CommonErrorCode.PARAM_ERROR, "状态取值非法，仅支持 0-停用 1-启用");
+        }
+        if (targetStatus == 0 && Integer.valueOf(1).equals(isSystem)) {
+            throw new BusinessException(SystemErrorCode.BUILTIN_CONFIG_UNDELETABLE,
+                "内置系统参数 " + configKey + " 不可停用");
+        }
+        this.status = targetStatus;
+    }
+
+    /**
      * 应用创建字段默认值：
      * isSystem：0-否 1-是（内置不可删）
      * status：0-停用 1-启用

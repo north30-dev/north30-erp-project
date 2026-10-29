@@ -623,10 +623,11 @@ class SysAuthApplicationServiceImplTest {
         }
 
         @Test
-        @DisplayName("admin 用户：委托聚合服务并以 isAdmin=true 查询")
+        @DisplayName("超管用户：先做超管判定再以 superAdmin=true 查询")
         void shouldDelegateWithAdminFlag_whenUserIsAdmin() {
             // Given
             when(userAccessService.getUserById(USER_ID)).thenReturn(adminUser());
+            when(userAccessService.isSuperAdmin(USER_ID)).thenReturn(true);
             when(userAccessService.listMenuTree(USER_ID, true))
                 .thenReturn(List.of(menuTreeVO(1L)));
             // When
@@ -637,10 +638,11 @@ class SysAuthApplicationServiceImplTest {
         }
 
         @Test
-        @DisplayName("普通用户：委托聚合服务并以 isAdmin=false 查询")
+        @DisplayName("普通用户：先做超管判定再以 superAdmin=false 查询")
         void shouldDelegateWithNonAdminFlag_whenUserIsNormal() {
             // Given
             when(userAccessService.getUserById(USER_ID)).thenReturn(user());
+            when(userAccessService.isSuperAdmin(USER_ID)).thenReturn(false);
             when(userAccessService.listMenuTree(USER_ID, false)).thenReturn(List.of());
             // When
             List<MenuTreeVO> menus = authService.currentUserMenus();

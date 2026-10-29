@@ -5,7 +5,7 @@ import me.north30.erp.common.exception.ErrorCode;
 
 /**
  * 系统管理域错误码（18001-18999，接口文档 2.10，模块内唯一来源）。
- * <p>号段独占：18001-18013 认证/用户、18014-18023 角色与菜单、18024-18038 组织/字典/参数/编号序列/日志/附件。
+ * <p>号段独占：18001-18013 认证/用户、18014-18023 角色与菜单、18024-18038 组织/字典/参数/编号序列/日志/附件；18039 起新码追加不插入（08 文档 2.7）。
  * 通用段码（10202/10401-10403/10503）见 {@code me.north30.erp.common.exception.CommonErrorCode}。</p>
  */
 @Getter
@@ -139,7 +139,15 @@ public enum SystemErrorCode implements ErrorCode {
     AUDIT_LOG_NOT_FOUND(18037, "审计日志不存在"),
 
     /** 附件不存在 */
-    ATTACHMENT_NOT_FOUND(18038, "附件不存在");
+    ATTACHMENT_NOT_FOUND(18038, "附件不存在"),
+
+    // ---------- 权限保护（18039 起，追加不插入，见 08 文档 2.7） ----------
+
+    /** 内置菜单不可停用或删除（is_system=1，含子树含内置节点的级联停用） */
+    SYSTEM_MENU_PROTECTED(18039, "内置菜单不可停用或删除"),
+
+    /** 仅超级管理员可分配超级管理员角色（提权守卫） */
+    ONLY_SUPER_ADMIN_ASSIGN_ADMIN(18040, "仅超级管理员可分配超级管理员角色");
 
     /** 业务状态码 */
     private final int code;

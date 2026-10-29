@@ -13,7 +13,7 @@ import {
 } from '@ant-design/icons-vue'
 import AppSearchForm from '../../../components/AppSearchForm/index.vue'
 import { useTable } from '../../../composables/useTable'
-import { deleteDictType, getDictTypePage, updateDictType } from '../../../api/dict'
+import { changeDictTypeStatus, deleteDictType, getDictTypePage } from '../../../api/dict'
 import { STATUS_DISABLED, STATUS_ENABLED, STATUS_OPTIONS } from '../../../constants'
 import type { DictTypePageQueryDTO, DictTypeVO } from '../../../types/api'
 import DictTypeFormModal from './components/DictTypeFormModal.vue'
@@ -47,14 +47,12 @@ onMounted(() => {
   void search()
 })
 
-/** 状态开关：携带行内 version 走全量更新接口提交乐观锁，成功后整表刷新 */
+/** 状态开关：走专用 status 动作接口（08 文档阶段四状态开关统一），成功后整表刷新 */
 async function handleStatusChange(record: DictTypeVO, checked: boolean): Promise<void> {
   statusSavingId.value = record.id
   try {
-    await updateDictType(record.id, {
-      dictName: record.dictName,
+    await changeDictTypeStatus(record.id, {
       status: checked ? STATUS_ENABLED : STATUS_DISABLED,
-      remark: record.remark,
       version: record.version,
     })
     await reload()

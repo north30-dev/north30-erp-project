@@ -218,13 +218,13 @@ class SysDictTypeServiceImplTest {
     class UpdateTypeTest {
 
         @Test
-        @DisplayName("更新字典类型，仅更新名称/状态，remark 为空保持原值")
+        @DisplayName("更新字典类型，仅更新名称，remark 为空保持原值")
         void shouldUpdateFields_whenTypeExists() {
-            // Given：dict_type 不可修改，仅更新名称/状态，remark 为空保持原值
+            // Given：dict_type 不可修改，仅更新名称（状态变更走 changeStatus）
             SysDictType type = DictTestFactory.dictType(1L, "settlement_method", "旧名称", 1);
             type.setRemark("原备注");
             type.setUpdateTime(LocalDateTime.of(2026, 9, 28, 12, 0, 0));
-            var dto = DictTestFactory.typeUpdateDTO("新名称", 0, null, 4);
+            var dto = DictTestFactory.typeUpdateDTO("新名称", null, 4);
             given(sysDictTypeMapper.selectById(1L)).willReturn(type);
             given(sysDictTypeMapper.updateById(any(SysDictType.class))).willReturn(1);
 
@@ -236,7 +236,7 @@ class SysDictTypeServiceImplTest {
             assertThat(vo.updateTime()).isEqualTo("2026-09-28 12:00:00");
             verify(sysDictTypeMapper).updateById(typeCaptor.capture());
             assertThat(typeCaptor.getValue().getDictName()).isEqualTo("新名称");
-            assertThat(typeCaptor.getValue().getStatus()).isEqualTo(0);
+            assertThat(typeCaptor.getValue().getStatus()).isEqualTo(1);
             assertThat(typeCaptor.getValue().getRemark()).isEqualTo("原备注");
             assertThat(typeCaptor.getValue().getVersion()).isEqualTo(4);
         }
@@ -248,7 +248,7 @@ class SysDictTypeServiceImplTest {
             given(sysDictTypeMapper.selectById(1L)).willReturn(null);
 
             // When + Then
-            assertThatThrownBy(() -> service.updateType(1L, DictTestFactory.typeUpdateDTO("新名称", 1, null, 1)))
+            assertThatThrownBy(() -> service.updateType(1L, DictTestFactory.typeUpdateDTO("新名称", null, 1)))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DICT_TYPE_NOT_FOUND.getCode()))
                 .hasMessage("字典类型 1 不存在");
@@ -264,7 +264,7 @@ class SysDictTypeServiceImplTest {
             given(sysDictTypeMapper.updateById(any(SysDictType.class))).willReturn(0);
 
             // When + Then
-            assertThatThrownBy(() -> service.updateType(1L, DictTestFactory.typeUpdateDTO("结算方式", 1, null, 9)))
+            assertThatThrownBy(() -> service.updateType(1L, DictTestFactory.typeUpdateDTO("结算方式", null, 9)))
                 .isInstanceOf(OptimisticLockingFailureException.class)
                 .hasMessage("数据已被其他操作修改，请重试");
         }
@@ -320,6 +320,93 @@ class SysDictTypeServiceImplTest {
                     ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DICT_TYPE_NOT_FOUND.getCode()))
                 .hasMessage("字典类型 1 不存在");
             verifyNoInteractions(sysDictItemMapper);
+        }
+    }
+
+    @Nested
+    @DisplayName("changeStatusType：变更字典类型状态")
+    class ChangeStatusTest {
+
+        @Test
+        @DisplayName("成功启用，仅更新状态与乐观锁版本")
+        void shouldEnableType_whenStatusOne() {
+            // Given：类型存在且当前停用
+            SysDictType type = DictTestFactory.dictType(1L, "settlement_method", "结算方式", 0);
+            given(sysDictTypeMapper.selectById(1L)).willReturn(type);
+            given(sysDictTypeMapper.updateById(any(SysDictType.class))).willReturn(1);
+
+            // When
+            var vo = service.changeStatusType(1L, DictTestFactory.typeStatusDTO(1, 2));
+
+            // Then：patch 实体仅承载 id/status/version
+            assertThat(vo.status()).isEqualTo(1);
+            verify(sysDictTypeMapper).updateById(typeCaptor.capture());
+            SysDictType patch = typeCaptor.getValue();
+            assertThat(patch.getId()).isEqualTo(1L);
+            assertThat(patch.getStatus()).isEqualTo(1);
+            assertThat(patch.getVersion()).isEqualTo(2);
+            assertThat(patch.getDictType()).isNull();
+        }
+
+        @Test
+        @DisplayName("成功停用")
+        void shouldDisableType_whenStatusZero() {
+            // Given：类型存在且当前启用
+            SysDictType type = DictTestFactory.dictType(1L, "settlement_method", "结算方式", 1);
+            given(sysDictTypeMapper.selectById(1L)).willReturn(type);
+            given(sysDictTypeMapper.updateById(any(SysDictType.class))).willReturn(1);
+
+            // When
+            var vo = service.changeStatusType(1L, DictTestFactory.typeStatusDTO(0, 3));
+
+            // Then
+            assertThat(vo.status()).isZero();
+            verify(sysDictTypeMapper).updateById(typeCaptor.capture());
+            assertThat(typeCaptor.getValue().getStatus()).isZero();
+            assertThat(typeCaptor.getValue().getVersion()).isEqualTo(3);
+        }
+
+        @Test
+        @DisplayName("状态值非法，抛出 10001")
+        void shouldThrow10001_whenStatusValueIllegal() {
+            // Given
+            SysDictType type = DictTestFactory.dictType(1L, "settlement_method", "结算方式", 1);
+            given(sysDictTypeMapper.selectById(1L)).willReturn(type);
+
+            // When + Then
+            assertThatThrownBy(() -> service.changeStatusType(1L, DictTestFactory.typeStatusDTO(2, 2)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
+                .hasMessage("状态取值非法，仅支持 0-停用 1-启用");
+            verify(sysDictTypeMapper, never()).updateById(any(SysDictType.class));
+        }
+
+        @Test
+        @DisplayName("字典类型不存在，抛出 18028")
+        void shouldThrow18028_whenTypeNotFound() {
+            // Given
+            given(sysDictTypeMapper.selectById(99L)).willReturn(null);
+
+            // When + Then
+            assertThatThrownBy(() -> service.changeStatusType(99L, DictTestFactory.typeStatusDTO(1, 2)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DICT_TYPE_NOT_FOUND.getCode()))
+                .hasMessage("字典类型 99 不存在");
+            verify(sysDictTypeMapper, never()).updateById(any(SysDictType.class));
+        }
+
+        @Test
+        @DisplayName("乐观锁冲突（更新 0 行），抛出 10601")
+        void shouldThrow10601_whenOptimisticLockConflict() {
+            // Given
+            SysDictType type = DictTestFactory.dictType(1L, "settlement_method", "结算方式", 1);
+            given(sysDictTypeMapper.selectById(1L)).willReturn(type);
+            given(sysDictTypeMapper.updateById(any(SysDictType.class))).willReturn(0);
+
+            // When + Then
+            assertThatThrownBy(() -> service.changeStatusType(1L, DictTestFactory.typeStatusDTO(1, 9)))
+                .isInstanceOf(OptimisticLockingFailureException.class)
+                .hasMessage("数据已被其他操作修改，请重试");
         }
     }
 

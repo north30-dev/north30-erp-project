@@ -25,11 +25,13 @@ public class MenuTreeUtil {
     /** 顶级菜单父 ID */
     private static final long ROOT_PARENT_ID = 0L;
 
-    private static final Comparator<MenuTreeVO> MENU_SORT_COMPARATOR =
-        Comparator.comparing(MenuTreeVO::menuSort, Comparator.nullsLast(Comparator.naturalOrder()));
+    private static final Comparator<MenuTreeVO> MENU_SORT_COMPARATOR = Comparator
+        .comparing(MenuTreeVO::menuSort, Comparator.nullsLast(Comparator.naturalOrder()))
+        .thenComparing(MenuTreeVO::menuId);
 
-    private static final Comparator<MenuNodeVO> NODE_SORT_COMPARATOR =
-        Comparator.comparing(MenuNodeVO::menuSort, Comparator.nullsLast(Comparator.naturalOrder()));
+    private static final Comparator<MenuNodeVO> NODE_SORT_COMPARATOR = Comparator
+        .comparing(MenuNodeVO::menuSort, Comparator.nullsLast(Comparator.naturalOrder()))
+        .thenComparing(MenuNodeVO::id);
 
     private final MenuConverter menuConverter;
 
@@ -103,7 +105,7 @@ public class MenuTreeUtil {
             .collect(Collectors.toList());
         return new MenuNodeVO(node.id(), node.menuName(), node.parentId(), node.menuType(), node.path(),
             node.component(), node.perms(), node.icon(), node.menuSort(), node.visible(), node.status(),
-            node.remark(), node.version(), attached);
+            node.isSystem(), node.remark(), node.version(), attached);
     }
 
     /**
