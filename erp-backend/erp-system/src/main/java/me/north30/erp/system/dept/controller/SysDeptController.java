@@ -64,6 +64,7 @@ public class SysDeptController {
      */
     @PostMapping
     @PreAuthorize("hasAuthority('system:dept:create')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.CREATE)
     @Operation(summary = "新增组织部门", description = "权限点 system:dept:create；层级上限 5 级，自动计算祖级路径与层级")
     @ApiResponse(responseCode = "422", description = "业务校验失败（18026 组织编码已存在/18024 上级组织不存在/18027 组织层级超过上限）",
         content = @Content(mediaType = "application/json",
@@ -77,6 +78,7 @@ public class SysDeptController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('system:dept:update')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     @Operation(summary = "修改组织部门", description = "权限点 system:dept:update；父级变更时环检测并级联重算下级祖级路径与层级，乐观锁按 version 校验")
     @ApiResponse(responseCode = "422", description = "业务校验失败（18024 组织不存在/10001 上级不可选自身或自身下级/18027 组织层级超过上限/10601 乐观锁冲突）",
         content = @Content(mediaType = "application/json",
@@ -90,6 +92,7 @@ public class SysDeptController {
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('system:dept:delete')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.DELETE)
     @Operation(summary = "删除组织部门", description = "权限点 system:dept:delete；逻辑删除，删除前校验下级组织与挂靠用户")
     @ApiResponse(responseCode = "422", description = "业务校验失败（18024 组织不存在/18025 存在下级组织或已绑定用户不可删除）",
         content = @Content(mediaType = "application/json",

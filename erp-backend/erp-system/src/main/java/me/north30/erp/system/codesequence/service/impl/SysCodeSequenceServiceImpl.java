@@ -5,9 +5,6 @@ import com.baomidou.mybatisplus.core.injector.methods.Update;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import me.north30.erp.common.audit.AuditLog;
-import me.north30.erp.common.audit.AuditModuleEnum;
-import me.north30.erp.common.audit.OperateTypeEnum;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.result.PageResult;
@@ -60,7 +57,6 @@ public class SysCodeSequenceServiceImpl implements SysCodeSequenceService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     public CodeSequenceResetVO reset(CodeSequenceResetDTO dto) {
         LambdaQueryWrapper<SysCodeSequence> wrapper = new LambdaQueryWrapper<SysCodeSequence>()
             .eq(SysCodeSequence::getBizType, dto.bizType())

@@ -7,6 +7,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import me.north30.erp.common.audit.AuditLog;
+import me.north30.erp.common.audit.AuditModuleEnum;
+import me.north30.erp.common.audit.OperateTypeEnum;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.common.result.Result;
 import me.north30.erp.system.codesequence.dto.CodeSequenceQueryDTO;
@@ -53,6 +56,7 @@ public class SysCodeSequenceController {
      */
     @PostMapping("/reset")
     @PreAuthorize("hasAuthority('system:sequence:reset')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     @Operation(summary = "重置编号流水", description = "权限点 system:sequence:reset；仅允许向下重置至未使用区间，目标值相同时幂等跳过")
     @ApiResponse(responseCode = "422", description = "业务校验失败（18035 编号序列不存在、18036 重置值小于当前已用流水号、10601 乐观锁冲突）",
         content = @Content(mediaType = "application/json",

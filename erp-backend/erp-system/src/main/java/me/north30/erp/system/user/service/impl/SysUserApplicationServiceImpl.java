@@ -4,9 +4,6 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import me.north30.erp.common.audit.AuditLog;
-import me.north30.erp.common.audit.AuditModuleEnum;
-import me.north30.erp.common.audit.OperateTypeEnum;
 import me.north30.erp.common.util.UpdateGuardUtil;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.result.PageResult;
@@ -58,7 +55,7 @@ import java.util.Objects;
  * 进 user.strategy 包各策略类，本类只负责"查库 → 调实体/策略 → 持久化 → 组装响应"的流程编排。
  * 聚合 sys_user/sys_user_role/sys_role/sys_dept 四表操作均在 erp-system 模块内，
  * 策略类直接复用同模块 Mapper 以免为既有 Service 接口扩权（跨模块仍禁止直接调用 Mapper）。</p>
- * <p>写操作统一显式事务 + @AuditLog 审计；密码 BCrypt 加密且不回显、不入审计 JSON（S-06）。</p>
+ * <p>写操作统一显式事务；审计日志由 Controller 层 @AuditLog 记录（见编码规范）；密码 BCrypt 加密且不回显、不入审计 JSON（S-06）。</p>
  */
 @Slf4j
 @Service
@@ -122,7 +119,6 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.CREATE)
     public Long create(UserCreateDTO dto) {
         // 1. username/user_code 全局唯一校验（接口文档 5.1.3：18006/18007）
         sysUserDomainService.requireUsernameAvailable(dto.username());
@@ -155,7 +151,6 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     public String update(Long id, UserUpdateDTO dto) {
         SysUser user = sysUserDomainService.requireUser(id);
         // update 语义是资料更新，状态变更统一走 changeStatus 专用接口（内置管理员保护在 changeStatus 中校验）
@@ -179,7 +174,6 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.DELETE)
     public DeleteResultVO delete(Long id) {
         SysUser user = sysUserDomainService.requireUser(id);
         // 内置管理员不可删除（18012）
@@ -203,7 +197,6 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     public UserStatusVO changeStatus(Long id, UserStatusDTO dto) {
         SysUser user = sysUserDomainService.requireUser(id);
         // 状态值域守卫（10001）与内置管理员不可停用（18012）收敛于实体 changeStatus
@@ -232,7 +225,6 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     public UserResetPasswordVO resetPassword(Long id, UserResetPasswordDTO dto) {
         sysUserDomainService.requireUser(id);
         // 缺省时服务端生成随机口令；指定口令则校验复杂度（18009）
@@ -257,7 +249,6 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     public UserAssignRolesVO assignRoles(Long id, UserAssignRolesDTO dto) {
         sysUserDomainService.requireUser(id);
         List<Long> roleIds = dto.roleIds() == null ? List.of()

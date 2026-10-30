@@ -64,6 +64,7 @@ public class SysConfigController {
      */
     @PostMapping
     @PreAuthorize("hasAuthority('system:config:create')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.CREATE)
     @Operation(summary = "新增系统参数", description = "权限点 system:config:create")
     @ApiResponse(responseCode = "422", description = "业务校验失败（10001 参数值类型非法、10602 参数键已存在、18034 参数值与值类型不匹配）",
         content = @Content(mediaType = "application/json",
@@ -77,6 +78,7 @@ public class SysConfigController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('system:config:update')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     @Operation(summary = "修改系统参数", description = "权限点 system:config:update")
     @ApiResponse(responseCode = "422", description = "业务校验失败（18032 系统参数不存在、18034 参数值与值类型不匹配、10601 乐观锁冲突）",
         content = @Content(mediaType = "application/json",
@@ -90,6 +92,7 @@ public class SysConfigController {
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('system:config:delete')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.DELETE)
     @Operation(summary = "删除系统参数", description = "权限点 system:config:delete")
     @ApiResponse(responseCode = "422", description = "业务校验失败（18032 系统参数不存在、18033 内置系统参数不可删除）",
         content = @Content(mediaType = "application/json",

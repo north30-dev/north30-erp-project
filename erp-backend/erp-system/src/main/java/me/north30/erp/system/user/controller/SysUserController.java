@@ -7,6 +7,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import me.north30.erp.common.audit.AuditLog;
+import me.north30.erp.common.audit.AuditModuleEnum;
+import me.north30.erp.common.audit.OperateTypeEnum;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.common.result.Result;
 import me.north30.erp.system.user.dto.UserAssignRolesDTO;
@@ -76,11 +79,11 @@ public class SysUserController {
      * 5.1.9 用户列表导出（system:user:export）。
      * <p>简化口径：CSV 文件流（UTF-8 BOM），列与列表页一致。</p>
      */
+    @GetMapping("/export")
+    @PreAuthorize("hasAuthority('system:user:export')")
     @Operation(summary = "用户列表导出", description = "权限点 system:user:export；返回 CSV 文件流（UTF-8 BOM），文件名在 Content-Disposition 头")
     @ApiResponse(responseCode = "200", description = "CSV 文件流",
         content = @Content(mediaType = "text/csv"))
-    @GetMapping("/export")
-    @PreAuthorize("hasAuthority('system:user:export')")
     public ResponseEntity<byte[]> export(@ParameterObject @Valid UserQueryDTO query) {
         byte[] csv = sysUserApplicationService.exportCsv(query);
         String filename = "用户列表_" + FILENAME_FORMATTER.format(LocalDateTime.now()) + ".csv";
@@ -106,6 +109,7 @@ public class SysUserController {
      */
     @PostMapping
     @PreAuthorize("hasAuthority('system:user:create')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.CREATE)
     @Operation(summary = "新增用户", description = "权限点 system:user:create；初始口令 BCrypt 加密落库")
     @ApiResponse(responseCode = "422", description = "业务校验失败（18006 用户名存在/18007 编号存在/18009 口令复杂度不足）",
         content = @Content(mediaType = "application/json",
@@ -119,6 +123,7 @@ public class SysUserController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('system:user:update')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     @Operation(summary = "修改用户", description = "权限点 system:user:update；version 不一致返回 422（乐观锁冲突）")
     @ApiResponse(responseCode = "422", description = "业务校验失败（乐观锁冲突/用户不存在）",
         content = @Content(mediaType = "application/json",
@@ -132,6 +137,7 @@ public class SysUserController {
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('system:user:delete')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.DELETE)
     @Operation(summary = "删除用户", description = "权限点 system:user:delete；逻辑删除，管理员不可删除")
     @ApiResponse(responseCode = "422", description = "业务校验失败（18011 不允许删除管理员/18005 用户不存在）",
         content = @Content(mediaType = "application/json",
@@ -145,6 +151,7 @@ public class SysUserController {
      */
     @PostMapping("/{id}/status")
     @PreAuthorize("hasAuthority('system:user:update')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     @Operation(summary = "启用/停用用户", description = "权限点 system:user:update；停用即失效全部在线会话")
     @ApiResponse(responseCode = "422", description = "业务校验失败（18005 用户不存在/18010 不允许停用管理员）",
         content = @Content(mediaType = "application/json",
@@ -158,6 +165,7 @@ public class SysUserController {
      */
     @PostMapping("/{id}/reset-password")
     @PreAuthorize("hasAuthority('system:user:resetpwd')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     @Operation(summary = "重置用户密码", description = "权限点 system:user:resetpwd")
     @ApiResponse(responseCode = "422", description = "业务校验失败（18005 用户不存在/18009 口令复杂度不足）",
         content = @Content(mediaType = "application/json",
@@ -172,6 +180,7 @@ public class SysUserController {
      */
     @PutMapping("/{id}/roles")
     @PreAuthorize("hasAuthority('system:user:assignrole')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     @Operation(summary = "分配用户角色", description = "权限点 system:user:assignrole；全量覆盖语义")
     @ApiResponse(responseCode = "422", description = "业务校验失败（18005 用户不存在/18014 角色不存在）",
         content = @Content(mediaType = "application/json",

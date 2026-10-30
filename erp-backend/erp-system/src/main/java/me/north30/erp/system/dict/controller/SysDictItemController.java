@@ -64,6 +64,7 @@ public class SysDictItemController {
      */
     @PostMapping
     @PreAuthorize("hasAuthority('system:dict:create')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.CREATE)
     @Operation(summary = "新增字典项", description = "权限点 system:dict:create")
     @ApiResponse(responseCode = "422", description = "业务校验失败（18028 字典类型不存在、18031 字典项已存在）",
         content = @Content(mediaType = "application/json",
@@ -77,6 +78,7 @@ public class SysDictItemController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('system:dict:update')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     @Operation(summary = "修改字典项", description = "权限点 system:dict:update")
     @ApiResponse(responseCode = "422", description = "业务校验失败（10004 字典项不存在、10601 乐观锁冲突）",
         content = @Content(mediaType = "application/json",
@@ -90,6 +92,7 @@ public class SysDictItemController {
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('system:dict:delete')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.DELETE)
     @Operation(summary = "删除字典项", description = "权限点 system:dict:delete")
     @ApiResponse(responseCode = "422", description = "业务校验失败（10004 字典项不存在）",
         content = @Content(mediaType = "application/json",
