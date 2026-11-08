@@ -55,6 +55,14 @@ public abstract class ApiIntegrationTest {
     /** 低权限用户名（类加载时生成一次，确保建用户与登录使用同一用户名） */
     private static final String LIMITED_USERNAME = "it_limited_" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
 
+    /** 非内置超管但持有 ADMIN 角色的操作者：is_admin=0，用于验证自我降权/自我清权守卫（18041） */
+    private static String adminRoleOperatorToken;
+    private static Long adminRoleOperatorUserId;
+    /** 操作者持有的自定义角色（assignMenus 自我清权场景） */
+    private static Long adminRoleOperatorRoleId;
+    private static final String ADMIN_ROLE_OPERATOR_USERNAME =
+        "it_roleop_" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+
     /** 随机后缀（uuid hex 前 8 位）：临时数据自建自清，重复执行不冲突 */
     protected static String suffix() {
         return UUID.randomUUID().toString().replace("-", "").substring(0, 8);
@@ -93,6 +101,67 @@ public abstract class ApiIntegrationTest {
 
     protected static Long limitedRoleId() {
         return limitedRoleId;
+    }
+
+    /** 非内置超管但持有 ADMIN 角色的操作者 token（惰性创建，用于 18041 自我操作场景） */
+    protected String adminRoleOperatorToken() {
+        if (adminRoleOperatorToken == null) {
+            ensureAdminRoleOperator();
+            adminRoleOperatorToken = doLogin(ADMIN_ROLE_OPERATOR_USERNAME, LIMITED_PASSWORD);
+        }
+        return adminRoleOperatorToken;
+    }
+
+    protected static Long adminRoleOperatorUserId() {
+        return adminRoleOperatorUserId;
+    }
+
+    /** 操作者持有的自定义角色 ID（assignMenus 自我清权断言使用） */
+    protected static Long adminRoleOperatorRoleId() {
+        return adminRoleOperatorRoleId;
+    }
+
+    /** 惰性创建：自定义角色 + 持有 ADMIN 角色与自定义角色的普通账号（is_admin=0） */
+    private void ensureAdminRoleOperator() {
+        if (adminRoleOperatorUserId != null) {
+            return;
+        }
+        // 先取内置 ADMIN 角色 id（roleCode 为模糊匹配，需按精确编码过滤）
+        List<Map<String, Object>> roles = given().port(port).header("Authorization", "Bearer " + adminToken())
+            .queryParam("roleCode", "ADMIN").queryParam("pageNum", 1).queryParam("pageSize", 20)
+            .when().get("/api/system/roles")
+            .then().log().ifValidationFails().statusCode(200).body("code", equalTo(200))
+            .extract().jsonPath().getList("data.list");
+        Long adminRoleId = roles.stream()
+            .filter(role -> "ADMIN".equals(role.get("roleCode")))
+            .map(role -> ((Number) role.get("id")).longValue())
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException("内置 ADMIN 角色不存在"));
+
+        String suffix = staticSuffix();
+        Map<String, Object> roleBody = new HashMap<>();
+        roleBody.put("roleCode", "it_op_role_" + suffix);
+        roleBody.put("roleName", "集成测试自我操作角色_" + suffix);
+        adminRoleOperatorRoleId = given().port(port).header("Authorization", "Bearer " + adminToken())
+            .contentType(ContentType.JSON)
+            .body(roleBody)
+            .when().post("/api/system/roles")
+            .then().log().ifValidationFails().statusCode(200).body("code", equalTo(200))
+            .extract().jsonPath().getLong("data.id");
+
+        Map<String, Object> userBody = new HashMap<>();
+        userBody.put("userCode", "IT-OP-" + suffix);
+        userBody.put("username", ADMIN_ROLE_OPERATOR_USERNAME);
+        userBody.put("password", LIMITED_PASSWORD);
+        userBody.put("realName", "集成测试自我操作账号");
+        userBody.put("status", 1);
+        userBody.put("roleIds", List.of(adminRoleId, adminRoleOperatorRoleId));
+        adminRoleOperatorUserId = given().port(port).header("Authorization", "Bearer " + adminToken())
+            .contentType(ContentType.JSON)
+            .body(userBody)
+            .when().post("/api/system/users")
+            .then().log().ifValidationFails().statusCode(200).body("code", equalTo(200))
+            .extract().jsonPath().getLong("data");
     }
 
     /** 通用登录：直写验证码到 Redis（key 与后端 CaptchaUtil 写入规则一致），再走真实登录接口 */
@@ -173,6 +242,25 @@ public abstract class ApiIntegrationTest {
                 .when().delete("/api/system/roles/" + limitedRoleId)
                 .then().log().ifValidationFails().statusCode(200);
             limitedRoleId = null;
+        }
+        // 自我操作账号清理：先解绑全部角色（含 ADMIN）再删用户，最后删自定义角色
+        adminRoleOperatorToken = null;
+        if (adminRoleOperatorUserId != null) {
+            given().port(serverPort).header("Authorization", "Bearer " + adminToken)
+                .contentType(ContentType.JSON)
+                .body(Map.of("roleIds", List.of()))
+                .when().put("/api/system/users/" + adminRoleOperatorUserId + "/roles")
+                .then().log().ifValidationFails().statusCode(200);
+            given().port(serverPort).header("Authorization", "Bearer " + adminToken)
+                .when().delete("/api/system/users/" + adminRoleOperatorUserId)
+                .then().log().ifValidationFails().statusCode(200);
+            adminRoleOperatorUserId = null;
+        }
+        if (adminRoleOperatorRoleId != null) {
+            given().port(serverPort).header("Authorization", "Bearer " + adminToken)
+                .when().delete("/api/system/roles/" + adminRoleOperatorRoleId)
+                .then().log().ifValidationFails().statusCode(200);
+            adminRoleOperatorRoleId = null;
         }
     }
 }

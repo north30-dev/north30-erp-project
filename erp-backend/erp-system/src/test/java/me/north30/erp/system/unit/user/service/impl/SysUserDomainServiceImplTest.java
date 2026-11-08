@@ -1,9 +1,14 @@
 package me.north30.erp.system.unit.user.service.impl;
 
+import me.north30.erp.common.exception.BusinessException;
+import me.north30.erp.common.exception.CommonErrorCode;
+import me.north30.erp.system.common.enums.SystemErrorCode;
+import me.north30.erp.system.security.LoginUser;
 import me.north30.erp.system.user.entity.SysUser;
 import me.north30.erp.system.user.mapper.SysUserMapper;
 import me.north30.erp.system.user.service.impl.SysUserDomainServiceImpl;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -11,10 +16,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
@@ -69,6 +77,50 @@ class SysUserDomainServiceImplTest {
 
             // Then
             assertThat(result).isSameAs(user);
+        }
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        // 避免自我操作守卫用例的登录态泄漏到其它用例
+        SecurityContextHolder.clearContext();
+    }
+
+    @Nested
+    class RequireNotSelfTest {
+
+        @Test
+        void shouldPass_whenCurrentUserDiffersFromTarget() {
+            // Given：当前登录人 2L，目标用户 10L
+            SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(new LoginUser(2L, "zhangsan", "jti", "rjti"), null));
+
+            // When / Then：不抛异常
+            service.requireNotSelf(10L);
+        }
+
+        @Test
+        void shouldThrow18041_whenCurrentUserIsTarget() {
+            // Given：当前登录人即目标用户
+            SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(new LoginUser(10L, "zhangsan", "jti", "rjti"), null));
+
+            // When / Then
+            assertThatThrownBy(() -> service.requireNotSelf(10L))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(18041))
+                .hasMessage("禁止对当前登录账号执行该操作");
+        }
+
+        @Test
+        void shouldThrow10101_whenNoLoginContext() {
+            // Given：无登录态
+            SecurityContextHolder.clearContext();
+
+            // When / Then
+            assertThatThrownBy(() -> service.requireNotSelf(10L))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.AUTH_EXPIRED.getCode()));
         }
     }
 

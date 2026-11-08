@@ -51,6 +51,12 @@ erp:
     issuer: north30-erp
   attachment:
     store-path: ${ERP_ATTACHMENT_STORE_PATH:/tmp/erp-attachments}   # 附件本地存储根目录（SYS-10，生产环境用环境变量覆盖）
+  auth:
+    # 登录链路防爆破（09 文档批次三）：IP 维度限流为主防线，验证码为渐进式辅助校验
+    login-rate-limit-per-minute: 10      # 登录接口单 IP 每分钟请求上限（<=0 关闭）
+    captcha-rate-limit-per-minute: 30    # 取码接口单 IP 每分钟请求上限（<=0 关闭）
+    captcha-required-threshold: 3        # 同一用户名失败达到该次数后必须校验验证码
+    username-fail-lock-threshold: 20     # 同一用户名失败达到该次数后锁定 30 分钟
   admin:
     # 管理员初始账号（仅首次创建生效，改配置不会重置已存在账号的口令）
     # 生产环境必须通过环境变量 ERP_ADMIN_PASSWORD / ERP_SYSTEM_ADMIN_PASSWORD 覆盖默认口令

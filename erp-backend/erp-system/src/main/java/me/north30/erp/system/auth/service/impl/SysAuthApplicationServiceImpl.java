@@ -25,6 +25,8 @@ import me.north30.erp.system.user.strategy.UserSessionRevokeStrategy;
 import me.north30.erp.system.auth.service.SysAuthApplicationService;
 import me.north30.erp.system.auth.service.UserAccessService;
 import me.north30.erp.system.auth.dto.UserSecurityData;
+import me.north30.erp.system.auth.properties.AuthSecurityProperties;
+import me.north30.erp.system.auth.strategy.LoginRateLimitStrategy;
 import me.north30.erp.system.common.util.CaptchaUtil;
 import me.north30.erp.system.auth.vo.CaptchaVO;
 import me.north30.erp.system.auth.vo.ChangePasswordVO;
@@ -68,9 +70,13 @@ public class SysAuthApplicationServiceImpl implements SysAuthApplicationService 
     private final UserAccessService userAccessService;
     private final LoginLogStrategy loginLogStrategy;
     private final UserSessionRevokeStrategy userSessionRevokeStrategy;
+    private final LoginRateLimitStrategy loginRateLimitStrategy;
+    private final AuthSecurityProperties authSecurityProperties;
 
     @Override
     public CaptchaVO createCaptcha() {
+        // 取码接口按 IP 频控，防止匿名无限刷码配合 OCR 绕过验证码
+        loginRateLimitStrategy.checkCaptcha(RequestContextUtil.resolveClientIp());
         String captchaKey = UUID.randomUUID().toString().replace("-", "");
         CaptchaUtil.Captcha captcha = CaptchaUtil.create();
         try {
@@ -84,47 +90,45 @@ public class SysAuthApplicationServiceImpl implements SysAuthApplicationService 
 
     @Override
     public LoginVO login(LoginDTO dto) {
-        // 1. 校验验证码（GETDEL 原子操作，一次有效）
-        String cachedCaptcha;
-        try {
-            cachedCaptcha = stringRedisTemplate.opsForValue().getAndDelete(RedisKeyConstants.captchaKey(dto.captchaKey()));
-        } catch (RedisConnectionFailureException e) {
-            log.warn("验证码读取 Redis 失败，已降级跳过校验：{}", e.getMessage());
-            cachedCaptcha = dto.captcha();
+        // 1. IP 限流：防爆破主防线（Redis 滑动窗口，Redis 不可用降级本地计数）
+        loginRateLimitStrategy.checkLogin(RequestContextUtil.resolveClientIp());
+        // 2. 读取用户名维度失败计数（Redis 不可用时降级为 0）
+        String failKey = RedisKeyConstants.loginFailKey(dto.username());
+        int failCount = readFailCount(failKey);
+        // 3. 渐进式验证码：未达阈值且未携带则跳过；已携带或达阈值则必须校验（GETDEL 一次有效）
+        if (isCaptchaProvided(dto) || failCount >= authSecurityProperties.getCaptchaRequiredThreshold()) {
+            validateCaptcha(dto);
         }
-        if (cachedCaptcha == null || !cachedCaptcha.equalsIgnoreCase(dto.captcha())) {
-            throw new BusinessException(SystemErrorCode.CAPTCHA_ERROR);
-        }
-        // 2. 账号存在性校验（登录失败统一提示 18001，避免泄露账号存在性）
+        // 4. 账号存在性校验（登录失败统一提示 18001，避免泄露账号存在性）
         SysUser user = userAccessService.getByUsername(dto.username());
         if (user == null) {
             loginLogStrategy.record(null, dto.username(), LoginTypeEnum.LOGIN_FAIL, false, "用户名或密码错误");
             throw new BusinessException(SystemErrorCode.USERNAME_PASSWORD_ERROR);
         }
-        // 3. 停用校验
+        // 5. 停用校验
         if (user.getStatus() == null || user.getStatus() != 1) {
             loginLogStrategy.record(user.getId(), user.getUsername(), LoginTypeEnum.LOGIN_FAIL, false, "账号已停用");
             throw new BusinessException(SystemErrorCode.ACCOUNT_DISABLED);
         }
-        // 4. 锁定校验（Redis 失败计数 ≥5 次，30 分钟窗口）
-        String failKey = RedisKeyConstants.loginFailKey(dto.username());
-        String failCount;
-        try {
-            failCount = stringRedisTemplate.opsForValue().get(failKey);
-        } catch (RedisConnectionFailureException e) {
-            log.warn("登录失败计数读取 Redis 失败，已降级跳过锁定校验：{}", e.getMessage());
-            failCount = null;
-        }
-        if (failCount != null && Integer.parseInt(failCount) >= TtlConstants.LOGIN_FAIL_LOCK_THRESHOLD) {
+        // 6. 锁定校验（用户名维度失败计数达阈值，30 分钟窗口；阈值见 erp.auth 配置）
+        if (failCount >= authSecurityProperties.getUsernameFailLockThreshold()) {
+            if (isAdminUser(user)) {
+                log.warn("内置超管账号触发登录锁定 | username: {}", user.getUsername());
+            }
             loginLogStrategy.record(user.getId(), user.getUsername(), LoginTypeEnum.LOGIN_FAIL, false, "账号已锁定");
             throw new BusinessException(SystemErrorCode.ACCOUNT_LOCKED,
                 "账号已锁定，请 " + TtlConstants.LOGIN_FAIL_TTL.toMinutes() + " 分钟后重试");
         }
-        // 5. 口令校验：失败则累加 Redis 计数（TTL 30 分钟）后记录日志并抛出
+        // 7. 口令校验：失败则累加 Redis 计数（TTL 30 分钟）后记录日志并抛出
         if (!passwordEncoder.matches(dto.password(), user.getPassword())) {
             try {
                 Long count = stringRedisTemplate.opsForValue().increment(failKey);
                 stringRedisTemplate.expire(failKey, TtlConstants.LOGIN_FAIL_TTL);
+                if (isAdminUser(user) && count != null
+                    && count >= authSecurityProperties.getUsernameFailLockThreshold()) {
+                    log.warn("内置超管账号登录失败次数达到锁定阈值 | username: {} | 次数: {}",
+                        user.getUsername(), count);
+                }
                 log.info("登录失败计数 | username: {} | 次数: {}", dto.username(), count);
             } catch (RedisConnectionFailureException e) {
                 log.warn("登录失败计数写入 Redis 失败，已降级处理：{}", e.getMessage());
@@ -132,14 +136,14 @@ public class SysAuthApplicationServiceImpl implements SysAuthApplicationService 
             loginLogStrategy.record(user.getId(), user.getUsername(), LoginTypeEnum.LOGIN_FAIL, false, "用户名或密码错误");
             throw new BusinessException(SystemErrorCode.USERNAME_PASSWORD_ERROR);
         }
-        // 6. 签发令牌对：先 refresh 再 access（access 携带 rjti 供登出定位失效）
+        // 8. 签发令牌对：先 refresh 再 access（access 携带 rjti 供登出定位失效）
         IssuedToken refresh = jwtTokenProvider.createRefreshToken(user.getId(), user.getUsername());
         IssuedToken access = jwtTokenProvider.createAccessToken(user.getId(), user.getUsername(), refresh.jti());
-        // 7. 写登录日志 + 更新最后登录信息（各写操作独立事务）
+        // 9. 写登录日志 + 更新最后登录信息（各写操作独立事务）
         loginLogStrategy.record(user.getId(), user.getUsername(), LoginTypeEnum.LOGIN, true, null);
         LocalDateTime now = LocalDateTime.now();
         userAccessService.updateLastLogin(user.getId(), RequestContextUtil.resolveClientIp(), now);
-        // 8. 事务提交后写 Redis 会话白名单（登出/停用即时失效的关键）
+        // 10. 事务提交后写 Redis 会话白名单（登出/停用即时失效的关键）
         try {
             stringRedisTemplate.opsForValue().set(RedisKeyConstants.sessionKey(user.getId(), access.jti()),
                 "1", access.ttlSeconds(), TimeUnit.SECONDS);
@@ -148,7 +152,7 @@ public class SysAuthApplicationServiceImpl implements SysAuthApplicationService 
         } catch (RedisConnectionFailureException e) {
             log.warn("会话写入 Redis 失败，降级为仅验签模式：{}", e.getMessage());
         }
-        // 9. 组装返回
+        // 11. 组装返回
         boolean passwordExpired = isPasswordExpired(user.getPasswordUpdateTime());
         LoginVO.LoginUserInfoVO userInfo = new LoginVO.LoginUserInfoVO(user.getId(), user.getUsername(),
             user.getRealName(), user.getDeptId(), userAccessService.getDeptName(user.getDeptId()),
@@ -301,6 +305,54 @@ public class SysAuthApplicationServiceImpl implements SysAuthApplicationService 
     // ------------------------------------------------------------------
     // 私有辅助方法
     // ------------------------------------------------------------------
+
+    /**
+     * 读取用户名维度失败计数：Redis 不可用时降级为 0（由 IP 限流兜底）。
+     */
+    private int readFailCount(String failKey) {
+        try {
+            String failCount = stringRedisTemplate.opsForValue().get(failKey);
+            return failCount == null ? 0 : Integer.parseInt(failCount);
+        } catch (RedisConnectionFailureException e) {
+            log.warn("登录失败计数读取 Redis 失败，已降级处理：{}", e.getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * 请求是否携带完整验证码（渐进式验证码：未达阈值可不携带）。
+     */
+    private boolean isCaptchaProvided(LoginDTO dto) {
+        return dto.captcha() != null && !dto.captcha().isBlank()
+            && dto.captchaKey() != null && !dto.captchaKey().isBlank();
+    }
+
+    /**
+     * 校验验证码：GETDEL 一次性；需要校验但未携带时直接返回 18004。
+     */
+    private void validateCaptcha(LoginDTO dto) {
+        if (!isCaptchaProvided(dto)) {
+            throw new BusinessException(SystemErrorCode.CAPTCHA_ERROR);
+        }
+        String cachedCaptcha;
+        try {
+            cachedCaptcha = stringRedisTemplate.opsForValue()
+                .getAndDelete(RedisKeyConstants.captchaKey(dto.captchaKey()));
+        } catch (RedisConnectionFailureException e) {
+            log.warn("验证码读取 Redis 失败，已降级跳过校验：{}", e.getMessage());
+            cachedCaptcha = dto.captcha();
+        }
+        if (cachedCaptcha == null || !cachedCaptcha.equalsIgnoreCase(dto.captcha())) {
+            throw new BusinessException(SystemErrorCode.CAPTCHA_ERROR);
+        }
+    }
+
+    /**
+     * 是否内置超管（is_admin=1）：用于超管账号被锁的高权告警。
+     */
+    private boolean isAdminUser(SysUser user) {
+        return user.getIsAdmin() != null && user.getIsAdmin() == 1;
+    }
 
     /**
      * 解析 refresh token：验签/type 校验由 JwtTokenProvider 承担，

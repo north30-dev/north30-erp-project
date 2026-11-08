@@ -34,6 +34,8 @@ import me.north30.erp.system.role.vo.RoleMenuAssignedVO;
 import me.north30.erp.system.role.vo.RoleMenuIdsVO;
 import me.north30.erp.system.role.vo.RoleUpdatedVO;
 import me.north30.erp.system.role.vo.RoleVO;
+import me.north30.erp.system.security.LoginUser;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -44,6 +46,8 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
 
@@ -474,6 +478,33 @@ class SysRoleApplicationServiceImplTest {
     @Nested
     @DisplayName("assignMenus：授权角色菜单")
     class AssignMenusTest {
+
+        @BeforeEach
+        void setUpSecurityContext() {
+            SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(new LoginUser(2L, "operator", "jti", "rjti"), null));
+        }
+
+        @AfterEach
+        void clearSecurityContext() {
+            SecurityContextHolder.clearContext();
+        }
+
+        @Test
+        @DisplayName("修改自己持有角色的菜单授权，返回 18041")
+        void shouldThrow18041_whenModifyOwnRoleMenus() {
+            // Given：当前登录人 2L 持有角色 5L
+            when(sysRoleDomainService.requireRole(5L)).thenReturn(RoleTestFactory.sysRole());
+            when(sysUserRoleService.listRoleIdsByUserId(2L)).thenReturn(List.of(5L));
+
+            // When / Then
+            assertThatThrownBy(() -> service.assignMenus(5L, new RoleAssignMenuDTO(List.of())))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode())
+                        .isEqualTo(SystemErrorCode.SELF_OPERATION_FORBIDDEN.getCode()))
+                .hasMessage("禁止修改自己持有角色的菜单授权");
+            verifyNoInteractions(sysRoleMenuMapper, sysMenuDomainService);
+        }
 
         @Test
         @DisplayName("授权角色菜单，返回授权后的最新时间")

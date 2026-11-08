@@ -18,8 +18,11 @@ public final class RedisKeyConstants {
     /** 图形验证码前缀：system:captcha:{captchaKey}，TTL 5 分钟、一次有效 */
     public static final String CAPTCHA_PREFIX = "system:captcha:";
 
-    /** 登录失败计数前缀：system:login:fail:{username}，TTL 30 分钟，阈值 5 次 */
+    /** 登录失败计数前缀：system:login:fail:{username}，TTL 30 分钟（阈值由 erp.auth 配置） */
     public static final String LOGIN_FAIL_PREFIX = "system:login:fail:";
+
+    /** 认证接口 IP 限流前缀：system:ratelimit:{scene}:{ip}，scene ∈ login / captcha */
+    public static final String RATE_LIMIT_PREFIX = "system:ratelimit:";
 
     private RedisKeyConstants() {
     }
@@ -47,5 +50,10 @@ public final class RedisKeyConstants {
     /** 登录失败计数 Key：system:login:fail:{username} */
     public static String loginFailKey(String username) {
         return LOGIN_FAIL_PREFIX + username;
+    }
+
+    /** 认证接口 IP 限流 Key：system:ratelimit:{scene}:{ip} */
+    public static String rateLimitKey(String scene, String ip) {
+        return RATE_LIMIT_PREFIX + scene + ":" + ip;
     }
 }

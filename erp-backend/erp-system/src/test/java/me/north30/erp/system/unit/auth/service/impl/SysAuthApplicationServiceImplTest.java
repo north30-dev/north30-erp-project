@@ -16,7 +16,9 @@ import me.north30.erp.system.auth.vo.RefreshTokenVO;
 import me.north30.erp.system.auth.vo.UserPermsVO;
 import me.north30.erp.system.auth.service.UserAccessService;
 import me.north30.erp.system.auth.service.impl.SysAuthApplicationServiceImpl;
+import me.north30.erp.system.auth.properties.AuthSecurityProperties;
 import me.north30.erp.system.auth.strategy.LoginLogStrategy;
+import me.north30.erp.system.auth.strategy.LoginRateLimitStrategy;
 import me.north30.erp.system.common.enums.LoginTypeEnum;
 import me.north30.erp.system.log.service.SysLoginLogService;
 import me.north30.erp.system.menu.vo.MenuTreeVO;
@@ -64,6 +66,7 @@ import static me.north30.erp.system.unit.auth.service.impl.SysAuthApplicationSer
 import static me.north30.erp.system.unit.auth.service.impl.SysAuthApplicationServiceImplTestFactory.changePasswordDTO;
 import static me.north30.erp.system.unit.auth.service.impl.SysAuthApplicationServiceImplTestFactory.disabledUser;
 import static me.north30.erp.system.unit.auth.service.impl.SysAuthApplicationServiceImplTestFactory.loginDTO;
+import static me.north30.erp.system.unit.auth.service.impl.SysAuthApplicationServiceImplTestFactory.loginDTOWithoutCaptcha;
 import static me.north30.erp.system.unit.auth.service.impl.SysAuthApplicationServiceImplTestFactory.loginUser;
 import static me.north30.erp.system.unit.auth.service.impl.SysAuthApplicationServiceImplTestFactory.menuTreeVO;
 import static me.north30.erp.system.unit.auth.service.impl.SysAuthApplicationServiceImplTestFactory.passwordExpiredUser;
@@ -108,13 +111,19 @@ class SysAuthApplicationServiceImplTest {
     @Mock
     private SysLoginLogService sysLoginLogService;
 
+    @Mock
+    private LoginRateLimitStrategy loginRateLimitStrategy;
+
+    private AuthSecurityProperties authSecurityProperties;
+
     private SysAuthApplicationServiceImpl authService;
 
     @BeforeEach
     void setUp() {
+        authSecurityProperties = new AuthSecurityProperties();
         authService = new SysAuthApplicationServiceImpl(stringRedisTemplate, jwtTokenProvider, passwordEncoder,
             userAccessService, new LoginLogStrategy(sysLoginLogService),
-            new UserSessionRevokeStrategy(stringRedisTemplate));
+            new UserSessionRevokeStrategy(stringRedisTemplate), loginRateLimitStrategy, authSecurityProperties);
     }
 
     @AfterEach
@@ -167,6 +176,18 @@ class SysAuthApplicationServiceImplTest {
             assertThat(vo.captchaKey()).hasSize(32);
             assertThat(vo.captchaImage()).startsWith("data:image/png;base64,");
             assertThat(vo.expireSeconds()).isEqualTo(300);
+        }
+
+        @Test
+        @DisplayName("取码 IP 限流：超限抛 18042 且不写 Redis")
+        void shouldThrowTooFrequent_whenCaptchaRateLimited() {
+            // Given
+            doThrow(new BusinessException(SystemErrorCode.REQUEST_TOO_FREQUENT))
+                .when(loginRateLimitStrategy).checkCaptcha(anyString());
+            // When / Then
+            assertBusinessError(() -> authService.createCaptcha(),
+                SystemErrorCode.REQUEST_TOO_FREQUENT.getCode(), "操作过于频繁，请稍后重试");
+            verifyNoInteractions(stringRedisTemplate);
         }
     }
 
@@ -237,10 +258,10 @@ class SysAuthApplicationServiceImplTest {
         }
 
         @Test
-        @DisplayName("失败计数 4 次未达阈值 5：不锁定并正常登录")
+        @DisplayName("失败计数 19 次未达阈值 20：不锁定并正常登录")
         void shouldLoginSuccess_whenFailCountBelowThreshold() {
             // Given
-            stubLoginSuccessFlow(user(), "4");
+            stubLoginSuccessFlow(user(), "19");
             // When
             LoginVO vo = authService.login(loginDTO());
             // Then
@@ -306,7 +327,7 @@ class SysAuthApplicationServiceImplTest {
         }
 
         @Test
-        @DisplayName("账号已停用：抛 18003 且不再读取登录失败计数")
+        @DisplayName("账号已停用：抛 18003 且不再校验口令")
         void shouldThrowAccountDisabled_whenUserDisabled() {
             // Given
             when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
@@ -315,7 +336,6 @@ class SysAuthApplicationServiceImplTest {
             // When / Then
             assertBusinessError(() -> authService.login(loginDTO()),
                 SystemErrorCode.ACCOUNT_DISABLED.getCode(), "账号已停用，请联系管理员");
-            verify(valueOperations, never()).get(anyString());
             verify(sysLoginLogService).record(argThat(log -> log != null
                 && "账号已停用".equals(log.getFailReason())
                 && log.getResultStatus() == 0));
@@ -323,13 +343,13 @@ class SysAuthApplicationServiceImplTest {
         }
 
         @Test
-        @DisplayName("失败计数达阈值 5：抛 18002 账号已锁定且不校验口令")
+        @DisplayName("失败计数达阈值 20：抛 18002 账号已锁定且不校验口令")
         void shouldThrowAccountLocked_whenFailCountReachedThreshold() {
             // Given
             when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
             when(valueOperations.getAndDelete(RedisKeyConstants.captchaKey(CAPTCHA_KEY))).thenReturn(CAPTCHA_CODE);
             when(userAccessService.getByUsername(USERNAME)).thenReturn(user());
-            when(valueOperations.get(RedisKeyConstants.loginFailKey(USERNAME))).thenReturn("5");
+            when(valueOperations.get(RedisKeyConstants.loginFailKey(USERNAME))).thenReturn("20");
             // When / Then
             assertBusinessError(() -> authService.login(loginDTO()),
                 SystemErrorCode.ACCOUNT_LOCKED.getCode(), "账号已锁定，请 30 分钟后重试");
@@ -337,6 +357,49 @@ class SysAuthApplicationServiceImplTest {
             verify(sysLoginLogService).record(argThat(log -> log != null
                 && "账号已锁定".equals(log.getFailReason())));
             verifyNoInteractions(passwordEncoder, jwtTokenProvider);
+        }
+
+        @Test
+        @DisplayName("登录 IP 限流：超限抛 18042 且不触碰 Redis 与账号查询")
+        void shouldThrowTooFrequent_whenLoginRateLimited() {
+            // Given
+            doThrow(new BusinessException(SystemErrorCode.REQUEST_TOO_FREQUENT))
+                .when(loginRateLimitStrategy).checkLogin(anyString());
+            // When / Then
+            assertBusinessError(() -> authService.login(loginDTO()),
+                SystemErrorCode.REQUEST_TOO_FREQUENT.getCode(), "操作过于频繁，请稍后重试");
+            verifyNoInteractions(userAccessService, stringRedisTemplate, passwordEncoder, jwtTokenProvider, sysLoginLogService);
+        }
+
+        @Test
+        @DisplayName("渐进式验证码：失败计数未达阈值且未携带验证码时跳过校验并正常登录")
+        void shouldSkipCaptcha_whenBelowThresholdAndCaptchaAbsent() {
+            // Given
+            when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+            when(valueOperations.get(RedisKeyConstants.loginFailKey(USERNAME))).thenReturn(null);
+            when(userAccessService.getByUsername(USERNAME)).thenReturn(user());
+            when(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PASSWORD)).thenReturn(true);
+            when(jwtTokenProvider.createRefreshToken(USER_ID, USERNAME)).thenReturn(refreshToken());
+            when(jwtTokenProvider.createAccessToken(USER_ID, USERNAME, REFRESH_JTI)).thenReturn(accessToken());
+            when(userAccessService.getDeptName(DEPT_ID)).thenReturn("研发部");
+            when(userAccessService.listRoleCodes(USER_ID)).thenReturn(List.of("admin"));
+            // When
+            LoginVO vo = authService.login(loginDTOWithoutCaptcha());
+            // Then
+            assertThat(vo.accessToken()).isEqualTo(ACCESS_TOKEN_VALUE);
+            verify(valueOperations, never()).getAndDelete(anyString());
+        }
+
+        @Test
+        @DisplayName("渐进式验证码：失败计数达阈值且未携带验证码时抛 18004 且不查询账号")
+        void shouldThrowCaptchaError_whenThresholdReachedAndCaptchaAbsent() {
+            // Given
+            when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+            when(valueOperations.get(RedisKeyConstants.loginFailKey(USERNAME))).thenReturn("3");
+            // When / Then
+            assertBusinessError(() -> authService.login(loginDTOWithoutCaptcha()),
+                SystemErrorCode.CAPTCHA_ERROR.getCode(), "验证码错误或已过期");
+            verifyNoInteractions(userAccessService, passwordEncoder, jwtTokenProvider, sysLoginLogService);
         }
 
         @Test

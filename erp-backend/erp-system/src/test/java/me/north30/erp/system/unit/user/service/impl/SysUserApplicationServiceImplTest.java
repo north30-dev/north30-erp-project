@@ -27,6 +27,7 @@ import me.north30.erp.system.user.service.SysUserDomainService;
 import me.north30.erp.system.user.service.impl.SysUserApplicationServiceImpl;
 import me.north30.erp.system.user.strategy.UserAssembleStrategy;
 import me.north30.erp.system.user.strategy.UserQueryStrategy;
+import me.north30.erp.system.user.strategy.UserRoleGrantStrategy;
 import me.north30.erp.system.user.strategy.UserRoleStrategy;
 import me.north30.erp.system.user.strategy.UserSessionRevokeStrategy;
 import me.north30.erp.system.auth.service.UserAccessService;
@@ -37,6 +38,7 @@ import me.north30.erp.system.user.vo.UserDetailVO;
 import me.north30.erp.system.user.vo.UserResetPasswordVO;
 import me.north30.erp.system.user.vo.UserStatusVO;
 import me.north30.erp.system.user.vo.UserVO;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -127,10 +129,11 @@ class SysUserApplicationServiceImplTest {
             new UserAssembleStrategy(sysDeptMapper, sysUserRoleMapper, sysRoleMapper, userConverter);
         UserRoleStrategy userRoleStrategy =
             new UserRoleStrategy(sysRoleDomainService, sysUserRoleService);
+        UserRoleGrantStrategy userRoleGrantStrategy = new UserRoleGrantStrategy(
+            sysRoleDomainService, sysUserDomainService, userRoleStrategy, userAccessService);
         service = new SysUserApplicationServiceImpl(sysUserMapper, sysDeptDomainService,
-            sysRoleDomainService, userAccessService, passwordEncoder,
-            userConverter, sysUserDomainService, userQueryStrategy, userAssembleStrategy,
-            userRoleStrategy, userSessionRevokeStrategy);
+            passwordEncoder, userConverter, sysUserDomainService, userQueryStrategy,
+            userAssembleStrategy, userRoleStrategy, userRoleGrantStrategy, userSessionRevokeStrategy);
     }
 
     @Nested
@@ -509,6 +512,20 @@ class SysUserApplicationServiceImplTest {
         }
 
         @Test
+        void shouldThrow18012_whenUpdateAdminUser() {
+            // Given：内置管理员资料不可修改
+            when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.adminUser());
+            UserUpdateDTO dto = new UserUpdateDTO("李四", null, null, null, null, null, null, 5);
+
+            // When / Then
+            assertThatThrownBy(() -> service.update(10L, dto))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(18012))
+                .hasMessage("内置超级管理员不可删除或停用");
+            verify(sysUserMapper, never()).updateById(any(SysUser.class));
+        }
+
+        @Test
         void shouldThrow18024_whenDeptNotFound() {
             // Given
             when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
@@ -554,7 +571,24 @@ class SysUserApplicationServiceImplTest {
             // Then
             assertThat(vo.id()).isEqualTo(10L);
             assertThat(vo.isDeleted()).isEqualTo(1);
+            verify(sysUserDomainService).requireNotSelf(10L);
             verify(sysUserMapper).deleteById(10L);
+        }
+
+        @Test
+        void shouldThrow18041_whenDeleteSelf() {
+            // Given：自我操作守卫拒绝删除当前登录账号
+            when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
+            doThrow(new BusinessException(SystemErrorCode.SELF_OPERATION_FORBIDDEN))
+                .when(sysUserDomainService).requireNotSelf(10L);
+
+            // When / Then
+            assertThatThrownBy(() -> service.delete(10L))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(18041))
+                .hasMessage("禁止对当前登录账号执行该操作");
+            verify(sysUserMapper, never()).deleteById(10L);
+            verifyNoInteractions(sysUserRoleService);
         }
 
         @Test
@@ -696,6 +730,22 @@ class SysUserApplicationServiceImplTest {
         }
 
         @Test
+        void shouldThrow18041_whenDisableSelf() {
+            // Given：停用分支的自我操作守卫拒绝
+            when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
+            doThrow(new BusinessException(SystemErrorCode.SELF_OPERATION_FORBIDDEN))
+                .when(sysUserDomainService).requireNotSelf(10L);
+
+            // When / Then
+            assertThatThrownBy(() -> service.changeStatus(10L, new UserStatusDTO(0, 2)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(18041))
+                .hasMessage("禁止对当前登录账号执行该操作");
+            verify(sysUserMapper, never()).updateById(any(SysUser.class));
+            verifyNoInteractions(userSessionRevokeStrategy);
+        }
+
+        @Test
         void shouldThrow10601_whenOptimisticLockConflict() {
             // Given
             when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
@@ -757,6 +807,20 @@ class SysUserApplicationServiceImplTest {
         }
 
         @Test
+        void shouldThrow18012_whenResetAdminPassword() {
+            // Given：内置管理员密码不可重置
+            when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.adminUser());
+
+            // When / Then
+            assertThatThrownBy(() -> service.resetPassword(10L, new UserResetPasswordDTO(null)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(18012))
+                .hasMessage("内置超级管理员不可删除或停用");
+            verify(sysUserMapper, never()).update(any(SysUser.class), any());
+            verifyNoInteractions(passwordEncoder);
+        }
+
+        @Test
         void shouldThrow18009_whenExplicitPasswordTooWeak() {
             // Given
             when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
@@ -786,6 +850,17 @@ class SysUserApplicationServiceImplTest {
 
     @Nested
     class AssignRolesTest {
+
+        @BeforeEach
+        void setUpSecurityContext() {
+            SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(new LoginUser(2L, "operator", "jti", "rjti"), null));
+        }
+
+        @AfterEach
+        void clearSecurityContext() {
+            SecurityContextHolder.clearContext();
+        }
 
         @Test
         void shouldReplaceRolesWithDistinctIds_whenAssign() {
@@ -884,7 +959,44 @@ class SysUserApplicationServiceImplTest {
             // Then
             assertThat(vo.roleIds()).containsExactly(1L);
             verify(sysUserRoleService).createForUser(10L, 1L);
-            SecurityContextHolder.clearContext();
+        }
+
+        @Test
+        void shouldThrow18041_whenRemoveOwnAdminRole() {
+            // Given：操作者 10L 当前持有 ADMIN 角色，本次提交移除该角色
+            when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
+            when(sysUserDomainService.getById(10L)).thenReturn(UserTestFactory.sysUser());
+            when(sysUserRoleService.listRoleIdsByUserId(10L)).thenReturn(List.of(1L));
+            when(sysRoleDomainService.listByIds(List.of(2L)))
+                .thenReturn(List.of(UserTestFactory.sysRole(2L, "keeper")));
+            when(sysRoleDomainService.listByIds(List.of(1L)))
+                .thenReturn(List.of(UserTestFactory.sysRole(1L, "ADMIN")));
+            SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(new LoginUser(10L, "self", "jti", "rjti"), null));
+
+            // When / Then
+            assertThatThrownBy(() -> service.assignRoles(10L, new UserAssignRolesDTO(List.of(2L))))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode())
+                        .isEqualTo(SystemErrorCode.SELF_OPERATION_FORBIDDEN.getCode()))
+                .hasMessage("不允许移除自己持有的超级管理员角色");
+            verify(sysUserRoleService, never()).deleteByUserId(any());
+        }
+
+        @Test
+        void shouldAllowRemoveOwnAdminRole_whenOperatorIsBuiltinAdmin() {
+            // Given：内置超管（is_admin=1）摘除自己持有的 ADMIN 角色后仍具全量权限，不拦截
+            when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
+            when(sysUserDomainService.getById(10L)).thenReturn(UserTestFactory.adminUser());
+            when(sysRoleDomainService.listByIds(List.of(2L)))
+                .thenReturn(List.of(UserTestFactory.sysRole(2L, "keeper")));
+            SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(new LoginUser(10L, "admin", "jti", "rjti"), null));
+
+            // When
+            UserAssignRolesVO vo = service.assignRoles(10L, new UserAssignRolesDTO(List.of(2L)));
+            assertThat(vo.roleIds()).containsExactly(2L);
+            verify(sysUserRoleService).deleteByUserId(10L);
         }
     }
 

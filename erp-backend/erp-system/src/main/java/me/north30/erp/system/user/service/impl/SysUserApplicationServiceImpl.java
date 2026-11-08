@@ -10,11 +10,6 @@ import me.north30.erp.common.result.PageResult;
 import me.north30.erp.common.util.DateTimeFormatUtil;
 import me.north30.erp.common.util.WarehouseIdCodecUtil;
 import me.north30.erp.system.common.enums.SystemErrorCode;
-import me.north30.erp.system.role.entity.SysRole;
-import me.north30.erp.system.role.service.SysRoleDomainService;
-import me.north30.erp.system.security.LoginUser;
-import me.north30.erp.system.security.SecurityUtils;
-import me.north30.erp.system.auth.service.UserAccessService;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.dept.entity.SysDept;
 import me.north30.erp.system.dept.service.SysDeptDomainService;
@@ -32,6 +27,7 @@ import me.north30.erp.system.user.service.SysUserApplicationService;
 import me.north30.erp.system.user.strategy.PasswordStrategy;
 import me.north30.erp.system.user.strategy.UserAssembleStrategy;
 import me.north30.erp.system.user.strategy.UserQueryStrategy;
+import me.north30.erp.system.user.strategy.UserRoleGrantStrategy;
 import me.north30.erp.system.user.strategy.UserRoleStrategy;
 import me.north30.erp.system.user.strategy.UserSessionRevokeStrategy;
 import me.north30.erp.system.user.vo.UserAssignRolesVO;
@@ -67,14 +63,13 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
 
     private final SysUserMapper sysUserMapper;
     private final SysDeptDomainService sysDeptDomainService;
-    private final SysRoleDomainService sysRoleDomainService;
-    private final UserAccessService userAccessService;
     private final PasswordEncoder passwordEncoder;
     private final UserConverter userConverter;
     private final SysUserDomainService sysUserDomainService;
     private final UserQueryStrategy userQueryStrategy;
     private final UserAssembleStrategy userAssembleStrategy;
     private final UserRoleStrategy userRoleStrategy;
+    private final UserRoleGrantStrategy userRoleGrantStrategy;
     private final UserSessionRevokeStrategy userSessionRevokeStrategy;
 
     /**
@@ -130,7 +125,7 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
         List<Long> roleIds = dto.roleIds() == null ? List.of()
             : dto.roleIds().stream().filter(Objects::nonNull).distinct().toList();
         userRoleStrategy.requireAllExist(roleIds);
-        requireAssignAdminAllowed(roleIds);
+        userRoleGrantStrategy.requireAssignAdminAllowed(roleIds);
         // 3. 落库：口令复杂度校验（18009）+ BCrypt 加密 + 初始口令修改时间置为当前（90 天有效期基准）
         SysUser user = userConverter.createUser(dto);
         user.initPassword(dto.password(), passwordEncoder, LocalDateTime.now());
@@ -153,6 +148,8 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
     @Transactional(rollbackFor = Exception.class)
     public String update(Long id, UserUpdateDTO dto) {
         SysUser user = sysUserDomainService.requireUser(id);
+        // 内置管理员资料不可修改（18012），与 changeStatus/delete 保护口径一致
+        user.requireNotAdmin();
         // update 语义是资料更新，状态变更统一走 changeStatus 专用接口（内置管理员保护在 changeStatus 中校验）
         if (dto.deptId() != null) {
             sysDeptDomainService.requireDept(dto.deptId());
@@ -176,6 +173,8 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
     @Transactional(rollbackFor = Exception.class)
     public DeleteResultVO delete(Long id) {
         SysUser user = sysUserDomainService.requireUser(id);
+        // 禁止删除自己（18041）
+        sysUserDomainService.requireNotSelf(id);
         // 内置管理员不可删除（18012）
         user.requireNotAdmin();
         // 存在角色分配即视为被引用，拒绝删除（18013）
@@ -199,6 +198,10 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
     @Transactional(rollbackFor = Exception.class)
     public UserStatusVO changeStatus(Long id, UserStatusDTO dto) {
         SysUser user = sysUserDomainService.requireUser(id);
+        // 禁止停用自己（18041），避免会话失效后无法再登录
+        if (dto.status() == 0) {
+            sysUserDomainService.requireNotSelf(id);
+        }
         // 状态值域守卫（10001）与内置管理员不可停用（18012）收敛于实体 changeStatus
         user.changeStatus(dto.status());
         SysUser patch = new SysUser();
@@ -226,7 +229,9 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public UserResetPasswordVO resetPassword(Long id, UserResetPasswordDTO dto) {
-        sysUserDomainService.requireUser(id);
+        SysUser user = sysUserDomainService.requireUser(id);
+        // 内置管理员密码不可重置（18012），防止普通管理员重置超管密码后接管账号
+        user.requireNotAdmin();
         // 缺省时服务端生成随机口令；指定口令则校验复杂度（18009）
         String initialPassword = StringUtils.hasText(dto.newPassword()) ? dto.newPassword() : PasswordStrategy.generate();
         PasswordStrategy.checkOrThrow(initialPassword);
@@ -254,28 +259,11 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
         List<Long> roleIds = dto.roleIds() == null ? List.of()
             : dto.roleIds().stream().filter(Objects::nonNull).distinct().toList();
         userRoleStrategy.requireAllExist(roleIds);
-        requireAssignAdminAllowed(roleIds);
+        userRoleGrantStrategy.requireAssignAdminAllowed(roleIds);
+        // 禁止移除自己持有的 ADMIN 角色（18041），避免自我降权后无法自愈
+        userRoleGrantStrategy.requireNotRemoveOwnAdminRole(id, roleIds);
         userRoleStrategy.replaceAllForUser(id, roleIds);
         return new UserAssignRolesVO(roleIds, PERMISSION_REFRESH_TIP);
-    }
-
-    /**
-     * 提权守卫（18040）：目标角色含 ADMIN 时要求操作者为超管（08 文档 2.1），
-     * 防止任何可操作角色分配者自我提权。create 与 assignRoles 共用。
-     *
-     * @param roleIds 本次待分配的角色 ID 集合
-     */
-    private void requireAssignAdminAllowed(List<Long> roleIds) {
-        boolean containsAdmin = !roleIds.isEmpty()
-            && sysRoleDomainService.listByIds(roleIds).stream()
-                .anyMatch(role -> SysRole.ROLE_CODE_ADMIN.equals(role.getRoleCode()));
-        if (!containsAdmin) {
-            return;
-        }
-        LoginUser currentUser = SecurityUtils.requireCurrentUser();
-        if (!userAccessService.isSuperAdmin(currentUser.userId())) {
-            throw new BusinessException(SystemErrorCode.ONLY_SUPER_ADMIN_ASSIGN_ADMIN);
-        }
     }
 
     /**

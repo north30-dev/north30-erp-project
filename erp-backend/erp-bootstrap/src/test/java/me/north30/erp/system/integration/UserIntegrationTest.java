@@ -262,6 +262,18 @@ class UserIntegrationTest extends ApiIntegrationTest {
         }
 
         @Test
+        @DisplayName("修改内置admin资料，返回422管理员保护")
+        void shouldReturn422AdminProtected_whenUpdateAdmin() {
+            // When / Then（目标为内置管理员，守卫先于乐观锁校验，version 取任意非空值）
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("realName", "越权修改", "version", 1))
+                .when().put(BASE_PATH + "/" + adminId())
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.ADMIN_PROTECTED.getCode()));
+        }
+
+        @Test
         @DisplayName("修改不存在的用户id，返回422用户不存在")
         void shouldReturn422UserNotFound_whenIdNotExist() {
             // Given
@@ -298,6 +310,16 @@ class UserIntegrationTest extends ApiIntegrationTest {
         }
 
         @Test
+        @DisplayName("删除当前登录账号，返回422禁止自我操作")
+        void shouldReturn422SelfOperation_whenDeleteSelf() {
+            // Given：admin 删除自己（自我操作守卫优先于内置管理员保护）
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .when().delete(BASE_PATH + "/" + adminId())
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.SELF_OPERATION_FORBIDDEN.getCode()));
+        }
+
+        @Test
         @DisplayName("删除不存在的用户id，返回422用户不存在")
         void shouldReturn422UserNotFound_whenIdNotExist() {
             // When / Then
@@ -327,13 +349,25 @@ class UserIntegrationTest extends ApiIntegrationTest {
         }
 
         @Test
+        @DisplayName("停用当前登录账号，返回422禁止自我操作")
+        void shouldReturn422SelfOperation_whenDisableSelf() {
+            // Given：admin 停用自己（自我操作守卫优先于内置管理员保护）
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 0, "version", 1))
+                .when().post(BASE_PATH + "/" + adminId() + "/status")
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.SELF_OPERATION_FORBIDDEN.getCode()));
+        }
+
+        @Test
         @DisplayName("停用admin账号，返回422管理员保护")
         void shouldReturn422AdminProtected_whenDisableAdmin() {
-            // Given（admin id 经分页检索确认；请求被拒，环境不变）
+            // Given（由非内置操作者发起，避免先触发自我操作守卫 18041；admin 版本号无关，守卫先于乐观锁）
             Map<String, Object> body = Map.of("status", 0, "version", 1);
 
             // When / Then
-            given().port(port).header("Authorization", "Bearer " + adminToken())
+            given().port(port).header("Authorization", "Bearer " + adminRoleOperatorToken())
                 .contentType(ContentType.JSON)
                 .body(body)
                 .when().post(BASE_PATH + "/" + adminId() + "/status")
@@ -358,6 +392,18 @@ class UserIntegrationTest extends ApiIntegrationTest {
                 .body(Map.of("newPassword", "Reset@123456"))
                 .when().post(BASE_PATH + "/" + id + "/reset-password")
                 .then().statusCode(200).body("code", equalTo(200));
+        }
+
+        @Test
+        @DisplayName("重置内置admin密码，返回422管理员保护")
+        void shouldReturn422AdminProtected_whenResetAdminPassword() {
+            // Given：目标为内置管理员（is_admin=1），任何重置均被拒
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("newPassword", "Reset@123456"))
+                .when().post(BASE_PATH + "/" + adminId() + "/reset-password")
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.ADMIN_PROTECTED.getCode()));
         }
 
         @Test
@@ -393,6 +439,18 @@ class UserIntegrationTest extends ApiIntegrationTest {
                 .body(Map.of("roleIds", List.of()))
                 .when().put(BASE_PATH + "/" + id + "/roles")
                 .then().statusCode(200).body("code", equalTo(200));
+        }
+
+        @Test
+        @DisplayName("移除自己持有的ADMIN角色，返回422禁止自我操作")
+        void shouldReturn422SelfOperation_whenRemoveOwnAdminRole() {
+            // Given：操作者 is_admin=0 但持有 ADMIN 角色，本次仅保留自定义角色（摘除 ADMIN）
+            given().port(port).header("Authorization", "Bearer " + adminRoleOperatorToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("roleIds", List.of(adminRoleOperatorRoleId())))
+                .when().put(BASE_PATH + "/" + adminRoleOperatorUserId() + "/roles")
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.SELF_OPERATION_FORBIDDEN.getCode()));
         }
 
         @Test

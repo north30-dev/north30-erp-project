@@ -39,6 +39,7 @@ import me.north30.erp.system.role.vo.RoleMenuIdsVO;
 import me.north30.erp.system.role.vo.RoleStatusVO;
 import me.north30.erp.system.role.vo.RoleUpdatedVO;
 import me.north30.erp.system.role.vo.RoleVO;
+import me.north30.erp.system.security.SecurityUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -154,6 +155,12 @@ public class SysRoleApplicationServiceImpl implements SysRoleApplicationService 
         if (SysRole.ROLE_CODE_ADMIN.equals(role.getRoleCode())) {
             throw new BusinessException(SystemErrorCode.ROLE_BUILTIN,
                 "超级管理员角色权限为代码内置全量，不可通过菜单勾选修改");
+        }
+        // 禁止修改自己持有角色的菜单授权（18041），避免清空后实时失去全部入口、无法自愈
+        Long currentUserId = SecurityUtils.requireCurrentUser().userId();
+        if (sysUserRoleService.listRoleIdsByUserId(currentUserId).contains(id)) {
+            throw new BusinessException(SystemErrorCode.SELF_OPERATION_FORBIDDEN,
+                "禁止修改自己持有角色的菜单授权");
         }
         List<Long> menuIds = dto.menuIds().stream().distinct().toList();
         List<SysMenu> menus = List.of();

@@ -119,6 +119,13 @@ public final class SysAuthApplicationServiceImplTestFactory {
     }
 
     /**
+     * 未携带验证码的登录请求 DTO（渐进式验证码：未达失败阈值时允许缺省）。
+     */
+    public static LoginDTO loginDTOWithoutCaptcha() {
+        return new LoginDTO(USERNAME, RAW_PASSWORD, null, null);
+    }
+
+    /**
      * 刷新令牌请求 DTO。
      */
     public static RefreshTokenDTO refreshTokenDTO() {

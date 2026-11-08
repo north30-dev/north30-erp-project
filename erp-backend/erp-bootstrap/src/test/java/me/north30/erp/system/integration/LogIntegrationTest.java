@@ -1,11 +1,17 @@
 package me.north30.erp.system.integration;
 
+import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.system.common.enums.SystemErrorCode;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
@@ -119,6 +125,54 @@ class LogIntegrationTest extends ApiIntegrationTest {
                 .when().get(AUDIT_LOG_PATH + "/999999999")
                 .then().statusCode(422)
                 .body("code", equalTo(SystemErrorCode.AUDIT_LOG_NOT_FOUND.getCode()));
+        }
+    }
+
+    @Nested
+    @DisplayName("审计日志写入链路（@AuditLog 切面落库）")
+    class CreateAuditLogTest {
+
+        @Test
+        @DisplayName("创建字典类型触发审计，审计日志可通过查询接口检索")
+        void shouldPersistAuditLog_whenDictTypeCreated() {
+            // Given：唯一编码的字典类型（探针操作：POST /api/system/dict-types，最轻量的写接口）
+            String token = adminToken();
+            String dictType = "it_audit_" + suffix();
+            Map<String, Object> body = new HashMap<>();
+            body.put("dictType", dictType);
+            body.put("dictName", "集成测试审计字典_" + dictType);
+            body.put("status", 1);
+            Long dictTypeId = given().port(port).header("Authorization", "Bearer " + token)
+                .contentType(ContentType.JSON).body(body)
+                .when().post("/api/system/dict-types")
+                .then().log().ifValidationFails().statusCode(200).body("code", equalTo(200))
+                .extract().jsonPath().getLong("data.id");
+            try {
+                // When：查询审计日志分页（按模块/操作类型/结果过滤 + pageSize=200，
+                // 排除历史运行积累数据对分页窗口的干扰）
+                Response response = given().port(port).header("Authorization", "Bearer " + token)
+                    .queryParam("pageNum", 1).queryParam("pageSize", 200)
+                    .queryParam("module", "SYSTEM").queryParam("operateType", "CREATE")
+                    .queryParam("resultStatus", 1).queryParam("operateBy", "admin")
+                    .when().get(AUDIT_LOG_PATH)
+                    .then().statusCode(200).body("code", equalTo(200))
+                    .extract().response();
+                List<Map<String, Object>> list = response.jsonPath().getList("data.list");
+
+                // Then：列表中存在本次创建操作的审计记录（URI + 成功状态匹配，不断数量避免并发用例干扰）
+                Assertions.assertThat(list).isNotNull().isNotEmpty();
+                boolean matched = list.stream().anyMatch(item ->
+                    "/api/system/dict-types".equals(item.get("requestUri"))
+                        && Integer.valueOf(1).equals(item.get("resultStatus")));
+                Assertions.assertThat(matched)
+                    .as("审计日志应包含本次字典类型创建记录（dictType=%s）", dictType)
+                    .isTrue();
+            } finally {
+                // 清理：删除测试字典类型（自建自清；删除操作本身亦产生审计记录，不影响断言）
+                given().port(port).header("Authorization", "Bearer " + adminToken())
+                    .when().delete("/api/system/dict-types/" + dictTypeId)
+                    .then().statusCode(200).body("code", equalTo(200));
+            }
         }
     }
 

@@ -31,6 +31,11 @@ import AssignRolesModal from './components/AssignRolesModal.vue'
 
 const auth = useAuthStore()
 
+/** 目标行是否为当前登录账号本人（自我操作防护，后端 18041 为最终防线） */
+function isSelf(record: UserVO): boolean {
+  return auth.userInfo?.userId === record.id
+}
+
 /** 列定义（列名与后端 UserVO 字段一一对应） */
 const columns: ColumnsType<UserVO> = [
   { title: '用户编码', dataIndex: 'userCode', width: 120 },
@@ -206,7 +211,8 @@ async function handleExport(): Promise<void> {
             <a-switch
               :checked="(record as UserVO).status === STATUS_ENABLED"
               :loading="statusSavingId === (record as UserVO).id"
-              :disabled="(record as UserVO).isAdmin === 1 || !auth.hasPerm('system:user:update')"
+              :disabled="(record as UserVO).isAdmin === 1 || isSelf(record as UserVO) || !auth.hasPerm('system:user:update')"
+              :title="isSelf(record as UserVO) ? '不可停用当前登录账号' : undefined"
               checked-children="启用"
               un-checked-children="停用"
               @change="(checked: boolean) => handleStatusChange(record as UserVO, checked)"
@@ -221,6 +227,7 @@ async function handleExport(): Promise<void> {
                 v-perm="'system:user:update'"
                 type="link"
                 size="small"
+                :disabled="(record as UserVO).isAdmin === 1"
                 @click="openEdit(record as UserVO)"
               >
                 <EditOutlined /> 编辑
@@ -229,6 +236,7 @@ async function handleExport(): Promise<void> {
                 v-perm="'system:user:resetpwd'"
                 type="link"
                 size="small"
+                :disabled="(record as UserVO).isAdmin === 1"
                 @click="resetModalRef?.show(record as UserVO)"
               >
                 <KeyOutlined /> 重置密码
@@ -246,7 +254,8 @@ async function handleExport(): Promise<void> {
                 type="link"
                 size="small"
                 danger
-                :disabled="(record as UserVO).isAdmin === 1"
+                :disabled="(record as UserVO).isAdmin === 1 || isSelf(record as UserVO)"
+                :title="isSelf(record as UserVO) ? '不可删除当前登录账号' : undefined"
                 @click="confirmDelete(record as UserVO)"
               >
                 <DeleteOutlined /> 删除

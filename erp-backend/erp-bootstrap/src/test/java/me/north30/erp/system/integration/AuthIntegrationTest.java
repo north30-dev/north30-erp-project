@@ -22,7 +22,7 @@ import static org.hamcrest.Matchers.notNullValue;
 /**
  * 认证授权域集成测试（/api/auth，接口文档 4）。
  * <p>每个接口一个 @Nested 分组；错误密码用例对自建低权限用户执行，
- * 避免对 admin 账号累计登录失败计数（锁定阈值 5 次/30 分钟）。</p>
+ * 避免对 admin 账号累计登录失败计数（锁定阈值 20 次/30 分钟）。</p>
  */
 @DisplayName("认证授权接口集成测试")
 class AuthIntegrationTest extends ApiIntegrationTest {
@@ -125,6 +125,44 @@ class AuthIntegrationTest extends ApiIntegrationTest {
                 .when().post(LOGIN_PATH)
                 .then().statusCode(400)
                 .body("code", equalTo(CommonErrorCode.PARAM_ERROR.getCode()));
+        }
+
+        @Test
+        @DisplayName("渐进式验证码：未达失败阈值且未携带验证码时允许登录成功")
+        void shouldLoginSuccess_whenCaptchaAbsentAndBelowThreshold() {
+            // Given（admin 无错误口令累计，失败计数为 0，未达验证码阈值 3）
+            Map<String, Object> body = Map.of("username", ADMIN_USERNAME, "password", ADMIN_PASSWORD);
+
+            // When / Then
+            given().port(port).contentType(ContentType.JSON)
+                .body(body)
+                .when().post(LOGIN_PATH)
+                .then().statusCode(200)
+                .body("code", equalTo(200))
+                .body("data.accessToken", notNullValue());
+        }
+
+        @Test
+        @DisplayName("渐进式验证码：同一用户连续 3 次失败后未携带验证码返回 18004")
+        void shouldReturn422CaptchaError_whenThresholdReachedAndCaptchaAbsent() {
+            // Given（先确保低权限用户已创建，再对该用户累计 3 次失败）
+            limitedToken();
+            Map<String, Object> wrongBody = Map.of("username", limitedUsername(), "password", "Wrong@999999");
+            for (int i = 0; i < 3; i++) {
+                given().port(port).contentType(ContentType.JSON)
+                    .body(wrongBody)
+                    .when().post(LOGIN_PATH)
+                    .then().statusCode(422)
+                    .body("code", equalTo(SystemErrorCode.USERNAME_PASSWORD_ERROR.getCode()));
+            }
+
+            // When / Then：正确口令但未携带验证码，达到阈值后必须校验验证码
+            Map<String, Object> correctBody = Map.of("username", limitedUsername(), "password", LIMITED_PASSWORD);
+            given().port(port).contentType(ContentType.JSON)
+                .body(correctBody)
+                .when().post(LOGIN_PATH)
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.CAPTCHA_ERROR.getCode()));
         }
     }
 

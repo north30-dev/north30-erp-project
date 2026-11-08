@@ -6,22 +6,46 @@ import { message } from 'ant-design-vue'
 import { UserOutlined, LockOutlined, SafetyOutlined } from '@ant-design/icons-vue'
 import { createCaptcha } from '../../../api/auth'
 import { useAuthStore } from '../../../stores/auth'
+import { RequestError } from '../../../utils/request'
 import type { CaptchaVO } from '../../../types/api'
 
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 
+/** 手动点击验证码的最小刷新间隔（避免连续刷码触发取码接口 IP 频控） */
+const CAPTCHA_REFRESH_INTERVAL = 2000
+
 const form = reactive({ username: '', password: '', captcha: '', captchaKey: '' })
 const captcha = ref<CaptchaVO | null>(null)
+const captchaLoading = ref(false)
 const submitting = ref(false)
+let lastCaptchaRefreshAt = 0
 
-/** 拉取图形验证码（进页面与点击图片时各一次） */
-async function refreshCaptcha(): Promise<void> {
-  captcha.value = await createCaptcha()
-  form.captchaKey = captcha.value.captchaKey
+/**
+ * 拉取图形验证码。
+ * @param force 是否跳过最小刷新间隔（进页面与登录失败后必须强制刷新，因验证码一次性有效）
+ */
+async function refreshCaptcha(force = false): Promise<void> {
+  if (captchaLoading.value) {
+    return
+  }
+  if (!force && Date.now() - lastCaptchaRefreshAt < CAPTCHA_REFRESH_INTERVAL) {
+    message.warning('验证码刷新过于频繁，请稍后再试')
+    return
+  }
+  captchaLoading.value = true
+  try {
+    captcha.value = await createCaptcha()
+    form.captchaKey = captcha.value.captchaKey
+    lastCaptchaRefreshAt = Date.now()
+  } catch {
+    // 取码失败（如 18042 限流）保留现有验证码，错误提示由 request 拦截器统一弹出
+  } finally {
+    captchaLoading.value = false
+  }
 }
-refreshCaptcha()
+refreshCaptcha(true)
 
 async function handleLogin(): Promise<void> {
   if (!form.username || !form.password || !form.captcha) {
@@ -34,9 +58,13 @@ async function handleLogin(): Promise<void> {
     message.success('登录成功')
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
     router.replace(redirect)
-  } catch {
-    // 错误提示由 request 拦截器统一弹出；验证码一次性有效，失败后刷新
-    await refreshCaptcha()
+  } catch (error) {
+    // 错误提示由 request 拦截器统一弹出；验证码一次性有效，普通失败后必须刷新。
+    // 限流（18042）与参数校验失败（10001）不刷新，避免继续消耗取码配额。
+    const code = error instanceof RequestError ? error.code : undefined
+    if (code !== 18042 && code !== 10001) {
+      await refreshCaptcha(true)
+    }
   } finally {
     submitting.value = false
   }
@@ -66,9 +94,9 @@ async function handleLogin(): Promise<void> {
               v-if="captcha"
               :src="captcha.captchaImage"
               :title="`点击刷新（${captcha.expireSeconds} 秒内有效）`"
-              class="captcha-image"
+              :class="['captcha-image', { 'captcha-image--loading': captchaLoading }]"
               alt="验证码"
-              @click="refreshCaptcha"
+              @click="refreshCaptcha()"
             />
           </div>
         </a-form-item>
@@ -103,5 +131,10 @@ async function handleLogin(): Promise<void> {
   height: 40px;
   cursor: pointer;
   border-radius: 4px;
+}
+
+.captcha-image--loading {
+  cursor: wait;
+  opacity: 0.6;
 }
 </style>

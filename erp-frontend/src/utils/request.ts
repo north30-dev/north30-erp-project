@@ -10,9 +10,13 @@ const LOGIN_URL = '/auth/login'
 
 /** 业务失败/请求异常时向外抛出的统一错误（业务代码 catch 到的都是它） */
 export class RequestError extends Error {
-  constructor(messageText: string) {
+  /** 后端业务错误码（无响应/网络异常时为 undefined） */
+  readonly code?: number
+
+  constructor(messageText: string, code?: number) {
     super(messageText)
     this.name = 'RequestError'
+    this.code = code
   }
 }
 
@@ -85,7 +89,7 @@ instance.interceptors.response.use(
     if (result.code !== 200) {
       const description = result.message || '请求失败'
       message.error(description)
-      return Promise.reject(new RequestError(description))
+      return Promise.reject(new RequestError(description, result.code))
     }
     return response
   },
@@ -109,7 +113,7 @@ instance.interceptors.response.use(
     const backendResult = error.response?.data as Result<unknown> | undefined
     const description = backendResult?.message || error.message || '网络异常，请稍后重试'
     message.error(description)
-    return Promise.reject(new RequestError(description))
+    return Promise.reject(new RequestError(description, backendResult?.code))
   },
 )
 

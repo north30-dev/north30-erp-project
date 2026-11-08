@@ -12,6 +12,7 @@ import {
 } from '@ant-design/icons-vue'
 import AppSearchForm from '../../../components/AppSearchForm/index.vue'
 import { useTable } from '../../../composables/useTable'
+import { useAuthStore } from '../../../stores/auth'
 import { changeRoleStatus, deleteRole, getRolePage } from '../../../api/role'
 import {
   DATA_SCOPE_MAP,
@@ -41,6 +42,13 @@ const { draftQuery, pageNum, pageSize, records, total, loading, search, reset, r
     roleName: '',
     status: undefined,
   })
+
+const auth = useAuthStore()
+
+/** 目标角色是否为当前登录账号持有的角色（自我削弱防护，后端 18041 为最终防线） */
+function isOwnRole(record: RoleVO): boolean {
+  return Boolean(auth.userInfo?.roles?.includes(record.roleCode))
+}
 
 const formModalRef = ref<InstanceType<typeof RoleFormModal> | null>(null)
 const assignModalRef = ref<InstanceType<typeof AssignMenusModal> | null>(null)
@@ -159,6 +167,8 @@ function confirmDelete(record: RoleVO): void {
                 v-perm="'system:role:assignmenu'"
                 type="link"
                 size="small"
+                :disabled="isOwnRole(record as RoleVO)"
+                :title="isOwnRole(record as RoleVO) ? '不可修改当前登录账号持有角色的菜单授权' : undefined"
                 @click="assignModalRef?.show(record as RoleVO)"
               >
                 <ApartmentOutlined /> 分配菜单

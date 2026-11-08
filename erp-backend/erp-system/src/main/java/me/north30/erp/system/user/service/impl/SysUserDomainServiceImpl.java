@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.system.common.enums.SystemErrorCode;
+import me.north30.erp.system.security.SecurityUtils;
 import me.north30.erp.system.user.entity.SysUser;
 import me.north30.erp.system.user.mapper.SysUserMapper;
 import me.north30.erp.system.user.service.SysUserDomainService;
@@ -59,6 +60,20 @@ public class SysUserDomainServiceImpl implements SysUserDomainService {
             throw new BusinessException(SystemErrorCode.USER_NOT_FOUND, "用户 " + id + " 不存在");
         }
         return user;
+    }
+
+    /**
+     * 校验操作目标非当前登录用户本人，是本人抛 18041（自我操作守卫）。
+     *
+     * @param id 目标用户 ID。
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public void requireNotSelf(Long id) {
+        Long currentUserId = SecurityUtils.requireCurrentUser().userId();
+        if (id != null && id.equals(currentUserId)) {
+            throw new BusinessException(SystemErrorCode.SELF_OPERATION_FORBIDDEN);
+        }
     }
 
     /**

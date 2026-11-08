@@ -11,3 +11,9 @@ spring:
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:root}
       database: 1
+
+# 集成测试同 IP 高频登录：放大限流阈值避免用例互相误伤（阈值逻辑与生产一致）
+erp:
+  auth:
+    login-rate-limit-per-minute: 1000
+    captcha-rate-limit-per-minute: 1000

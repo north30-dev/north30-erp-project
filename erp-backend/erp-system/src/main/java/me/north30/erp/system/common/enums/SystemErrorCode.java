@@ -147,7 +147,13 @@ public enum SystemErrorCode implements ErrorCode {
     SYSTEM_MENU_PROTECTED(18039, "内置菜单不可停用或删除"),
 
     /** 仅超级管理员可分配超级管理员角色（提权守卫） */
-    ONLY_SUPER_ADMIN_ASSIGN_ADMIN(18040, "仅超级管理员可分配超级管理员角色");
+    ONLY_SUPER_ADMIN_ASSIGN_ADMIN(18040, "仅超级管理员可分配超级管理员角色"),
+
+    /** 禁止对当前登录账号执行该操作（自我操作守卫） */
+    SELF_OPERATION_FORBIDDEN(18041, "禁止对当前登录账号执行该操作"),
+
+    /** 认证接口请求过于频繁（IP 维度限流） */
+    REQUEST_TOO_FREQUENT(18042, "操作过于频繁，请稍后重试");
 
     /** 业务状态码 */
     private final int code;

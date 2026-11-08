@@ -260,6 +260,18 @@ class RoleIntegrationTest extends ApiIntegrationTest {
         }
 
         @Test
+        @DisplayName("修改自己持有角色的菜单授权，返回422禁止自我操作")
+        void shouldReturn422SelfOperation_whenAssignMenusToOwnRole() {
+            // Given：操作者持有该自定义角色，清空其菜单授权会实时失去入口
+            given().port(port).header("Authorization", "Bearer " + adminRoleOperatorToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("menuIds", List.of()))
+                .when().put(BASE_PATH + "/" + adminRoleOperatorRoleId() + "/menus")
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.SELF_OPERATION_FORBIDDEN.getCode()));
+        }
+
+        @Test
         @DisplayName("分配不存在的菜单id，返回422菜单不存在")
         void shouldReturn422MenuNotFound_whenMenuIdNotExist() {
             // Given
