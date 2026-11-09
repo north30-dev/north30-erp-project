@@ -643,3 +643,256 @@ export interface DictItemUpdateDTO {
   remark?: string | null
   version: number
 }
+
+/* ---------- 系统参数（config 域，对齐后端 SysConfigController /api/system/configs，接口文档 5.6） ---------- */
+
+/** 系统参数分页查询 DTO（5.6.1，configKey/configName 模糊、configGroup 精确） */
+export interface ConfigQueryDTO {
+  configKey?: string
+  configName?: string
+  configGroup?: string
+  status?: number
+  pageNum?: number
+  pageSize?: number
+}
+
+/** 系统参数响应 VO（5.6.1，version 供编辑回填与状态切换提交） */
+export interface ConfigVO {
+  id: string
+  configKey: string
+  configName: string
+  configValue: string
+  /** 值类型（1：字符串，2：数字，3：布尔，4：JSON） */
+  valueType: number
+  /** 分组（如 SYSTEM/INVENTORY/PURCHASE/SALES/FINANCE/MANUFACTURING） */
+  configGroup: string
+  /** 是否系统内置（0：否，1：是；内置不可停用/删除） */
+  isSystem: number
+  /** 状态（0：停用，1：启用） */
+  status: number
+  remark: string | null
+  version: number
+}
+
+/** 新增系统参数请求 DTO（5.6.2，configKey 全局唯一，须为小写域前缀.参数名格式） */
+export interface ConfigCreateDTO {
+  configKey: string
+  configName: string
+  configValue: string
+  /** 值类型（1：字符串，2：数字，3：布尔，4：JSON） */
+  valueType: number
+  configGroup: string
+  /** 是否系统内置（0：否，1：是；缺省后端兜底 0） */
+  isSystem?: number
+  /** 状态（0：停用，1：启用；缺省后端兜底 1） */
+  status?: number
+  remark?: string | null
+}
+
+/** 修改系统参数请求 DTO（5.6.3，configKey/valueType/configGroup/isSystem 不可修改，乐观锁 version 必填） */
+export interface ConfigUpdateDTO {
+  configValue: string
+  configName?: string | null
+  remark?: string | null
+  version: number
+}
+
+/** 修改系统参数响应 VO（5.6.3） */
+export interface ConfigUpdateVO {
+  /** 生效提示（固定"参数将在 1 分钟内生效"） */
+  effectNote: string
+  updateTime: string | null
+}
+
+/* ---------- 日志查询（log 域，对齐后端 /api/system/login-logs 与 /api/system/audit-logs，接口文档 5.8） ---------- */
+
+/** 登录日志分页查询 DTO（5.8.3，username 模糊；时间支持 yyyy-MM-dd 与 yyyy-MM-dd HH:mm:ss，区间左闭右开） */
+export interface LoginLogQueryDTO {
+  username?: string
+  /** 事件类型（1：登录，2：登出，3：令牌刷新，4：登录失败） */
+  loginType?: number
+  /** 结果（0：失败，1：成功） */
+  resultStatus?: number
+  startTime?: string
+  endTime?: string
+  pageNum?: number
+  pageSize?: number
+}
+
+/** 登录日志响应 VO（5.8.3） */
+export interface LoginLogVO {
+  id: string
+  /** 用户 ID（登录失败且用户不存在时为 null） */
+  userId: string | null
+  username: string
+  /** 事件类型（1：登录，2：登出，3：令牌刷新，4：登录失败） */
+  loginType: number
+  loginTime: string
+  loginIp: string | null
+  userAgent: string | null
+  /** 结果（0：失败，1：成功） */
+  resultStatus: number
+  failReason: string | null
+}
+
+/** 审计日志分页查询 DTO（5.8.1，bizCode/operateBy 模糊，module/bizType/operateType 精确） */
+export interface AuditLogQueryDTO {
+  bizCode?: string
+  /** 业务模块（SYSTEM/MATERIAL/PURCHASE/SALES/INVENTORY/MANUFACTURING/FINANCE） */
+  module?: string
+  /** 业务类型（SALES_ORDER/PURCHASE_ORDER/WORK_ORDER/STOCK_TRANSACTION 等开放集合） */
+  bizType?: string
+  /** 操作类型（CREATE/UPDATE/APPROVE/REJECT/DELETE/POST/UNAPPROVE/CLOSE/REOPEN） */
+  operateType?: string
+  operateBy?: string
+  startTime?: string
+  endTime?: string
+  /** 结果（0：失败，1：成功） */
+  resultStatus?: number
+  pageNum?: number
+  pageSize?: number
+}
+
+/** 审计日志响应 VO（5.8.1 分页 / 5.8.2 详情；beforeJson/afterJson/diffFields 仅详情接口返回） */
+export interface AuditLogVO {
+  id: string
+  /** 业务模块（SYSTEM/MATERIAL/PURCHASE/SALES/INVENTORY/MANUFACTURING/FINANCE） */
+  module: string
+  bizType: string | null
+  bizCode: string | null
+  /** 操作类型（CREATE/UPDATE/APPROVE/REJECT/DELETE/POST/UNAPPROVE/CLOSE/REOPEN） */
+  operateType: string
+  operateDesc: string | null
+  operateBy: string
+  operateTime: string
+  operateIp: string | null
+  requestUri: string | null
+  requestMethod: string | null
+  /** 结果（0：失败，1：成功） */
+  resultStatus: number
+  errorCode: number | null
+  errorMessage: string | null
+  /** 方法耗时（毫秒，后端 Long 序列化为 string） */
+  costTime: string | null
+  traceId: string | null
+  /** 变更前 JSON（仅详情接口返回） */
+  beforeJson: string | null
+  /** 变更后 JSON（仅详情接口返回） */
+  afterJson: string | null
+  /** 变更字段清单（仅详情接口返回，后端对比变更前后 JSON 派生） */
+  diffFields: string[] | null
+}
+
+/* ---------- 附件管理（attachment 域，对齐后端 AttachmentController /api/system/attachments，接口文档 5.9） ---------- */
+
+/** 附件业务参数 DTO（5.9.1 上传 / 5.9.3 列表共用：上传时为 multipart form 字段，列表时为 query 参数；bizType/bizId 必填） */
+export interface AttachmentBizQueryDTO {
+  /** 业务类型（必填，如 CUSTOMER、SALES_ORDER 等开放集合） */
+  bizType: string
+  /** 业务主键（必填，后端 Long 以字符串序列化） */
+  bizId: string
+  /** 单据号（选填，长度 ≤64） */
+  bizCode?: string | null
+}
+
+/** 附件响应 VO（5.9.1 上传 / 5.9.3 列表；id/fileSize/bizId 为 Long，后端序列化为 string） */
+export interface AttachmentVO {
+  id: string
+  /** 文件名（含中文） */
+  fileName: string
+  /** 文件路径（相对存储根目录） */
+  filePath: string
+  /** 文件 MIME 类型 */
+  fileType: string
+  /** 文件大小（字节，Long → string） */
+  fileSize: string
+  bizType: string
+  bizId: string
+  bizCode: string | null
+  uploadBy: string
+  uploadTime: string
+  /** 下载地址（如 /api/system/attachments/123/download） */
+  downloadUrl: string
+}
+
+/* ---------- 单据编号序列（codesequence 域，对齐后端 SysCodeSequenceController /api/system/code-sequences，接口文档 5.7） ---------- */
+
+/** 编号序列分页查询 DTO（5.7.1，bizType/period 精确匹配） */
+export interface CodeSequenceQueryDTO {
+  bizType?: string
+  /** 期间（yyyyMM） */
+  period?: string
+  pageNum?: number
+  pageSize?: number
+}
+
+/** 编号序列响应 VO（5.7.1） */
+export interface CodeSequenceVO {
+  id: string
+  /** 单据类型 */
+  bizType: string
+  /** 编号前缀 */
+  prefix: string
+  /** 期间（yyyyMM） */
+  period: string
+  /** 当前已用流水号 */
+  currentNo: number
+  /** 流水位数 */
+  seqLength: number
+  /** 下一编号预览（prefix + period + 补零流水） */
+  nextCodePreview: string
+  /** 更新时间（yyyy-MM-dd HH:mm:ss） */
+  updateTime: string
+}
+
+/** 重置编号流水请求 DTO（5.7.2，仅允许向下重置至未使用区间，目标值相同幂等跳过） */
+export interface CodeSequenceResetDTO {
+  /** 单据类型（必填，长度 ≤30） */
+  bizType: string
+  /** 期间（必填，yyyyMM 格式） */
+  period: string
+  /** 目标流水号（必填） */
+  currentNo: number
+  /** 重置原因（必填，长度 ≤200） */
+  reason: string
+}
+
+/** 重置编号流水响应 VO（5.7.2） */
+export interface CodeSequenceResetVO {
+  bizType: string
+  period: string
+  /** 重置后的流水号 */
+  currentNo: number
+}
+
+/* ---------- 批量导入（importtask 域，对齐后端 ImportTaskController /api/system/imports，接口文档 5.10） ---------- */
+
+/** 导入任务响应 VO（5.10 任务与批次统计口径；D2 无 sys_import_task 表为占位实现，任务列表恒返回空分页） */
+export interface ImportTaskVO {
+  taskId: string
+  bizType: string | null
+  importBatch: string | null
+  totalRows: number | null
+  successRows: number | null
+  failRows: number | null
+  committed: boolean | null
+}
+
+/** 导入错误行 VO（5.10.2，rowNo 为 Excel 行号，rawData 脱敏后回显） */
+export interface ImportErrorVO {
+  rowNo: number | null
+  fieldName: string | null
+  errorCode: number | null
+  errorMessage: string | null
+  rawData: unknown
+}
+
+/** 导入结果响应 VO（5.10.2，含错误行明细；D2 占位实现恒报 10503 任务不存在） */
+export interface ImportResultVO {
+  taskId: string
+  totalRows: number | null
+  successRows: number | null
+  failRows: number | null
+  committed: boolean | null
+  errors: ImportErrorVO[] | null
+}
