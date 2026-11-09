@@ -5,7 +5,7 @@
 import { onMounted, ref } from 'vue'
 import AppSearchForm from '../../../components/AppSearchForm/index.vue'
 import { useTable } from '../../../composables/useTable'
-import { getCodeSequencePage } from '../../../api/codesequence'
+import { getCodeSequencePage } from '../../../api/codeSequence'
 import type { CodeSequenceQueryDTO, CodeSequenceVO } from '../../../types/api'
 import { CODE_SEQUENCE_COLUMNS } from './config'
 import ResetModal from './components/ResetModal.vue'

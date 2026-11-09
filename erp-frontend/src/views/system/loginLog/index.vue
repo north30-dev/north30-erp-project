@@ -2,19 +2,12 @@
 // 登录日志查询页（F7，只读）：AppSearchForm + useTable 两件套，仅分页查询无增删改。
 // 事件时间区间为日期粒度（后端 yyyy-MM-dd 解析为当天起止、左闭右开），提交时拆为 startTime/endTime。
 import { onMounted } from 'vue'
-import AppSearchForm from '../../../../components/AppSearchForm/index.vue'
-import { useTable } from '../../../../composables/useTable'
-import { getLoginLogPage } from '../../../../api/log'
-import type { PageQuery, PageResult, LoginLogQueryDTO, LoginLogVO } from '../../../../types/api'
-import {
-  LOGIN_LOG_COLUMNS,
-  LOGIN_TYPE_FAILED,
-  LOGIN_TYPE_MAP,
-  LOGIN_TYPE_OPTIONS,
-  RESULT_FAILED,
-  RESULT_STATUS_MAP,
-  RESULT_STATUS_OPTIONS,
-} from './config'
+import AppSearchForm from '../../../components/AppSearchForm/index.vue'
+import { useTable } from '../../../composables/useTable'
+import { getLoginLogPage } from '../../../api/log'
+import type { PageQuery, PageResult, LoginLogQueryDTO, LoginLogVO } from '../../../types/api'
+import { LOGIN_LOG_COLUMNS, LOGIN_TYPE_FAILED, LOGIN_TYPE_MAP, LOGIN_TYPE_OPTIONS } from './config'
+import { RESULT_FAILED, RESULT_STATUS_MAP, RESULT_STATUS_OPTIONS } from '../../../constants'
 
 /** 表单查询条件（timeRange 为日期区间草稿，提交时拆为 startTime/endTime；type alias 便于赋给 Record<string, unknown>） */
 type LoginLogDraftQuery = {

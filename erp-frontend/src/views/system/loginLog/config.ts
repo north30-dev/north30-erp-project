@@ -1,8 +1,9 @@
 // 登录日志查询页（F7）列定义与域内枚举：列名与后端 LoginLogVO 字段一一对应，
 // 事件类型/结果取值对齐后端 LoginLogQueryDTO/LoginLogVO 注释与 sys_login_log DDL。
-// 域内枚举暂存本文件，待主会话统一收口进公共 constants 后再迁移。
+// LOGIN_TYPE_* 为 sys_login_log 单表语义，保留域内；RESULT_* 为登录/审计日志跨域共用，
+// 已收口至 src/constants（含反查 MAP）。
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { LoginLogVO } from '../../../../types/api'
+import type { LoginLogVO } from '../../../types/api'
 
 /** 事件类型（sys_login_log.login_type：1-登录 2-登出 3-令牌刷新 4-登录失败） */
 export const LOGIN_TYPE_LOGIN = 1
@@ -23,21 +24,6 @@ export const LOGIN_TYPE_MAP: Record<number, string> = {
   [LOGIN_TYPE_LOGOUT]: '登出',
   [LOGIN_TYPE_REFRESH]: '令牌刷新',
   [LOGIN_TYPE_FAILED]: '登录失败',
-}
-
-/** 登录结果（sys_login_log.result_status：0-失败 1-成功，语义与通用启停状态不同，域内定义） */
-export const RESULT_FAILED = 0
-export const RESULT_SUCCESS = 1
-
-export const RESULT_STATUS_OPTIONS = [
-  { label: '成功', value: RESULT_SUCCESS },
-  { label: '失败', value: RESULT_FAILED },
-] as const
-
-/** 结果反查（表格列渲染用） */
-export const RESULT_STATUS_MAP: Record<number, string> = {
-  [RESULT_SUCCESS]: '成功',
-  [RESULT_FAILED]: '失败',
 }
 
 /** 列定义（列名与后端 LoginLogVO 字段一一对应） */

@@ -1,6 +1,7 @@
 // 参数配置页（F6）列定义与域内枚举：列名与后端 ConfigVO 字段一一对应，
 // 值类型/内置标记取值对齐后端 SysConfig 注释与 ConfigCreateDTO 校验说明。
-// 域内枚举暂存本文件，待主会话统一收口进公共 constants 后再迁移。
+// VALUE_TYPE_* 为 sys_config.value_type 单表语义（仅本域使用），保留域内；
+// IS_SYSTEM_* 为跨表通用旗标（sys_menu/sys_config 共用），已收口至 src/constants（含反查 MAP）。
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ConfigVO } from '../../../types/api'
 
@@ -24,15 +25,6 @@ export const VALUE_TYPE_MAP: Record<number, string> = {
   [VALUE_TYPE_BOOLEAN]: '布尔',
   [VALUE_TYPE_JSON]: 'JSON',
 }
-
-/** 是否系统内置（sys_config.is_system：0-否 1-是，内置不可停用/删除） */
-export const IS_SYSTEM_NO = 0
-export const IS_SYSTEM_YES = 1
-
-export const IS_SYSTEM_OPTIONS = [
-  { label: '否', value: IS_SYSTEM_NO },
-  { label: '是', value: IS_SYSTEM_YES },
-] as const
 
 /** 列定义（列名与后端 ConfigVO 字段一一对应） */
 export const CONFIG_COLUMNS: ColumnsType<ConfigVO> = [

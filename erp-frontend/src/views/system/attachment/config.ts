@@ -1,6 +1,6 @@
 // 附件管理页（F8）列定义与格式化工具：列名与后端 AttachmentVO 字段一一对应。
 // 上传允许的扩展名对齐后端 AttachmentController 5.9.1 说明（pdf/jpg/jpeg/png/xlsx/docx，20MB 内）。
-// 域内枚举暂存本文件，待主会话统一收口进公共 constants 后再迁移。
+// 上传白名单/大小提示为附件域独有约束，保留域内不迁公共 constants。
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { AttachmentVO } from '../../../types/api'
 

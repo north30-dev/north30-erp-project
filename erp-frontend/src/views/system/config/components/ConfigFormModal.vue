@@ -8,10 +8,13 @@ import type { Rule } from 'ant-design-vue/es/form'
 import AppCrudModal from '../../../../components/AppCrudModal/index.vue'
 import type { CrudForm, CrudRules } from '../../../../components/AppCrudModal/type'
 import { createConfig, updateConfig } from '../../../../api/config'
-import { STATUS_ENABLED, STATUS_OPTIONS } from '../../../../constants'
 import {
   IS_SYSTEM_NO,
   IS_SYSTEM_OPTIONS,
+  STATUS_ENABLED,
+  STATUS_OPTIONS,
+} from '../../../../constants'
+import {
   VALUE_TYPE_BOOLEAN,
   VALUE_TYPE_JSON,
   VALUE_TYPE_NUMBER,

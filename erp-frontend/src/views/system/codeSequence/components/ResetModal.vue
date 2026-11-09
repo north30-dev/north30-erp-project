@@ -5,7 +5,7 @@
 import { reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import type { FormInstance } from 'ant-design-vue'
-import { resetCodeSequence } from '../../../../api/codesequence'
+import { resetCodeSequence } from '../../../../api/codeSequence'
 import type { CodeSequenceVO } from '../../../../types/api'
 
 const emit = defineEmits<{ saved: [] }>()

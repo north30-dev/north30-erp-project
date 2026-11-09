@@ -129,8 +129,8 @@ class SysUserApplicationServiceImplTest {
             new UserAssembleStrategy(sysDeptMapper, sysUserRoleMapper, sysRoleMapper, userConverter);
         UserRoleStrategy userRoleStrategy =
             new UserRoleStrategy(sysRoleDomainService, sysUserRoleService);
-        UserRoleGrantStrategy userRoleGrantStrategy = new UserRoleGrantStrategy(
-            sysRoleDomainService, sysUserDomainService, userRoleStrategy, userAccessService);
+        UserRoleGrantStrategy userRoleGrantStrategy =
+            new UserRoleGrantStrategy(sysRoleDomainService, userAccessService);
         service = new SysUserApplicationServiceImpl(sysUserMapper, sysDeptDomainService,
             passwordEncoder, userConverter, sysUserDomainService, userQueryStrategy,
             userAssembleStrategy, userRoleStrategy, userRoleGrantStrategy, userSessionRevokeStrategy);
@@ -962,41 +962,32 @@ class SysUserApplicationServiceImplTest {
         }
 
         @Test
-        void shouldThrow18041_whenRemoveOwnAdminRole() {
-            // Given：操作者 10L 当前持有 ADMIN 角色，本次提交移除该角色
+        void shouldThrow18041_whenAssignRolesToSelf() {
+            // Given：操作者修改自己的角色（无论增/删/清空），自我操作守卫一律拦截，
+            // 防止多步合法操作组合出自我提权或无法自愈的自我降权
             when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
-            when(sysUserDomainService.getById(10L)).thenReturn(UserTestFactory.sysUser());
-            when(sysUserRoleService.listRoleIdsByUserId(10L)).thenReturn(List.of(1L));
-            when(sysRoleDomainService.listByIds(List.of(2L)))
-                .thenReturn(List.of(UserTestFactory.sysRole(2L, "keeper")));
-            when(sysRoleDomainService.listByIds(List.of(1L)))
-                .thenReturn(List.of(UserTestFactory.sysRole(1L, "ADMIN")));
             SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(new LoginUser(10L, "self", "jti", "rjti"), null));
 
-            // When / Then
+            // When / Then：给自己移除角色
             assertThatThrownBy(() -> service.assignRoles(10L, new UserAssignRolesDTO(List.of(2L))))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode())
                         .isEqualTo(SystemErrorCode.SELF_OPERATION_FORBIDDEN.getCode()))
-                .hasMessage("不允许移除自己持有的超级管理员角色");
+                .hasMessage("不允许修改自己的角色");
+            // 给自己清空角色同样拦截
+            assertThatThrownBy(() -> service.assignRoles(10L, new UserAssignRolesDTO(List.of())))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode())
+                        .isEqualTo(SystemErrorCode.SELF_OPERATION_FORBIDDEN.getCode()))
+                .hasMessage("不允许修改自己的角色");
+            // 给自己新增角色同样拦截
+            assertThatThrownBy(() -> service.assignRoles(10L, new UserAssignRolesDTO(List.of(2L))))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode())
+                        .isEqualTo(SystemErrorCode.SELF_OPERATION_FORBIDDEN.getCode()));
             verify(sysUserRoleService, never()).deleteByUserId(any());
-        }
-
-        @Test
-        void shouldAllowRemoveOwnAdminRole_whenOperatorIsBuiltinAdmin() {
-            // Given：内置超管（is_admin=1）摘除自己持有的 ADMIN 角色后仍具全量权限，不拦截
-            when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
-            when(sysUserDomainService.getById(10L)).thenReturn(UserTestFactory.adminUser());
-            when(sysRoleDomainService.listByIds(List.of(2L)))
-                .thenReturn(List.of(UserTestFactory.sysRole(2L, "keeper")));
-            SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(new LoginUser(10L, "admin", "jti", "rjti"), null));
-
-            // When
-            UserAssignRolesVO vo = service.assignRoles(10L, new UserAssignRolesDTO(List.of(2L)));
-            assertThat(vo.roleIds()).containsExactly(2L);
-            verify(sysUserRoleService).deleteByUserId(10L);
+            verify(sysUserRoleService, never()).createForUser(any(), any());
         }
     }
 

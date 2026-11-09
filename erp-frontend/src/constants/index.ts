@@ -157,3 +157,85 @@ export const DATA_SCOPE_OPTIONS = [
 export const DATA_SCOPE_MAP: Record<number, string> = Object.fromEntries(
   DATA_SCOPE_OPTIONS.map((option) => [option.value, option.label]),
 )
+
+/* ---------- 系统内置标记（sys_menu.is_system / sys_config.is_system，跨表通用 0/1 旗标，对齐数据库 DDL） ---------- */
+export const IS_SYSTEM_NO = 0
+export const IS_SYSTEM_YES = 1
+
+export const IS_SYSTEM_OPTIONS = [
+  { label: '否', value: IS_SYSTEM_NO },
+  { label: '是', value: IS_SYSTEM_YES },
+] as const
+
+/** 系统内置反查（表格列渲染用） */
+export const IS_SYSTEM_MAP: Record<number, string> = {
+  [IS_SYSTEM_NO]: '否',
+  [IS_SYSTEM_YES]: '是',
+}
+
+/* ---------- 审计业务模块（对齐后端 AuditModuleEnum，落库为枚举名，覆盖全部业务模块） ---------- */
+export const AUDIT_MODULE_SYSTEM = 'SYSTEM'
+export const AUDIT_MODULE_MATERIAL = 'MATERIAL'
+export const AUDIT_MODULE_PURCHASE = 'PURCHASE'
+export const AUDIT_MODULE_SALES = 'SALES'
+export const AUDIT_MODULE_INVENTORY = 'INVENTORY'
+export const AUDIT_MODULE_MANUFACTURING = 'MANUFACTURING'
+export const AUDIT_MODULE_FINANCE = 'FINANCE'
+
+export const AUDIT_MODULE_OPTIONS = [
+  { label: '系统管理', value: AUDIT_MODULE_SYSTEM },
+  { label: '物料/BOM', value: AUDIT_MODULE_MATERIAL },
+  { label: '采购', value: AUDIT_MODULE_PURCHASE },
+  { label: '销售', value: AUDIT_MODULE_SALES },
+  { label: '库存', value: AUDIT_MODULE_INVENTORY },
+  { label: '生产', value: AUDIT_MODULE_MANUFACTURING },
+  { label: '财务', value: AUDIT_MODULE_FINANCE },
+] as const
+
+/** 审计业务模块反查（表格列渲染用） */
+export const AUDIT_MODULE_MAP: Record<string, string> = Object.fromEntries(
+  AUDIT_MODULE_OPTIONS.map((option) => [option.value, option.label]),
+)
+
+/* ---------- 审计操作类型（对齐后端 OperateTypeEnum，落库为枚举名，单据全生命周期动作跨业务通用） ---------- */
+export const OPERATE_TYPE_CREATE = 'CREATE'
+export const OPERATE_TYPE_UPDATE = 'UPDATE'
+export const OPERATE_TYPE_APPROVE = 'APPROVE'
+export const OPERATE_TYPE_REJECT = 'REJECT'
+export const OPERATE_TYPE_DELETE = 'DELETE'
+export const OPERATE_TYPE_POST = 'POST'
+export const OPERATE_TYPE_UNAPPROVE = 'UNAPPROVE'
+export const OPERATE_TYPE_CLOSE = 'CLOSE'
+export const OPERATE_TYPE_REOPEN = 'REOPEN'
+
+export const OPERATE_TYPE_OPTIONS = [
+  { label: '创建', value: OPERATE_TYPE_CREATE },
+  { label: '修改', value: OPERATE_TYPE_UPDATE },
+  { label: '审核', value: OPERATE_TYPE_APPROVE },
+  { label: '驳回', value: OPERATE_TYPE_REJECT },
+  { label: '删除', value: OPERATE_TYPE_DELETE },
+  { label: '过账', value: OPERATE_TYPE_POST },
+  { label: '反审核', value: OPERATE_TYPE_UNAPPROVE },
+  { label: '关闭', value: OPERATE_TYPE_CLOSE },
+  { label: '期间重开', value: OPERATE_TYPE_REOPEN },
+] as const
+
+/** 审计操作类型反查（表格列渲染用） */
+export const OPERATE_TYPE_MAP: Record<string, string> = Object.fromEntries(
+  OPERATE_TYPE_OPTIONS.map((option) => [option.value, option.label]),
+)
+
+/* ---------- 操作/登录结果（sys_login_log.result_status / sys_audit_log.result_status：0-失败 1-成功，语义与通用启停状态不同） ---------- */
+export const RESULT_FAILED = 0
+export const RESULT_SUCCESS = 1
+
+export const RESULT_STATUS_OPTIONS = [
+  { label: '成功', value: RESULT_SUCCESS },
+  { label: '失败', value: RESULT_FAILED },
+] as const
+
+/** 操作/登录结果反查（表格列渲染用） */
+export const RESULT_STATUS_MAP: Record<number, string> = {
+  [RESULT_SUCCESS]: '成功',
+  [RESULT_FAILED]: '失败',
+}

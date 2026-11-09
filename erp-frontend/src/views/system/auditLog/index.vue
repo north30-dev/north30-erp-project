@@ -3,12 +3,12 @@
 // 变更前后 JSON 为详情接口专属大字段，列表不展示；行内"详情"按钮（system:auditlog:detail）
 // 打开抽屉调详情接口，变更 JSON 解析失败（白名单超长截断）时原样展示。
 import { onMounted, ref } from 'vue'
-import AppSearchForm from '../../../../components/AppSearchForm/index.vue'
-import { useTable } from '../../../../composables/useTable'
-import { getAuditLogDetail, getAuditLogPage } from '../../../../api/log'
-import type { PageQuery, PageResult, AuditLogQueryDTO, AuditLogVO } from '../../../../types/api'
+import AppSearchForm from '../../../components/AppSearchForm/index.vue'
+import { useTable } from '../../../composables/useTable'
+import { getAuditLogDetail, getAuditLogPage } from '../../../api/log'
+import type { PageQuery, PageResult, AuditLogQueryDTO, AuditLogVO } from '../../../types/api'
+import { AUDIT_LOG_COLUMNS } from './config'
 import {
-  AUDIT_LOG_COLUMNS,
   AUDIT_MODULE_MAP,
   AUDIT_MODULE_OPTIONS,
   OPERATE_TYPE_MAP,
@@ -16,7 +16,7 @@ import {
   RESULT_FAILED,
   RESULT_STATUS_MAP,
   RESULT_STATUS_OPTIONS,
-} from './config'
+} from '../../../constants'
 
 /** 表单查询条件（timeRange 为日期区间草稿，提交时拆为 startTime/endTime；type alias 便于赋给 Record<string, unknown>） */
 type AuditLogDraftQuery = {

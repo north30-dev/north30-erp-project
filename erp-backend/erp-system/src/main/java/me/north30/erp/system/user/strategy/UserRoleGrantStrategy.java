@@ -7,24 +7,20 @@ import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.role.entity.SysRole;
 import me.north30.erp.system.role.service.SysRoleDomainService;
 import me.north30.erp.system.security.SecurityUtils;
-import me.north30.erp.system.user.entity.SysUser;
-import me.north30.erp.system.user.service.SysUserDomainService;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 /**
  * 用户角色授予守卫策略：角色分配链路的提权与自我降权守卫。
- * <p>跨域访问一律走目标域 Service（{@link SysRoleDomainService}/{@link SysUserDomainService}），
- * 禁止直接注入其他域 Mapper；用户-角色关联查询复用本域 {@link UserRoleStrategy} 收口。</p>
+ * <p>跨域访问一律走目标域 Service（{@link SysRoleDomainService}），
+ * 禁止直接注入其他域 Mapper。</p>
  */
 @Component
 @RequiredArgsConstructor
 public class UserRoleGrantStrategy {
 
     private final SysRoleDomainService sysRoleDomainService;
-    private final SysUserDomainService sysUserDomainService;
-    private final UserRoleStrategy userRoleStrategy;
     private final UserAccessService userAccessService;
 
     /**
@@ -47,32 +43,17 @@ public class UserRoleGrantStrategy {
     }
 
     /**
-     * 自我降权守卫（18041）：操作者移除自己当前持有的 ADMIN 角色时拒绝。
-     * <p>内置超管（is_admin=1）代码层仍具全量权限，不受此限；持 ADMIN 角色的普通操作者一旦摘除将失去全部入口、无法自愈。</p>
+     * 自我操作守卫（18041）：禁止修改自己的角色。
+     * <p>任何自我角色变更（增/删/清空）都可被多步合法操作组合出自我提权（先加后摘可换持任意可授角色）
+     * 或无法自愈的自我降权（摘 ADMIN/清空后失去全部入口），故一律拒绝；
+     * 内置超管凭 is_admin=1 已具备代码层全量权限，无需变更；角色调整应由其他管理员操作。</p>
      *
      * @param targetUserId 目标用户 ID
-     * @param roleIds      本次待分配的角色 ID 集合
      */
-    public void requireNotRemoveOwnAdminRole(Long targetUserId, List<Long> roleIds) {
-        Long currentUserId = SecurityUtils.requireCurrentUser().userId();
-        if (!targetUserId.equals(currentUserId)) {
-            return;
-        }
-        SysUser operator = sysUserDomainService.getById(currentUserId);
-        if (operator != null && operator.isAdmin()) {
-            return;
-        }
-        List<Long> heldRoleIds = userRoleStrategy.listRoleIdsByUserId(currentUserId);
-        if (heldRoleIds.isEmpty()) {
-            return;
-        }
-        boolean removesAdmin = sysRoleDomainService.listByIds(heldRoleIds).stream()
-            .filter(role -> SysRole.ROLE_CODE_ADMIN.equals(role.getRoleCode()))
-            .map(SysRole::getId)
-            .anyMatch(adminRoleId -> !roleIds.contains(adminRoleId));
-        if (removesAdmin) {
+    public void requireNotSelfOperation(Long targetUserId) {
+        if (SecurityUtils.requireCurrentUser().userId().equals(targetUserId)) {
             throw new BusinessException(SystemErrorCode.SELF_OPERATION_FORBIDDEN,
-                "不允许移除自己持有的超级管理员角色");
+                "不允许修改自己的角色");
         }
     }
 }

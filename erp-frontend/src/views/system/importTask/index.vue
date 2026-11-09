@@ -6,7 +6,7 @@
 // （任务列表接口文档未单列权限点，沿用 detail，与后端 @PreAuthorize 一致）。
 import { onMounted, ref } from 'vue'
 import { useTable } from '../../../composables/useTable'
-import { getImportResult, getImportTaskPage } from '../../../api/importtask'
+import { getImportResult, getImportTaskPage } from '../../../api/importTask'
 import type { ImportErrorVO, ImportResultVO, ImportTaskVO, PageQuery } from '../../../types/api'
 import { IMPORT_ERROR_COLUMNS, IMPORT_TASK_COLUMNS } from './config'
 

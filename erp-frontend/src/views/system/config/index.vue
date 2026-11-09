@@ -8,9 +8,9 @@ import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vu
 import AppSearchForm from '../../../components/AppSearchForm/index.vue'
 import { useTable } from '../../../composables/useTable'
 import { changeConfigStatus, deleteConfig, getConfigPage } from '../../../api/config'
-import { STATUS_DISABLED, STATUS_ENABLED, STATUS_OPTIONS } from '../../../constants'
+import { IS_SYSTEM_YES, STATUS_DISABLED, STATUS_ENABLED, STATUS_OPTIONS } from '../../../constants'
 import type { ConfigQueryDTO, ConfigVO } from '../../../types/api'
-import { CONFIG_COLUMNS, IS_SYSTEM_YES, VALUE_TYPE_MAP } from './config'
+import { CONFIG_COLUMNS, VALUE_TYPE_MAP } from './config'
 import ConfigFormModal from './components/ConfigFormModal.vue'
 
 const { draftQuery, pageNum, pageSize, records, total, loading, search, reset, reload, handleTableChange } =
