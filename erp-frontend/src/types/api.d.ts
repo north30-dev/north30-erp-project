@@ -210,6 +210,7 @@ export interface UserPermsVO {
 export interface ChangePasswordDTO {
   oldPassword: string
   newPassword: string
+  confirmPassword: string
 }
 
 /** 修改本人密码响应 VO（4.8） */

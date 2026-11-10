@@ -89,6 +89,14 @@ public interface SysMenuDomainService {
     void updatePerms(Long menuId, String perms);
 
     /**
+     * 更新菜单图标（AdminInitializer 幂等续建时同步种子与库内 icon 差异）。
+     *
+     * @param menuId 菜单 ID
+     * @param icon 图标名
+     */
+    void updateIcon(Long menuId, String icon);
+
+    /**
      * 标记菜单为内置（is_system=1）：种子菜单落库时写入；已有行未标记时补标。
      *
      * @param menu 已加载的菜单实体（原地置 isSystem=1 后更新）

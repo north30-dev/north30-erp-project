@@ -8,6 +8,9 @@ spring:
     encoding:            # Boot 4 写法（旧写法 server.servlet.encoding 已废弃）
       charset: UTF-8
       force: true
+    multipart:
+      max-file-size: 20MB        # 单文件上限，与附件域 sys_config attachment.max.file.size.mb 兜底值一致
+      max-request-size: 25MB     # 整个 multipart 请求上限（含其他表单字段），需略大于单文件上限
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai

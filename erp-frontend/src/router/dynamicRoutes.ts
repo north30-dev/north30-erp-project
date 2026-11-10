@@ -98,6 +98,17 @@ export function registerDynamicRoutes(router: Router, menus: MenuTreeVO[]): void
     })
   }
 
+  // 个人中心固定注册（不对应菜单表，所有登录用户经头像下拉进入，直敲 URL / 刷新同样可达）
+  const profile = resolveViewComponent('system/profile/index')
+  if (profile) {
+    children.push({
+      path: '/profile',
+      name: routeName('/profile'),
+      component: profile,
+      meta: { requiresAuth: true, title: '个人中心' },
+    })
+  }
+
   if (children.length > 0) {
     router.addRoute({ path: LAYOUT_ROUTE_PATH, name: LAYOUT_ROUTE_NAME, component: AppLayout, children })
   }

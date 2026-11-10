@@ -124,6 +124,17 @@ public class SysMenuDomainServiceImpl implements SysMenuDomainService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public void updateIcon(Long menuId, String icon) {
+        SysMenu menu = sysMenuMapper.selectById(menuId);
+        if (menu == null) {
+            return;
+        }
+        menu.setIcon(icon);
+        sysMenuMapper.updateById(menu);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void markSystem(SysMenu menu) {
         if (Integer.valueOf(1).equals(menu.getIsSystem())) {
             return;

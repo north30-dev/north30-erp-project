@@ -288,7 +288,7 @@ class SysUserApplicationServiceImplTest {
     class GetDetailTest {
 
         @Test
-        void shouldReturnDetailWithDistinctRolesAndMaskedPhone() {
+        void shouldReturnDetailWithDistinctRolesAndPlainPhone() {
             // Given
             when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
             when(sysUserRoleService.listRoleIdsByUserId(10L)).thenReturn(List.of(20L, 21L));
@@ -303,7 +303,7 @@ class SysUserApplicationServiceImplTest {
             // Then
             assertThat(vo.id()).isEqualTo(10L);
             assertThat(vo.username()).isEqualTo("zhangsan");
-            assertThat(vo.phone()).isEqualTo("138****5678");
+            assertThat(vo.phone()).isEqualTo("13812345678");
             assertThat(vo.deptId()).isEqualTo(3L);
             assertThat(vo.deptName()).isEqualTo("生产部");
             assertThat(vo.roleIds()).containsExactly(20L, 21L);

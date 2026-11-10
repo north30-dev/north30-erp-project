@@ -259,14 +259,14 @@ public class AdminInitializer implements ApplicationRunner {
                     MenuSeed.button("参数修改", "system:config:update", 2),
                     MenuSeed.button("参数删除", "system:config:delete", 3)),
                 MenuSeed.menu("登录日志", "/system/login-log", "system/loginLog/index", "system:loginlog:list", "FileText", 7),
-                MenuSeed.menu("审计日志", "/system/audit-log", "system/auditLog/index", "system:auditlog:list", "Scroll", 8,
+                MenuSeed.menu("审计日志", "/system/audit-log", "system/auditLog/index", "system:auditlog:list", "Audit", 8,
                     MenuSeed.button("审计详情", "system:auditlog:detail", 1)),
-                MenuSeed.menu("附件管理", "/system/attachment", "system/attachment/index", "system:attachment:list", "Paperclip", 9,
+                MenuSeed.menu("附件管理", "/system/attachment", "system/attachment/index", "system:attachment:list", "PaperClip", 9,
                     MenuSeed.button("附件上传", "system:attachment:upload", 1),
                     MenuSeed.button("附件下载", "system:attachment:download", 2),
                     MenuSeed.button("附件删除", "system:attachment:delete", 3)),
-                MenuSeed.menu("导入任务", "/system/import-task", "system/importTask/index", "system:import:detail", "UploadCloud", 10),
-                MenuSeed.menu("编号序列", "/system/code-sequence", "system/codeSequence/index", "system:sequence:list", "Hash", 11,
+                MenuSeed.menu("导入任务", "/system/import-task", "system/importTask/index", "system:import:detail", "CloudUpload", 10),
+                MenuSeed.menu("编号序列", "/system/code-sequence", "system/codeSequence/index", "system:sequence:list", "Number", 11,
                     MenuSeed.button("序列重置", "system:sequence:reset", 1))));
     }
 
@@ -297,6 +297,9 @@ public class AdminInitializer implements ApplicationRunner {
                 sysMenuDomainService.markSystem(menu);
                 if (seed.perms() != null && !seed.perms().equals(menu.getPerms())) {
                     sysMenuDomainService.updatePerms(menu.getId(), seed.perms());
+                }
+                if (seed.icon() != null && !seed.icon().equals(menu.getIcon())) {
+                    sysMenuDomainService.updateIcon(menu.getId(), seed.icon());
                 }
             }
             allMenus.add(menu);

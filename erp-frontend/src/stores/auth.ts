@@ -45,18 +45,23 @@ export const useAuthStore = defineStore('auth', () => {
     isAdmin.value = userPerms.roles.includes('ADMIN')
   }
 
+  /** 清理本地登录态（改密后全部会话已被后端吊销时复用，不调后端接口） */
+  function clearSession(): void {
+    clearTokens()
+    userInfo.value = null
+    menus.value = []
+    perms.value = []
+    isAdmin.value = false
+  }
+
   /** 登出：调后端使会话失效并清本地 token（接口失败也继续清理，保证前端可登出） */
   async function logout(): Promise<void> {
     try {
       await authApi.logout()
     } finally {
-      clearTokens()
-      userInfo.value = null
-      menus.value = []
-      perms.value = []
-      isAdmin.value = false
+      clearSession()
     }
   }
 
-  return { userInfo, menus, perms, isAdmin, isLoggedIn, hasPerm, login, loadProfile, logout }
+  return { userInfo, menus, perms, isAdmin, isLoggedIn, hasPerm, login, loadProfile, clearSession, logout }
 })

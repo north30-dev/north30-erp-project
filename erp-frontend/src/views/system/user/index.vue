@@ -10,6 +10,7 @@ import {
   ExportOutlined,
   KeyOutlined,
   PlusOutlined,
+  ProfileOutlined,
   TeamOutlined,
 } from '@ant-design/icons-vue'
 import AppSearchForm from '../../../components/AppSearchForm/index.vue'
@@ -28,6 +29,7 @@ import type { DeptTreeVO, UserDetailVO, UserQueryDTO, UserVO } from '../../../ty
 import UserFormModal from './components/UserFormModal.vue'
 import ResetPasswordModal from './components/ResetPasswordModal.vue'
 import AssignRolesModal from './components/AssignRolesModal.vue'
+import UserDetailDrawer from './components/UserDetailDrawer.vue'
 
 const auth = useAuthStore()
 
@@ -42,11 +44,13 @@ const columns: ColumnsType<UserVO> = [
   { title: '用户名', dataIndex: 'username', width: 120 },
   { title: '真实姓名', dataIndex: 'realName', width: 120 },
   { title: '所属部门', dataIndex: 'deptName', width: 140 },
+  { title: '手机号', dataIndex: 'phone', width: 130 },
+  { title: '邮箱', dataIndex: 'email', width: 200, ellipsis: true },
   { title: '角色', dataIndex: 'roles', width: 180 },
   { title: '状态', dataIndex: 'status', width: 90 },
   { title: '最后登录时间', dataIndex: 'lastLoginTime', width: 170 },
   { title: '创建时间', dataIndex: 'createTime', width: 170 },
-  { title: '操作', key: 'action', width: 370, fixed: 'right' },
+  { title: '操作', key: 'action', width: 460, fixed: 'right' },
 ]
 
 const { draftQuery, pageNum, pageSize, records, total, loading, search, reset, reload, handleTableChange } =
@@ -70,6 +74,7 @@ function toTreeNodes(nodes: DeptTreeVO[]): DeptTreeVO[] {
 const formModalRef = ref<InstanceType<typeof UserFormModal> | null>(null)
 const resetModalRef = ref<InstanceType<typeof ResetPasswordModal> | null>(null)
 const assignModalRef = ref<InstanceType<typeof AssignRolesModal> | null>(null)
+const detailDrawerRef = ref<InstanceType<typeof UserDetailDrawer> | null>(null)
 
 const exporting = ref(false)
 const statusSavingId = ref<string | null>(null)
@@ -185,7 +190,7 @@ async function handleExport(): Promise<void> {
         :columns="columns"
         :data-source="records"
         :loading="loading"
-        :scroll="{ x: 1330 }"
+        :scroll="{ x: 1750 }"
         :pagination="{
           current: pageNum,
           pageSize: pageSize,
@@ -221,8 +226,22 @@ async function handleExport(): Promise<void> {
           <template v-else-if="column.dataIndex === 'lastLoginTime'">
             {{ (record as UserVO).lastLoginTime ?? '-' }}
           </template>
+          <template v-else-if="column.dataIndex === 'phone'">
+            {{ (record as UserVO).phone ?? '-' }}
+          </template>
+          <template v-else-if="column.dataIndex === 'email'">
+            {{ (record as UserVO).email ?? '-' }}
+          </template>
           <template v-else-if="column.key === 'action'">
             <a-space>
+              <a-button
+                v-perm="'system:user:detail'"
+                type="link"
+                size="small"
+                @click="detailDrawerRef?.show((record as UserVO).id)"
+              >
+                <ProfileOutlined /> 详情
+              </a-button>
               <a-button
                 v-perm="'system:user:update'"
                 type="link"
@@ -269,6 +288,7 @@ async function handleExport(): Promise<void> {
     <UserFormModal ref="formModalRef" @saved="reload" />
     <ResetPasswordModal ref="resetModalRef" />
     <AssignRolesModal ref="assignModalRef" @saved="reload" />
+    <UserDetailDrawer ref="detailDrawerRef" />
   </div>
 </template>
 
