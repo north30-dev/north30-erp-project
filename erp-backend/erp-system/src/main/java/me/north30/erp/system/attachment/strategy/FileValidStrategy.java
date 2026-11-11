@@ -13,16 +13,21 @@ import lombok.extern.slf4j.Slf4j;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.system.attachment.common.AttachmentConfigKeys;
+import me.north30.erp.system.attachment.common.AttachmentDictKeys;
 import me.north30.erp.system.attachment.entity.SysAttachment;
 import me.north30.erp.system.attachment.mapper.SysAttachmentMapper;
 import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.config.service.SysConfigDomainService;
+import me.north30.erp.system.dict.service.SysDictItemService;
 
 /**
- * 附件校验策略：上传文件非空/大小上限、单据附件数量上限、附件存在性与物理文件存在性守卫。
+ * 附件校验策略：上传文件非空/大小上限、业务类型词表校验、单据附件数量上限、
+ * 附件存在性与物理文件存在性守卫。
  * <p>大小与数量上限消费 sys_config 运行时参数，经 config 域只读准入接口
  * {@link SysConfigDomainService} 获取（跨域走 Service 不直插 Mapper，key 随消费域见
- * {@link AttachmentConfigKeys}），缺失/停用/非法时静默回落兜底值。</p>
+ * {@link AttachmentConfigKeys}），缺失/停用/非法时静默回落兜底值；
+ * 业务类型受字典 {@link AttachmentDictKeys#DICT_TYPE} 词表控制，经 dict 域
+ * {@link SysDictItemService} 校验（不在词表返回 10404）。</p>
  */
 @Slf4j
 @Component
@@ -31,6 +36,7 @@ public class FileValidStrategy {
 
     private final SysAttachmentMapper sysAttachmentMapper;
     private final SysConfigDomainService sysConfigDomainService;
+    private final SysDictItemService sysDictItemService;
 
     /**
      * 校验附件是否存在
@@ -86,6 +92,16 @@ public class FileValidStrategy {
             throw new BusinessException(CommonErrorCode.ATTACHMENT_COUNT_EXCEEDED,
                 "附件数量超出上限（单据最多 " + maxCountPerBiz + " 个附件）");
         }
+    }
+
+    /**
+     * 校验业务类型在字典 attachment_biz_type 词表内且为启用项（不在词表返回 10404）。
+     * <p>须在写物理文件之前调用，避免校验失败留下孤儿文件。</p>
+     *
+     * @param bizType 业务类型
+     */
+    public void validateBizType(String bizType) {
+        sysDictItemService.requireEnabledItem(AttachmentDictKeys.DICT_TYPE, bizType, "zh-CN");
     }
 
     /**

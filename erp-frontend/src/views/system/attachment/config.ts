@@ -2,7 +2,19 @@
 // 上传允许的扩展名对齐后端 AttachmentController 5.9.1 说明（pdf/jpg/jpeg/png/xlsx/docx，20MB 内）。
 // 上传白名单/大小提示为附件域独有约束，保留域内不迁公共 constants。
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { AttachmentVO } from '../../../types/api'
+import type { AttachmentVO, DictItemOptionVO } from '../../../types/api'
+
+/** 附件业务类型字典类型编码（sys_dict_type.dict_type，业务类型下拉与表格翻译共用） */
+export const BIZ_TYPE_DICT_TYPE = 'attachment_biz_type'
+
+/** 由字典选项构建 itemValue -> itemLabel 映射（表格业务类型列翻译用，未命中回退原值） */
+export function buildBizTypeLabelMap(options: DictItemOptionVO[]): Record<string, string> {
+  const map: Record<string, string> = {}
+  for (const option of options) {
+    map[option.itemValue] = option.itemLabel
+  }
+  return map
+}
 
 /** 上传允许的文件扩展名（对齐后端 5.9.1 支持列表，类型不符后端 10401 拦截） */
 export const UPLOAD_ACCEPT = '.pdf,.jpg,.jpeg,.png,.xlsx,.docx'

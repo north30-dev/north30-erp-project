@@ -18,7 +18,7 @@
     <packaging>pom</packaging>
 
     <name>erp-backend</name>
-    <description>north30 ERP 后端聚合父工程（模块化单体）</description>
+    <description>North30 ERP 后端聚合父工程（模块化单体）</description>
 
     <!-- 5 个子模块：依赖规则 common <- system/base <- business <- bootstrap -->
     <modules>

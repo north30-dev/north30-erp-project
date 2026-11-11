@@ -278,6 +278,68 @@ class DictIntegrationTest extends ApiIntegrationTest {
     }
 
     @Nested
+    @DisplayName("字典项下拉选项（/options）")
+    class OptionQueryTest {
+
+        /** 种子词表 attachment_biz_type 启用项期望值与顺序（01_seed.sql，itemSort 1-9） */
+        private static final List<String> ATTACHMENT_BIZ_TYPE_VALUES = List.of(
+            "PURCHASE_RECEIPT", "SALES_RETURN", "BOM", "PURCHASE_ORDER", "SALES_ORDER",
+            "WORK_ORDER", "MATERIAL", "CUSTOMER", "SUPPLIER");
+
+        @Test
+        @DisplayName("普通业务用户登录即可访问，返回启用项")
+        void shouldReturnEnabledOptions_whenLimitedUserAccess() {
+            // When / Then（/options 无 @PreAuthorize，登录即可访问；断言含种子启用项 MATERIAL）
+            List<String> values = given().port(port)
+                .header("Authorization", "Bearer " + limitedToken())
+                .queryParam("dictType", "attachment_biz_type")
+                .when().get(ITEM_PATH + "/options")
+                .then().statusCode(200)
+                .body("code", equalTo(200))
+                .extract().jsonPath().getList("data.itemValue");
+            assertThat(values).isNotEmpty().contains("MATERIAL");
+        }
+
+        @Test
+        @DisplayName("admin按lang=zh-CN访问，返回全部启用项且按itemSort,id升序")
+        void shouldReturnAllOptionsInSeedOrder_whenAdminAccessWithLang() {
+            // When / Then（lang 显式传 zh-CN，与缺省行为一致；顺序与种子 itemSort 1-9 一致）
+            List<String> values = given().port(port)
+                .header("Authorization", "Bearer " + adminToken())
+                .queryParam("dictType", "attachment_biz_type").queryParam("lang", "zh-CN")
+                .when().get(ITEM_PATH + "/options")
+                .then().statusCode(200)
+                .body("code", equalTo(200))
+                .extract().jsonPath().getList("data.itemValue");
+            assertThat(values).containsExactlyElementsOf(ATTACHMENT_BIZ_TYPE_VALUES);
+        }
+
+        @Test
+        @DisplayName("缺少dictType参数，返回400参数错误")
+        void shouldReturn400ParamError_whenDictTypeMissing() {
+            // When / Then（@NotBlank 入口校验，统一 400）
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .when().get(ITEM_PATH + "/options")
+                .then().statusCode(400)
+                .body("code", equalTo(CommonErrorCode.PARAM_ERROR.getCode()));
+        }
+
+        @Test
+        @DisplayName("dictType不存在，返回422字典类型不存在")
+        void shouldReturn422DictTypeNotFound_whenDictTypeNotExist() {
+            // Given（随机后缀类型编码，不落库，/options 只查无需清理）
+            String dictType = "it_no_such_type_" + suffix();
+
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .queryParam("dictType", dictType)
+                .when().get(ITEM_PATH + "/options")
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.DICT_TYPE_NOT_FOUND.getCode()));
+        }
+    }
+
+    @Nested
     @DisplayName("创建字典项")
     class ItemCreateTest {
 

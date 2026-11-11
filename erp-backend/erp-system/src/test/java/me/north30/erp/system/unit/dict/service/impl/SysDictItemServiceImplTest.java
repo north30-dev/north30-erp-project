@@ -15,6 +15,7 @@ import me.north30.erp.system.dict.mapper.SysDictItemMapper;
 import me.north30.erp.system.dict.service.SysDictTypeService;
 import me.north30.erp.system.dict.service.impl.SysDictItemServiceImpl;
 import me.north30.erp.system.dict.vo.DictItemVO;
+import me.north30.erp.system.dict.vo.DictItemOptionVO;
 import me.north30.erp.system.unit.dict.DictTestFactory;
 import me.north30.erp.system.unit.security.support.MpTableInfoInit;
 
@@ -565,6 +566,101 @@ class SysDictItemServiceImplTest {
                     ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.NOT_FOUND.getCode()))
                 .hasMessage("字典项 99 不存在");
             verify(sysDictItemMapper, never()).selectList(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("listEnabledOptions：查询启用项下拉选项")
+    class ListEnabledOptionsTest {
+
+        @Test
+        @DisplayName("类型存在，返回按 itemSort,id 升序的启用项选项")
+        void shouldReturnSortedOptions_whenDictTypeExists() {
+            // Given：类型存在，启用项 itemSort=20/10 乱序返回，验证按 itemSort 升序映射
+            given(sysDictTypeService.requireByDictType("attachment_biz_type")).willReturn(
+                DictTestFactory.dictType(27L, "attachment_biz_type", "附件业务类型", 1));
+            SysDictItem second = DictTestFactory.dictItem(2L, "attachment_biz_type", "物料", "MATERIAL", "zh-CN", 20);
+            SysDictItem first = DictTestFactory.dictItem(1L, "attachment_biz_type", "BOM 清单", "BOM", "zh-CN", 10);
+            given(sysDictItemMapper.selectList(itemWrapperCaptor.capture())).willReturn(List.of(first, second));
+
+            // When
+            List<DictItemOptionVO> options = service.listEnabledOptions("attachment_biz_type", null);
+
+            // Then：lang 落参 zh-CN + status=1，VO 仅含 itemValue/itemLabel
+            var wrapper = itemWrapperCaptor.getValue();
+            wrapper.getSqlSegment();
+            var params = wrapper.getParamNameValuePairs().values();
+            assertThat(params).contains("zh-CN").contains(1);
+            assertThat(options).hasSize(2);
+            assertThat(options.get(0).itemValue()).isEqualTo("BOM");
+            assertThat(options.get(0).itemLabel()).isEqualTo("BOM 清单");
+            assertThat(options.get(1).itemValue()).isEqualTo("MATERIAL");
+            assertThat(options.get(1).itemLabel()).isEqualTo("物料");
+        }
+
+        @Test
+        @DisplayName("显式传入语言，按该语言过滤")
+        void shouldUseProvidedLang_whenLangPresent() {
+            // Given
+            given(sysDictTypeService.requireByDictType("attachment_biz_type")).willReturn(
+                DictTestFactory.dictType(27L, "attachment_biz_type", "附件业务类型", 1));
+            given(sysDictItemMapper.selectList(any())).willReturn(List.of());
+
+            // When
+            service.listEnabledOptions("attachment_biz_type", "en-US");
+
+            // Then：显式语言条件已写入查询参数（渲染 SQL 片段触发落参）
+            verify(sysDictItemMapper).selectList(itemWrapperCaptor.capture());
+            var wrapper = itemWrapperCaptor.getValue();
+            wrapper.getSqlSegment();
+            var params = wrapper.getParamNameValuePairs().values();
+            assertThat(params).contains("en-US");
+            assertThat(params).doesNotContain("zh-CN");
+        }
+
+        @Test
+        @DisplayName("字典类型不存在，抛出 18028")
+        void shouldThrow_whenDictTypeMissing() {
+            // Given：类型守卫抛出"类型不存在"业务异常
+            given(sysDictTypeService.requireByDictType("no_such_type"))
+                .willThrow(new BusinessException(SystemErrorCode.DICT_TYPE_NOT_FOUND,
+                    "字典类型 no_such_type 不存在"));
+
+            // When + Then
+            assertThatThrownBy(() -> service.listEnabledOptions("no_such_type", null))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DICT_TYPE_NOT_FOUND.getCode()))
+                .hasMessage("字典类型 no_such_type 不存在");
+            verify(sysDictItemMapper, never()).selectList(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("requireEnabledItem：校验字典项为启用项")
+    class RequireEnabledItemTest {
+
+        @Test
+        @DisplayName("启用项存在（计数>0），直接放行")
+        void shouldPass_whenEnabledItemExists() {
+            // Given
+            given(sysDictItemMapper.selectCount(any())).willReturn(1L);
+
+            // When + Then（不抛异常）
+            service.requireEnabledItem("attachment_biz_type", "MATERIAL", "zh-CN");
+        }
+
+        @Test
+        @DisplayName("未启用或不存在（计数=0），抛出 10404")
+        void shouldThrow10404_whenItemNotEnabled() {
+            // Given：条件 dictType + itemValue + lang + status=1 计数为 0
+            given(sysDictItemMapper.selectCount(any())).willReturn(0L);
+
+            // When + Then
+            assertThatThrownBy(() -> service.requireEnabledItem("attachment_biz_type", "FOO", null))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode())
+                        .isEqualTo(CommonErrorCode.ATTACHMENT_BIZ_TYPE_INVALID.getCode()))
+                .hasMessage("业务类型不合法：FOO");
         }
     }
 }

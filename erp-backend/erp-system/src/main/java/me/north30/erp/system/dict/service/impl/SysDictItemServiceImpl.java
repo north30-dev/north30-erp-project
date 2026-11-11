@@ -24,6 +24,7 @@ import me.north30.erp.system.dict.entity.SysDictItem;
 import me.north30.erp.system.dict.mapper.SysDictItemMapper;
 import me.north30.erp.system.dict.service.SysDictItemService;
 import me.north30.erp.system.dict.service.SysDictTypeService;
+import me.north30.erp.system.dict.vo.DictItemOptionVO;
 import me.north30.erp.system.dict.vo.DictItemStatusVO;
 import me.north30.erp.system.dict.vo.DictItemVO;
 import org.springframework.stereotype.Service;
@@ -171,5 +172,35 @@ public class SysDictItemServiceImpl implements SysDictItemService {
     public SysDictItem requireById(Long id) {
         return QueryGuardUtil.requirePresent(sysDictItemMapper.selectById(id),
             CommonErrorCode.NOT_FOUND, "字典项 " + id + " 不存在");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DictItemOptionVO> listEnabledOptions(String dictType, String lang) {
+        // 类型存在性守卫（不存在即抛 18028）
+        sysDictTypeService.requireByDictType(dictType);
+        String targetLang = StringUtils.hasText(lang) ? lang : DEFAULT_LANG;
+        List<SysDictItem> items = sysDictItemMapper.selectList(new LambdaQueryWrapper<SysDictItem>()
+            .eq(SysDictItem::getDictType, dictType)
+            .eq(SysDictItem::getLang, targetLang)
+            .eq(SysDictItem::getStatus, 1)
+            .orderByAsc(SysDictItem::getItemSort)
+            .orderByAsc(SysDictItem::getId));
+        return items.stream()
+            .map(item -> new DictItemOptionVO(item.getItemValue(), item.getItemLabel()))
+            .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void requireEnabledItem(String dictType, String itemValue, String lang) {
+        String targetLang = StringUtils.hasText(lang) ? lang : DEFAULT_LANG;
+        Long count = sysDictItemMapper.selectCount(new LambdaQueryWrapper<SysDictItem>()
+            .eq(SysDictItem::getDictType, dictType)
+            .eq(SysDictItem::getItemValue, itemValue)
+            .eq(SysDictItem::getLang, targetLang)
+            .eq(SysDictItem::getStatus, 1));
+        QueryGuardUtil.requireCountPositive(count, CommonErrorCode.ATTACHMENT_BIZ_TYPE_INVALID,
+            "业务类型不合法：" + itemValue);
     }
 }

@@ -3,6 +3,7 @@ import { createStatusApi } from './statusApi'
 import type {
   DeleteResultVO,
   DictItemCreateDTO,
+  DictItemOptionVO,
   DictItemPageQueryDTO,
   DictItemUpdateDTO,
   DictItemVO,
@@ -46,6 +47,15 @@ export function deleteDictType(id: string): Promise<DeleteResultVO> {
 
 export function getDictItemPage(query: DictItemPageQueryDTO): Promise<PageResult<DictItemVO>> {
   return get<PageResult<DictItemVO>>('/system/dict-items', query as Record<string, unknown>).then((r) => r.data)
+}
+
+/** 字典项下拉选项（GET /system/dict-items/options，dictType 必填、lang 可选，供业务页下拉数据源） */
+export function getDictOptions(dictType: string, lang?: string): Promise<DictItemOptionVO[]> {
+  const params: Record<string, unknown> = { dictType }
+  if (lang) {
+    params.lang = lang
+  }
+  return get<DictItemOptionVO[]>('/system/dict-items/options', params).then((r) => r.data)
 }
 
 export function createDictItem(data: DictItemCreateDTO): Promise<MutationVO> {

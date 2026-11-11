@@ -5,6 +5,7 @@ import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.system.unit.attachment.AttachmentTestFactory;
 import me.north30.erp.system.unit.security.support.MpTableInfoInit;
 import me.north30.erp.system.attachment.common.AttachmentConfigKeys;
+import me.north30.erp.system.attachment.common.AttachmentDictKeys;
 import me.north30.erp.system.attachment.converter.AttachmentConverterImpl;
 import me.north30.erp.system.attachment.dto.AttachmentBizQueryDTO;
 import me.north30.erp.system.attachment.entity.SysAttachment;
@@ -17,6 +18,7 @@ import me.north30.erp.system.attachment.vo.AttachmentVO;
 import me.north30.erp.system.common.enums.SystemErrorCode;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.config.service.SysConfigDomainService;
+import me.north30.erp.system.dict.service.SysDictItemService;
 import me.north30.erp.system.security.LoginUser;
 
 import org.junit.jupiter.api.AfterEach;
@@ -67,6 +69,9 @@ class SysAttachmentServiceImplTest {
     @Mock
     private SysConfigDomainService sysConfigDomainService;
 
+    @Mock
+    private SysDictItemService sysDictItemService;
+
     private SysAttachmentServiceImpl service;
 
     /** 附件存储根目录（每个用例独立的临时目录） */
@@ -86,7 +91,8 @@ class SysAttachmentServiceImplTest {
     void setUp() {
         // @Value 配置参数无法由 Mockito 注入，手动构造策略与被测类（同 MP ServiceImpl 特例口径）
         FileStorageStrategy strategy = new FileStorageStrategy(tempDir.toString());
-        FileValidStrategy validStrategy = new FileValidStrategy(sysAttachmentMapper, sysConfigDomainService);
+        FileValidStrategy validStrategy =
+            new FileValidStrategy(sysAttachmentMapper, sysConfigDomainService, sysDictItemService);
         service = new SysAttachmentServiceImpl(sysAttachmentMapper, new AttachmentConverterImpl(), strategy,
             validStrategy);
         // 上传用例默认走兜底值 20MB / 20 个（lenient：非上传用例不触发该打桩）；
@@ -298,6 +304,25 @@ class SysAttachmentServiceImplTest {
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.SYSTEM_ERROR.getCode()))
                 .hasMessage("附件保存失败，请稍后重试");
+            verify(sysAttachmentMapper, never()).insert(any(SysAttachment.class));
+        }
+
+        @Test
+        @DisplayName("业务类型不在字典词表，抛出 10404 且不写盘不落库")
+        void shouldThrow10404AndNotWriteFile_whenBizTypeNotInDict() throws IOException {
+            // Given：字典守卫拒绝该业务类型（10404）；fileNamed 全 lenient 桩（校验链在大小校验前中断）
+            MultipartFile file = AttachmentTestFactory.fileNamed("报价单.pdf");
+            willThrow(new BusinessException(CommonErrorCode.ATTACHMENT_BIZ_TYPE_INVALID,
+                "业务类型不合法：FOO")).given(sysDictItemService)
+                .requireEnabledItem(AttachmentDictKeys.DICT_TYPE, "FOO", "zh-CN");
+
+            // When + Then：词表校验先于写盘，无孤儿文件
+            assertThatThrownBy(() -> service.upload(file, new AttachmentBizQueryDTO("FOO", 1L, null)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode())
+                        .isEqualTo(CommonErrorCode.ATTACHMENT_BIZ_TYPE_INVALID.getCode()))
+                .hasMessage("业务类型不合法：FOO");
+            verify(file, never()).transferTo(any(Path.class));
             verify(sysAttachmentMapper, never()).insert(any(SysAttachment.class));
         }
     }

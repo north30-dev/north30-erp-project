@@ -12,6 +12,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -137,6 +138,19 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Result<Void>> handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException e) {
         String message = "参数 " + e.getName() + " 类型错误";
         log.warn("参数类型转换失败：{}", message);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(Result.failure(CommonErrorCode.PARAM_ERROR.getCode(), message));
+    }
+
+    /**
+     * 必填请求参数缺失（如 /dict-items/options 缺少 dictType，@RequestParam 默认 required=true）。
+     * <p>参数绑定阶段抛出，早于 @NotBlank 校验；HTTP 400，body.code=10001，
+     * 与参数类型错误同归参数段，避免落入 500 兜底。</p>
+     */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<Result<Void>> handleMissingServletRequestParameterException(MissingServletRequestParameterException e) {
+        String message = "缺少必填参数 " + e.getParameterName();
+        log.warn("必填请求参数缺失：{}", message);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
             .body(Result.failure(CommonErrorCode.PARAM_ERROR.getCode(), message));
     }

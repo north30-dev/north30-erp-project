@@ -645,6 +645,14 @@ export interface DictItemUpdateDTO {
   version: number
 }
 
+/** 字典项下拉选项 VO（GET /system/dict-items/options 返回元素，仅含下拉展示所需两字段） */
+export interface DictItemOptionVO {
+  /** 选项值（提交存储用） */
+  itemValue: string
+  /** 选项文本（展示用） */
+  itemLabel: string
+}
+
 /* ---------- 系统参数（config 域，对齐后端 SysConfigController /api/system/configs，接口文档 5.6） ---------- */
 
 /** 系统参数分页查询 DTO（5.6.1，configKey/configName 模糊、configGroup 精确） */

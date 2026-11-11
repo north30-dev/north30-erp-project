@@ -73,7 +73,7 @@ async function handleLogin(): Promise<void> {
 
 <template>
   <div class="login-page">
-    <a-card class="login-card" title="north30 ERP">
+    <a-card class="login-card" title="North30 ERP">
       <a-form layout="vertical" @submit.prevent="handleLogin">
         <a-form-item>
           <a-input v-model:value="form.username" placeholder="用户名" size="large">

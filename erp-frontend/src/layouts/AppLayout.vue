@@ -7,7 +7,7 @@ import AppHeader from './AppHeader.vue'
 <template>
   <a-layout class="app-layout">
     <a-layout-sider class="app-layout__sider" theme="dark" :width="220">
-      <div class="app-layout__logo">north30 ERP</div>
+      <div class="app-layout__logo">North30 ERP</div>
       <AppSidebar class="app-layout__menu" />
     </a-layout-sider>
     <a-layout class="app-layout__main">

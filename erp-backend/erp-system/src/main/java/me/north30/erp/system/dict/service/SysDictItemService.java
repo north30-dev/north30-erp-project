@@ -9,8 +9,11 @@ import me.north30.erp.system.dict.dto.DictItemQueryDTO;
 import me.north30.erp.system.dict.dto.DictItemStatusDTO;
 import me.north30.erp.system.dict.dto.DictItemUpdateDTO;
 import me.north30.erp.system.dict.entity.SysDictItem;
+import me.north30.erp.system.dict.vo.DictItemOptionVO;
 import me.north30.erp.system.dict.vo.DictItemStatusVO;
 import me.north30.erp.system.dict.vo.DictItemVO;
+
+import java.util.List;
 
 /**
  * 字典项服务（A 类单层：4 个管理端用例 + 守卫，接口文档 5.5.5-5.5.8，37-40 号接口）。
@@ -85,4 +88,24 @@ public interface SysDictItemService {
      * @return 字典项实体
      */
     SysDictItem requireById(Long id);
+
+    /**
+     * 查询指定类型下的启用字典项选项（仅 status=1，按 itemSort, id 升序，供下拉框消费；
+     * 类型不存在抛 18028 业务异常）。
+     *
+     * @param dictType 字典类型编码
+     * @param lang     语言（空则默认 zh-CN）
+     * @return 启用项选项列表
+     */
+    List<DictItemOptionVO> listEnabledOptions(String dictType, String lang);
+
+    /**
+     * 校验字典项为该类型下的启用项（dictType + itemValue + lang + status=1 计数为 0 时
+     * 抛 10404 业务异常，供附件业务类型等受控词表校验复用）。
+     *
+     * @param dictType  字典类型编码
+     * @param itemValue 字典项值
+     * @param lang      语言（空则默认 zh-CN）
+     */
+    void requireEnabledItem(String dictType, String itemValue, String lang);
 }

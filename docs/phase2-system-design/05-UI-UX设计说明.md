@@ -105,7 +105,7 @@
 
 ```mermaid
 mindmap
-  root((north30 ERP 菜单))
+  root((North30 ERP 菜单))
     系统管理
       用户管理
       角色与权限

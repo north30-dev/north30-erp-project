@@ -1,14 +1,21 @@
 <script setup lang="ts">
 // 附件上传弹窗（F8 页面私有组件）：multipart 提交 file + bizType/bizId/bizCode，字段与后端 AttachmentBizQueryDTO 对齐。
+// 业务类型为字典下拉，选项由父页面拉取一次后经 bizTypeOptions prop 传入（本组件不重复请求），提交值为 itemValue。
 // a-upload beforeUpload 返回 false 拦截自动上传，文件手动收集进 FormData；文件类型/大小/数量校验由后端兜底（10401/10402/10403）。
 // 动作为"上传"而非新增/编辑，语义上不复用 AppCrudModal，自持 a-modal + a-form。
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import type { FormInstance } from 'ant-design-vue'
 import type { UploadFile } from 'ant-design-vue/es/upload/interface'
 import { UploadOutlined } from '@ant-design/icons-vue'
 import { uploadAttachment } from '../../../../api/attachment'
+import type { DictItemOptionVO } from '../../../../types/api'
 import { UPLOAD_ACCEPT, UPLOAD_SIZE_TIP } from '../config'
+
+const props = defineProps<{
+  /** 业务类型字典选项（父页面拉取一次后传入，避免重复请求） */
+  bizTypeOptions: DictItemOptionVO[]
+}>()
 
 const emit = defineEmits<{ saved: [] }>()
 
@@ -16,14 +23,24 @@ const open = ref(false)
 const submitting = ref(false)
 const formRef = ref<FormInstance | null>(null)
 
+/** 业务类型下拉选项（label/itemLabel、value/itemValue） */
+const bizTypeSelectOptions = computed(() =>
+  props.bizTypeOptions.map((option) => ({ label: option.itemLabel, value: option.itemValue })),
+)
+
 /** 已选文件（手动收集，仅保留最新一个） */
 const fileList = ref<UploadFile[]>([])
 
-const form = reactive({ bizType: '', bizId: '', bizCode: '' })
+// bizType 允许 undefined：a-select allow-clear 清空后值为 undefined
+const form = reactive<{ bizType: string | undefined; bizId: string; bizCode: string }>({
+  bizType: undefined,
+  bizId: '',
+  bizCode: '',
+})
 
 /** 校验规则与后端 AttachmentBizQueryDTO 一致：bizType/bizId 必填、bizCode ≤64 */
 const rules = {
-  bizType: [{ required: true, message: '请输入业务类型' }],
+  bizType: [{ required: true, message: '请选择业务类型' }],
   bizId: [{ required: true, message: '请输入业务主键' }],
   bizCode: [{ max: 64, message: '单据号长度不能超过 64' }],
 }
@@ -47,7 +64,7 @@ async function handleOk(): Promise<void> {
   submitting.value = true
   try {
     await uploadAttachment(file, {
-      bizType: form.bizType.trim(),
+      bizType: form.bizType ?? '',
       bizId: form.bizId.trim(),
       bizCode: form.bizCode.trim() || null,
     })
@@ -61,9 +78,9 @@ async function handleOk(): Promise<void> {
   }
 }
 
-/** 打开弹窗（可预填业务类型/业务主键/单据号，来源为当前查询条件） */
+/** 打开弹窗（可预填业务类型/业务主键/单据号，来源为当前查询条件；bizType 空串归一为 undefined 以显示 placeholder） */
 function show(record?: { bizType?: string; bizId?: string; bizCode?: string }): void {
-  form.bizType = record?.bizType ?? ''
+  form.bizType = record?.bizType || undefined
   form.bizId = record?.bizId ?? ''
   form.bizCode = record?.bizCode ?? ''
   fileList.value = []
@@ -86,7 +103,14 @@ defineExpose({ show })
       <a-row :gutter="16">
         <a-col :span="12">
           <a-form-item label="业务类型" name="bizType">
-            <a-input v-model:value="form.bizType" placeholder="附件所属业务类型，如 CUSTOMER" allow-clear />
+            <a-select
+              v-model:value="form.bizType"
+              :options="bizTypeSelectOptions"
+              placeholder="请选择业务类型"
+              show-search
+              allow-clear
+              option-filter-prop="label"
+            />
           </a-form-item>
         </a-col>
         <a-col :span="12">

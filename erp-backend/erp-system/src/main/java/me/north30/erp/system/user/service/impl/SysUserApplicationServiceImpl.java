@@ -256,12 +256,13 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
     @Transactional(rollbackFor = Exception.class)
     public UserAssignRolesVO assignRoles(Long id, UserAssignRolesDTO dto) {
         sysUserDomainService.requireUser(id);
-        // 禁止修改自己的角色（18041）：任何自我变更均可组合出自我提权/无法自愈的降权，一律由其他管理员操作
-        userRoleGrantStrategy.requireNotSelfOperation(id);
         List<Long> roleIds = dto.roleIds() == null ? List.of()
             : dto.roleIds().stream().filter(Objects::nonNull).distinct().toList();
-        userRoleStrategy.requireAllExist(roleIds);
+        // 提权守卫（18040）先行：非超管分配 ADMIN 的越权与目标用户无关，属更根本的违规，优先报出
         userRoleGrantStrategy.requireAssignAdminAllowed(roleIds);
+        // 禁止修改自己的角色（18041）：任何自我变更均可组合出自我提权/无法自愈的降权，一律由其他管理员操作
+        userRoleGrantStrategy.requireNotSelfOperation(id);
+        userRoleStrategy.requireAllExist(roleIds);
         userRoleStrategy.replaceAllForUser(id, roleIds);
         return new UserAssignRolesVO(roleIds, PERMISSION_REFRESH_TIP);
     }

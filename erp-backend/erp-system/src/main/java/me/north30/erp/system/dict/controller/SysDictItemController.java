@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.audit.AuditLog;
 import me.north30.erp.common.audit.AuditModuleEnum;
@@ -18,6 +19,7 @@ import me.north30.erp.system.dict.dto.DictItemQueryDTO;
 import me.north30.erp.system.dict.dto.DictItemStatusDTO;
 import me.north30.erp.system.dict.dto.DictItemUpdateDTO;
 import me.north30.erp.system.dict.service.SysDictItemService;
+import me.north30.erp.system.dict.vo.DictItemOptionVO;
 import me.north30.erp.system.dict.vo.DictItemStatusVO;
 import me.north30.erp.system.dict.vo.DictItemVO;
 import me.north30.erp.system.common.vo.DeleteResultVO;
@@ -31,7 +33,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 /**
  * 数据字典项管理接口（/api/system/dict-items，接口文档 5.5.5-5.5.8，37-40 号接口）。
@@ -128,5 +133,18 @@ public class SysDictItemController {
     public Result<Void> move(@PathVariable Long id, @Valid @RequestBody DictItemMoveDTO dto) {
         sysDictItemService.moveItem(id, dto);
         return Result.success();
+    }
+
+    /**
+     * 字典项启用项下拉选项（仅 status=1，按显示顺序排序；无权限点，登录即可访问，
+     * 供附件业务类型等受控词表下拉消费）。
+     */
+    @GetMapping("/options")
+    @Operation(summary = "字典项下拉选项", description = "仅返回启用项（status=1），按 itemSort,id 升序；"
+        + "dictType 必填（缺失/空白返回 400），类型不存在返回 422/18028；lang 缺省 zh-CN")
+    public Result<List<DictItemOptionVO>> options(
+            @RequestParam @NotBlank(message = "字典类型编码不能为空") String dictType,
+            @RequestParam(required = false) String lang) {
+        return Result.success(sysDictItemService.listEnabledOptions(dictType, lang));
     }
 }

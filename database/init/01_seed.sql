@@ -129,7 +129,8 @@ INSERT INTO sys_dict_type (id, dict_type, dict_name, status, create_by, update_b
 (23, 'alert_type', '库存预警类型', 1, 'admin', 'admin'),
 (24, 'price_policy_type', '销售价格策略类型', 1, 'admin', 'admin'),
 (25, 'mrp_suggest_type', 'MRP 建议类型', 1, 'admin', 'admin'),
-(26, 'mfg_issue_status', '生产领料单状态', 1, 'admin', 'admin');
+(26, 'mfg_issue_status', '生产领料单状态', 1, 'admin', 'admin'),
+(27, 'attachment_biz_type', '附件业务类型', 1, 'admin', 'admin');
 SELECT setval('sys_dict_type_id_seq', (SELECT MAX(id) FROM sys_dict_type));
 
 -- 4.7 数据字典项（SYS-06；item_value 为编码值，不随语言变化）
@@ -245,7 +246,18 @@ INSERT INTO sys_dict_item (dict_type, item_label, item_value, item_sort, create_
 ('mfg_issue_status', '已审核', '2', 3, 'admin', 'admin'),
 ('mfg_issue_status', '已出库', '3', 4, 'admin', 'admin'),
 ('mfg_issue_status', '已驳回', '4', 5, 'admin', 'admin'),
-('mfg_issue_status', '已关闭', '5', 6, 'admin', 'admin');
+('mfg_issue_status', '已关闭', '5', 6, 'admin', 'admin'),
+-- 附件业务类型词表（SYS-10 附件上传 bizType 受控取值，接口文档 5.9.1；lang/status 走列默认 zh-CN/1）
+('attachment_biz_type', '采购收货单', 'PURCHASE_RECEIPT', 1, 'admin', 'admin'),
+('attachment_biz_type', '销售退货单', 'SALES_RETURN', 2, 'admin', 'admin'),
+('attachment_biz_type', 'BOM 清单', 'BOM', 3, 'admin', 'admin'),
+('attachment_biz_type', '采购订单', 'PURCHASE_ORDER', 4, 'admin', 'admin'),
+('attachment_biz_type', '销售订单', 'SALES_ORDER', 5, 'admin', 'admin'),
+('attachment_biz_type', '生产工单', 'WORK_ORDER', 6, 'admin', 'admin'),
+('attachment_biz_type', '物料', 'MATERIAL', 7, 'admin', 'admin'),
+('attachment_biz_type', '客户', 'CUSTOMER', 8, 'admin', 'admin'),
+('attachment_biz_type', '供应商', 'SUPPLIER', 9, 'admin', 'admin')
+ON CONFLICT (dict_type, item_value, lang) WHERE is_deleted = 0 DO NOTHING;
 
 -- 4.8 系统参数（SYS-06，修改后 ≤1 分钟生效，无需重启）
 INSERT INTO sys_config (id, config_key, config_name, config_value, value_type, config_group, is_system, status, create_by, update_by) VALUES
