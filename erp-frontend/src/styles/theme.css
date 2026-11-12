@@ -1,0 +1,19 @@
+/**
+ * 全局设计令牌（方案：docs/phase3-develop-and-test/10-全量页面美化方案.md 第 2 节）。
+ * 全站自定义样式只允许引用本文件变量与 antd token，禁止颜色字面量。
+ * 暗色模式（D5+）仅需在此补暗色值并切换 antd darkAlgorithm，组件层零改动。
+ */
+:root {
+  /* 品牌深：侧边栏、登录页品牌区 */
+  --erp-brand-deep: #16324f;
+  /* 品牌主：与 antd colorPrimary 保持一致 */
+  --erp-brand: #2f6fe4;
+  /* 品牌主浅底：快捷入口图标方块等浅色底 */
+  --erp-brand-light: rgba(47, 111, 228, 0.1);
+  /* 中性底：内容区背景（与 antd colorBgLayout 一致） */
+  --erp-bg-layout: #f5f6f8;
+  /* 中性面：卡片/顶栏白底（与 antd colorBgContainer 一致） */
+  --erp-bg-container: #ffffff;
+  /* 登录页品牌区渐变（方案 4.1 豁免条款：唯一允许的渐变，须引用本变量） */
+  --erp-gradient-brand: linear-gradient(135deg, var(--erp-brand-deep) 0%, var(--erp-brand) 100%);
+}

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-// 登录页（基建期占位版：表单与登录链路已通，视觉细节随布局阶段统一打磨）
+// 登录页（方案 A：左右分栏——左侧品牌区、右侧表单区；登录与验证码链路不变）
 import { reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { UserOutlined, LockOutlined, SafetyOutlined } from '@ant-design/icons-vue'
+import { ApartmentOutlined, AppstoreOutlined, CalculatorOutlined, DatabaseOutlined, LockOutlined, SafetyOutlined, UserOutlined } from '@ant-design/icons-vue'
 import { createCaptcha } from '../../../api/auth'
 import { useAuthStore } from '../../../stores/auth'
 import { RequestError } from '../../../utils/request'
@@ -21,6 +21,13 @@ const captcha = ref<CaptchaVO | null>(null)
 const captchaLoading = ref(false)
 const submitting = ref(false)
 let lastCaptchaRefreshAt = 0
+
+/** 品牌区固定三条特性点（文案复用 README 定位，图标映射见方案 4.1） */
+const features = [
+  { icon: ApartmentOutlined, title: '全链路一体化', desc: '销售接单 → MRP 运算 → 采购生产 → 财务凭证' },
+  { icon: DatabaseOutlined, title: '库存精准管控', desc: '流水先行、余额可溯' },
+  { icon: CalculatorOutlined, title: '产品级成本核算', desc: '材料人工制费归集到单' },
+]
 
 /**
  * 拉取图形验证码。
@@ -73,52 +80,157 @@ async function handleLogin(): Promise<void> {
 
 <template>
   <div class="login-page">
-    <a-card class="login-card" title="North30 ERP">
-      <a-form layout="vertical" @submit.prevent="handleLogin">
-        <a-form-item>
-          <a-input v-model:value="form.username" placeholder="用户名" size="large">
-            <template #prefix><UserOutlined /></template>
-          </a-input>
-        </a-form-item>
-        <a-form-item>
-          <a-input-password v-model:value="form.password" placeholder="密码" size="large">
-            <template #prefix><LockOutlined /></template>
-          </a-input-password>
-        </a-form-item>
-        <a-form-item>
-          <div class="captcha-row">
-            <a-input v-model:value="form.captcha" placeholder="验证码" size="large">
-              <template #prefix><SafetyOutlined /></template>
-            </a-input>
-            <img
-              v-if="captcha"
-              :src="captcha.captchaImage"
-              :title="`点击刷新（${captcha.expireSeconds} 秒内有效）`"
-              :class="['captcha-image', { 'captcha-image--loading': captchaLoading }]"
-              alt="验证码"
-              @click="refreshCaptcha()"
-            />
+    <!-- 左侧品牌区（<768px 隐藏） -->
+    <div class="login-page__brand">
+      <div class="login-page__logo">
+        <AppstoreOutlined class="login-page__logo-icon" />
+        <span>North30 ERP</span>
+      </div>
+      <div class="login-page__slogan">业务财务一体化的 MTO 离散制造 ERP</div>
+      <ul class="login-page__features">
+        <li v-for="item in features" :key="item.title" class="login-page__feature">
+          <component :is="item.icon" class="login-page__feature-icon" />
+          <div>
+            <div class="login-page__feature-title">{{ item.title }}</div>
+            <div class="login-page__feature-desc">{{ item.desc }}</div>
           </div>
-        </a-form-item>
-        <a-button type="primary" html-type="submit" block size="large" :loading="submitting">
-          登录
-        </a-button>
-      </a-form>
-    </a-card>
+        </li>
+      </ul>
+    </div>
+    <!-- 右侧表单区 -->
+    <div class="login-page__panel">
+      <div class="login-page__form-wrap">
+        <h1 class="login-page__title">欢迎登录</h1>
+        <p class="login-page__subtitle">请使用系统账号登录</p>
+        <a-form layout="vertical" @submit.prevent="handleLogin">
+          <a-form-item>
+            <a-input v-model:value="form.username" placeholder="用户名" size="large">
+              <template #prefix><UserOutlined /></template>
+            </a-input>
+          </a-form-item>
+          <a-form-item>
+            <a-input-password v-model:value="form.password" placeholder="密码" size="large">
+              <template #prefix><LockOutlined /></template>
+            </a-input-password>
+          </a-form-item>
+          <a-form-item>
+            <div class="captcha-row">
+              <a-input v-model:value="form.captcha" placeholder="验证码" size="large">
+                <template #prefix><SafetyOutlined /></template>
+              </a-input>
+              <img
+                v-if="captcha"
+                :src="captcha.captchaImage"
+                :title="`点击刷新（${captcha.expireSeconds} 秒内有效）`"
+                :class="['captcha-image', { 'captcha-image--loading': captchaLoading }]"
+                alt="验证码"
+                @click="refreshCaptcha()"
+              />
+            </div>
+          </a-form-item>
+          <a-button type="primary" html-type="submit" block size="large" :loading="submitting">
+            登录
+          </a-button>
+        </a-form>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .login-page {
   display: flex;
-  align-items: center;
-  justify-content: center;
   min-height: 100vh;
-  background: #f0f2f5;
 }
 
-.login-card {
-  width: 380px;
+.login-page__brand {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 32px;
+  width: 55%;
+  padding: 48px 64px;
+  background: var(--erp-gradient-brand);
+  color: #fff;
+}
+
+.login-page__logo {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.login-page__logo-icon {
+  font-size: 24px;
+}
+
+.login-page__slogan {
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+.login-page__features {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.login-page__feature {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.login-page__feature-icon {
+  flex: none;
+  margin-top: 2px;
+  font-size: 18px;
+  opacity: 0.9;
+}
+
+.login-page__feature-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.login-page__feature-desc {
+  margin-top: 4px;
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.login-page__panel {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  background: var(--erp-bg-layout);
+}
+
+.login-page__form-wrap {
+  width: 100%;
+  max-width: 360px;
+  padding: 0 16px;
+  background: var(--erp-bg-layout);
+}
+
+.login-page__title {
+  margin: 0;
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.login-page__subtitle {
+  margin: 8px 0 24px;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 13px;
 }
 
 .captcha-row {
@@ -130,11 +242,18 @@ async function handleLogin(): Promise<void> {
 .captcha-image {
   height: 40px;
   cursor: pointer;
+  border: 1px solid rgba(0, 0, 0, 0.15);
   border-radius: 4px;
 }
 
 .captcha-image--loading {
   cursor: wait;
   opacity: 0.6;
+}
+
+@media (max-width: 768px) {
+  .login-page__brand {
+    display: none;
+  }
 }
 </style>

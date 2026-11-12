@@ -77,8 +77,8 @@ function firstVisibleMenuPath(menus: MenuTreeVO[]): string | null {
 
 /**
  * 按菜单树注册动态业务路由（登录后/刷新恢复时由路由守卫调用，防重复注册）。
- * <p>流程：收集页面路由 → 追加字典项隐藏子页 → 注册布局父路由 → 注册 "/" 重定向到首个可见菜单
- * → 注册 404 catch-all 兜底。menus 为空时无 "/" 重定向，任意路径均命中 404。</p>
+ * <p>流程：收集页面路由 → 追加字典项隐藏子页 → 注册布局父路由 → 注册 "/" 重定向到工作台
+ * → 注册 404 catch-all 兜底。menus 为空时仍有工作台，但无业务页面可跳。</p>
  */
 export function registerDynamicRoutes(router: Router, menus: MenuTreeVO[]): void {
   if (registered) {
@@ -98,6 +98,17 @@ export function registerDynamicRoutes(router: Router, menus: MenuTreeVO[]): void
     })
   }
 
+  // 工作台固定注册（与 /profile 同构：不进菜单树、不产生导航项，登录后落地页）
+  const dashboard = resolveViewComponent('dashboard/index')
+  if (dashboard) {
+    children.push({
+      path: '/dashboard',
+      name: routeName('/dashboard'),
+      component: dashboard,
+      meta: { requiresAuth: true, title: '工作台' },
+    })
+  }
+
   // 个人中心固定注册（不对应菜单表，所有登录用户经头像下拉进入，直敲 URL / 刷新同样可达）
   const profile = resolveViewComponent('system/profile/index')
   if (profile) {
@@ -112,7 +123,8 @@ export function registerDynamicRoutes(router: Router, menus: MenuTreeVO[]): void
   if (children.length > 0) {
     router.addRoute({ path: LAYOUT_ROUTE_PATH, name: LAYOUT_ROUTE_NAME, component: AppLayout, children })
   }
-  const firstPath = firstVisibleMenuPath(menus)
+  // "/" 重定向到工作台；工作台组件缺失（漂移）时回退首个可见菜单，无可见菜单则不注册（任意路径落入 404）
+  const firstPath = dashboard ? '/dashboard' : firstVisibleMenuPath(menus)
   if (firstPath) {
     router.addRoute({ path: '/', name: HOME_ROUTE_NAME, redirect: firstPath })
   }

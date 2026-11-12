@@ -60,3 +60,17 @@ function handleMenuClick({ key }: { key: string | number }): void {
     <AppSidebarItem v-for="menu in auth.menus" :key="menu.menuId" :menu="menu" />
   </a-menu>
 </template>
+
+<style scoped>
+/* 深色菜单与侧边栏同底（品牌深），覆盖 antd dark 默认色；选中态=品牌主半透明底+左 3px 品牌色内嵌条 */
+:deep(.ant-menu) {
+  background: var(--erp-brand-deep);
+  border-inline-end: none;
+}
+
+:deep(.ant-menu-item-selected) {
+  background: rgba(47, 111, 228, 0.35);
+  box-shadow: inset 3px 0 0 0 var(--erp-brand);
+  color: #fff;
+}
+</style>

@@ -1,10 +1,10 @@
 <script setup lang="ts">
-// 顶栏：左侧面包屑（按菜单树推导当前路径链）+ 右侧头像下拉（个人中心 / 退出登录）
-import { computed } from 'vue'
+// 顶栏：左侧面包屑（按菜单树推导当前路径链）+ 右侧 刷新/全屏/用户下拉（个人中心 / 退出登录）
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Modal } from 'ant-design-vue'
 import type { MenuProps } from 'ant-design-vue'
-import { DownOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons-vue'
+import { CompressOutlined, DownOutlined, ExpandOutlined, LogoutOutlined, ReloadOutlined, UserOutlined } from '@ant-design/icons-vue'
 import { useAuthStore } from '../stores/auth'
 import { resetDynamicRoutes } from '../router/dynamicRoutes'
 import { findMenuChain } from './menuTree'
@@ -28,6 +28,35 @@ const breadcrumbs = computed(() => {
 
 /** 展示名：真实姓名优先，退回登录名 */
 const displayName = computed(() => auth.userInfo?.realName || auth.userInfo?.username || '')
+
+/** 当前是否全屏（fullscreenchange 事件同步，驱动按钮图标切换） */
+const isFullscreen = ref(false)
+
+function handleFullscreenChange(): void {
+  isFullscreen.value = Boolean(document.fullscreenElement)
+}
+
+onMounted(() => {
+  document.addEventListener('fullscreenchange', handleFullscreenChange)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('fullscreenchange', handleFullscreenChange)
+})
+
+/** 刷新当前页（整页重载，最简可靠） */
+function handleReload(): void {
+  window.location.reload()
+}
+
+/** 全屏切换 */
+function toggleFullscreen(): void {
+  if (document.fullscreenElement) {
+    void document.exitFullscreen()
+  } else {
+    void document.documentElement.requestFullscreen()
+  }
+}
 
 const handleUserMenuClick: MenuProps['onClick'] = ({ key }) => {
   if (key === 'profile') {
@@ -60,12 +89,26 @@ function handleLogout(): void {
     <a-breadcrumb class="app-header__crumbs">
       <a-breadcrumb-item v-for="item in breadcrumbs" :key="item.key">{{ item.title }}</a-breadcrumb-item>
     </a-breadcrumb>
-    <a-dropdown placement="bottomRight">
-      <div class="app-header__user" role="button" tabindex="0">
-        <a-avatar :size="28" class="app-header__avatar">{{ displayName.charAt(0) }}</a-avatar>
-        <span class="app-header__name">{{ displayName }}</span>
-        <DownOutlined class="app-header__caret" />
-      </div>
+    <div class="app-header__actions">
+      <a-tooltip title="刷新当前页">
+        <a-button type="text" size="small" class="app-header__action-btn" @click="handleReload">
+          <template #icon><ReloadOutlined /></template>
+        </a-button>
+      </a-tooltip>
+      <a-tooltip :title="isFullscreen ? '退出全屏' : '全屏'">
+        <a-button type="text" size="small" class="app-header__action-btn" @click="toggleFullscreen">
+          <template #icon>
+            <CompressOutlined v-if="isFullscreen" />
+            <ExpandOutlined v-else />
+          </template>
+        </a-button>
+      </a-tooltip>
+      <a-dropdown placement="bottomRight">
+        <div class="app-header__user" role="button" tabindex="0">
+          <a-avatar :size="28" class="app-header__avatar">{{ displayName.charAt(0) }}</a-avatar>
+          <span class="app-header__name">{{ displayName }}</span>
+          <DownOutlined class="app-header__caret" />
+        </div>
       <template #overlay>
         <a-menu @click="handleUserMenuClick">
           <a-menu-item key="profile">
@@ -78,7 +121,8 @@ function handleLogout(): void {
           </a-menu-item>
         </a-menu>
       </template>
-    </a-dropdown>
+      </a-dropdown>
+    </div>
   </div>
 </template>
 
@@ -91,6 +135,21 @@ function handleLogout(): void {
   height: 100%;
 }
 
+.app-header__actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.app-header__action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: rgba(0, 0, 0, 0.65);
+}
+
 .app-header__user {
   display: flex;
   gap: 8px;
@@ -101,11 +160,11 @@ function handleLogout(): void {
 
 .app-header__avatar {
   color: #fff;
-  background-color: #1677ff;
+  background-color: var(--erp-brand);
 }
 
 .app-header__name {
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .app-header__caret {
