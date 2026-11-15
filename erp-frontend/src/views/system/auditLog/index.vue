@@ -4,6 +4,7 @@
 // 打开抽屉调详情接口，变更 JSON 解析失败（白名单超长截断）时原样展示。
 import { onMounted, ref } from 'vue'
 import AppSearchForm from '../../../components/AppSearchForm/index.vue'
+import AppPageContainer from '../../../components/AppPageContainer/index.vue'
 import { useTable } from '../../../composables/useTable'
 import { getAuditLogDetail, getAuditLogPage } from '../../../api/log'
 import type { PageQuery, PageResult, AuditLogQueryDTO, AuditLogVO } from '../../../types/api'
@@ -87,45 +88,47 @@ onMounted(() => {
 
 <template>
   <div class="audit-log-page">
-    <a-card>
-      <AppSearchForm :model="draftQuery" :loading="loading" @search="search" @reset="reset">
-        <a-form-item label="单据号">
-          <a-input v-model:value="draftQuery.bizCode" placeholder="请输入单据号" allow-clear />
-        </a-form-item>
-        <a-form-item label="业务模块">
-          <a-select
-            v-model:value="draftQuery.module"
-            :options="[...AUDIT_MODULE_OPTIONS]"
-            placeholder="请选择业务模块"
-            allow-clear
-          />
-        </a-form-item>
-        <a-form-item label="业务类型">
-          <a-input v-model:value="draftQuery.bizType" placeholder="如 SALES_ORDER" allow-clear />
-        </a-form-item>
-        <a-form-item label="操作类型">
-          <a-select
-            v-model:value="draftQuery.operateType"
-            :options="[...OPERATE_TYPE_OPTIONS]"
-            placeholder="请选择操作类型"
-            allow-clear
-          />
-        </a-form-item>
-        <a-form-item label="操作人">
-          <a-input v-model:value="draftQuery.operateBy" placeholder="请输入操作人" allow-clear />
-        </a-form-item>
-        <a-form-item label="结果">
-          <a-select
-            v-model:value="draftQuery.resultStatus"
-            :options="[...RESULT_STATUS_OPTIONS]"
-            placeholder="请选择结果"
-            allow-clear
-          />
-        </a-form-item>
-        <a-form-item label="操作时间">
-          <a-range-picker v-model:value="draftQuery.timeRange" value-format="YYYY-MM-DD" />
-        </a-form-item>
-      </AppSearchForm>
+    <AppPageContainer>
+      <template #search>
+        <AppSearchForm :model="draftQuery" :loading="loading" @search="search" @reset="reset">
+          <a-form-item label="单据号">
+            <a-input v-model:value="draftQuery.bizCode" placeholder="请输入单据号" allow-clear />
+          </a-form-item>
+          <a-form-item label="业务模块">
+            <a-select
+              v-model:value="draftQuery.module"
+              :options="[...AUDIT_MODULE_OPTIONS]"
+              placeholder="请选择业务模块"
+              allow-clear
+            />
+          </a-form-item>
+          <a-form-item label="业务类型">
+            <a-input v-model:value="draftQuery.bizType" placeholder="如 SALES_ORDER" allow-clear />
+          </a-form-item>
+          <a-form-item label="操作类型">
+            <a-select
+              v-model:value="draftQuery.operateType"
+              :options="[...OPERATE_TYPE_OPTIONS]"
+              placeholder="请选择操作类型"
+              allow-clear
+            />
+          </a-form-item>
+          <a-form-item label="操作人">
+            <a-input v-model:value="draftQuery.operateBy" placeholder="请输入操作人" allow-clear />
+          </a-form-item>
+          <a-form-item label="结果">
+            <a-select
+              v-model:value="draftQuery.resultStatus"
+              :options="[...RESULT_STATUS_OPTIONS]"
+              placeholder="请选择结果"
+              allow-clear
+            />
+          </a-form-item>
+          <a-form-item label="操作时间">
+            <a-range-picker v-model:value="draftQuery.timeRange" value-format="YYYY-MM-DD" />
+          </a-form-item>
+        </AppSearchForm>
+      </template>
 
       <a-table
         row-key="id"
@@ -178,45 +181,88 @@ onMounted(() => {
           </template>
         </template>
       </a-table>
-    </a-card>
+    </AppPageContainer>
 
     <a-drawer v-model:open="drawerVisible" title="审计日志详情" width="720" destroy-on-close>
       <a-spin :spinning="detailLoading">
         <template v-if="detail">
-          <a-descriptions title="操作信息" :column="2" size="small" bordered>
-            <a-descriptions-item label="业务模块">
-              {{ AUDIT_MODULE_MAP[detail.module] ?? detail.module }}
-            </a-descriptions-item>
-            <a-descriptions-item label="业务类型">{{ detail.bizType ?? '-' }}</a-descriptions-item>
-            <a-descriptions-item label="单据号">{{ detail.bizCode ?? '-' }}</a-descriptions-item>
-            <a-descriptions-item label="操作类型">
-              {{ OPERATE_TYPE_MAP[detail.operateType] ?? detail.operateType }}
-            </a-descriptions-item>
-            <a-descriptions-item label="操作描述" :span="2">{{ detail.operateDesc ?? '-' }}</a-descriptions-item>
-            <a-descriptions-item label="操作人">{{ detail.operateBy }}</a-descriptions-item>
-            <a-descriptions-item label="操作时间">{{ detail.operateTime }}</a-descriptions-item>
-            <a-descriptions-item label="结果">
-              <a-tag :color="detail.resultStatus === RESULT_FAILED ? 'red' : 'green'">
-                {{ RESULT_STATUS_MAP[detail.resultStatus] ?? '-' }}
-              </a-tag>
-            </a-descriptions-item>
-            <a-descriptions-item label="耗时(ms)">{{ detail.costTime ?? '-' }}</a-descriptions-item>
-            <a-descriptions-item v-if="detail.resultStatus === RESULT_FAILED" label="错误码">
-              {{ detail.errorCode ?? '-' }}
-            </a-descriptions-item>
-            <a-descriptions-item v-if="detail.resultStatus === RESULT_FAILED" label="失败原因">
-              {{ detail.errorMessage ?? '-' }}
-            </a-descriptions-item>
-          </a-descriptions>
+          <div class="detail-section">
+            <div class="section-title">操作信息</div>
+            <dl class="detail-kv">
+              <div class="detail-kv__row">
+                <dt>业务模块</dt>
+                <dd>{{ AUDIT_MODULE_MAP[detail.module] ?? detail.module }}</dd>
+              </div>
+              <div class="detail-kv__row">
+                <dt>业务类型</dt>
+                <dd>{{ detail.bizType ?? '-' }}</dd>
+              </div>
+              <div class="detail-kv__row">
+                <dt>单据号</dt>
+                <dd>{{ detail.bizCode ?? '-' }}</dd>
+              </div>
+              <div class="detail-kv__row">
+                <dt>操作类型</dt>
+                <dd>{{ OPERATE_TYPE_MAP[detail.operateType] ?? detail.operateType }}</dd>
+              </div>
+              <div class="detail-kv__row">
+                <dt>操作描述</dt>
+                <dd>{{ detail.operateDesc ?? '-' }}</dd>
+              </div>
+              <div class="detail-kv__row">
+                <dt>操作人</dt>
+                <dd>{{ detail.operateBy }}</dd>
+              </div>
+              <div class="detail-kv__row">
+                <dt>操作时间</dt>
+                <dd>{{ detail.operateTime }}</dd>
+              </div>
+              <div class="detail-kv__row">
+                <dt>结果</dt>
+                <dd>
+                  <a-tag :color="detail.resultStatus === RESULT_FAILED ? 'red' : 'green'">
+                    {{ RESULT_STATUS_MAP[detail.resultStatus] ?? '-' }}
+                  </a-tag>
+                </dd>
+              </div>
+              <div class="detail-kv__row">
+                <dt>耗时(ms)</dt>
+                <dd>{{ detail.costTime ?? '-' }}</dd>
+              </div>
+              <div v-if="detail.resultStatus === RESULT_FAILED" class="detail-kv__row">
+                <dt>错误码</dt>
+                <dd>{{ detail.errorCode ?? '-' }}</dd>
+              </div>
+              <div v-if="detail.resultStatus === RESULT_FAILED" class="detail-kv__row">
+                <dt>失败原因</dt>
+                <dd>{{ detail.errorMessage ?? '-' }}</dd>
+              </div>
+            </dl>
+          </div>
 
-          <a-descriptions title="请求信息" :column="2" size="small" bordered class="section">
-            <a-descriptions-item label="请求方法">{{ detail.requestMethod ?? '-' }}</a-descriptions-item>
-            <a-descriptions-item label="操作 IP">{{ detail.operateIp ?? '-' }}</a-descriptions-item>
-            <a-descriptions-item label="请求地址" :span="2">{{ detail.requestUri ?? '-' }}</a-descriptions-item>
-            <a-descriptions-item label="链路追踪" :span="2">{{ detail.traceId ?? '-' }}</a-descriptions-item>
-          </a-descriptions>
+          <div class="detail-section">
+            <div class="section-title">请求信息</div>
+            <dl class="detail-kv">
+              <div class="detail-kv__row">
+                <dt>请求方法</dt>
+                <dd>{{ detail.requestMethod ?? '-' }}</dd>
+              </div>
+              <div class="detail-kv__row">
+                <dt>操作 IP</dt>
+                <dd>{{ detail.operateIp ?? '-' }}</dd>
+              </div>
+              <div class="detail-kv__row">
+                <dt>请求地址</dt>
+                <dd>{{ detail.requestUri ?? '-' }}</dd>
+              </div>
+              <div class="detail-kv__row">
+                <dt>链路追踪</dt>
+                <dd>{{ detail.traceId ?? '-' }}</dd>
+              </div>
+            </dl>
+          </div>
 
-          <div class="section">
+          <div class="detail-section">
             <div class="section-title">变更字段</div>
             <a-space v-if="detail.diffFields && detail.diffFields.length > 0" wrap>
               <a-tag v-for="field in detail.diffFields" :key="field" color="orange">{{ field }}</a-tag>
@@ -224,12 +270,12 @@ onMounted(() => {
             <span v-else>无</span>
           </div>
 
-          <div class="section">
+          <div class="detail-section">
             <div class="section-title">变更前数据</div>
             <pre class="json-block">{{ formatJson(detail.beforeJson) || '无' }}</pre>
           </div>
 
-          <div class="section">
+          <div class="detail-section">
             <div class="section-title">变更后数据</div>
             <pre class="json-block">{{ formatJson(detail.afterJson) || '无' }}</pre>
           </div>
@@ -241,13 +287,45 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.section {
+.detail-section {
   margin-top: 24px;
 }
 
 .section-title {
   margin-bottom: 8px;
+  color: var(--erp-text);
+  font-size: 14px;
   font-weight: 600;
+}
+
+.detail-kv {
+  margin: 0;
+}
+
+.detail-kv__row {
+  display: flex;
+  padding: 6px 0;
+  font-size: 14px;
+  line-height: 22px;
+  border-bottom: 1px solid var(--erp-border-line);
+}
+
+.detail-kv__row:last-child {
+  border-bottom: none;
+}
+
+.detail-kv dt {
+  flex: none;
+  width: 110px;
+  color: var(--erp-text-tertiary);
+}
+
+.detail-kv dd {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: var(--erp-text);
+  word-break: break-all;
 }
 
 .json-block {
@@ -259,7 +337,7 @@ onMounted(() => {
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-all;
-  background-color: #f5f5f5;
+  background-color: var(--erp-bg-layout);
   border-radius: 4px;
 }
 </style>

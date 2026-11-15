@@ -14,7 +14,7 @@ const props = defineProps<{
   rules?: CrudRules
   /** 提交回调（异步）；失败由 request 拦截器统一提示，这里不再重复弹 */
   onSubmit: CrudSubmit
-  /** 弹窗宽度（px），默认 520；字段较多的表单可传更大值 */
+  /** 弹窗宽度（px），默认 760；单列简单表单可传 520，字段多可传更大值 */
   width?: number
 }>()
 
@@ -57,13 +57,14 @@ defineExpose({ show })
   <a-modal
     v-model:open="open"
     :title="modalTitle"
-    :width="width ?? 520"
+    :width="width ?? 760"
+    :styles="{ body: { minHeight: '360px' } }"
     :confirm-loading="submitting"
     :mask-closable="false"
     destroy-on-close
     @ok="handleOk"
   >
-    <a-form ref="formRef" layout="vertical" :model="form" :rules="rules">
+    <a-form ref="formRef" layout="horizontal" :label-col="{ style: { width: '110px' } }" label-wrap :model="form" :rules="rules">
       <slot :form="form" />
     </a-form>
   </a-modal>

@@ -9,6 +9,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { message, Modal } from 'ant-design-vue'
 import { DeleteOutlined, DownloadOutlined, UploadOutlined } from '@ant-design/icons-vue'
 import AppSearchForm from '../../../components/AppSearchForm/index.vue'
+import AppPageContainer from '../../../components/AppPageContainer/index.vue'
 import { deleteAttachment, downloadAttachment, getAttachmentList } from '../../../api/attachment'
 import { getDictOptions } from '../../../api/dict'
 import type { AttachmentVO, DictItemOptionVO } from '../../../types/api'
@@ -119,27 +120,29 @@ function confirmDelete(record: AttachmentVO): void {
 
 <template>
   <div class="attachment-page">
-    <a-card>
-      <AppSearchForm :model="draftQuery" :loading="loading" @search="handleSearch" @reset="handleReset">
-        <a-form-item label="业务类型">
-          <a-select
-            v-model:value="draftQuery.bizType"
-            :options="bizTypeSelectOptions"
-            placeholder="必填，请选择业务类型"
-            show-search
-            allow-clear
-            option-filter-prop="label"
-          />
-        </a-form-item>
-        <a-form-item label="业务主键">
-          <a-input v-model:value="draftQuery.bizId" placeholder="必填，业务记录 ID" allow-clear />
-        </a-form-item>
-        <a-form-item label="单据号">
-          <a-input v-model:value="draftQuery.bizCode" placeholder="选填" allow-clear />
-        </a-form-item>
-      </AppSearchForm>
+    <AppPageContainer>
+      <template #search>
+        <AppSearchForm :model="draftQuery" :loading="loading" @search="handleSearch" @reset="handleReset">
+          <a-form-item label="业务类型">
+            <a-select
+              v-model:value="draftQuery.bizType"
+              :options="bizTypeSelectOptions"
+              placeholder="必填，请选择业务类型"
+              show-search
+              allow-clear
+              option-filter-prop="label"
+            />
+          </a-form-item>
+          <a-form-item label="业务主键">
+            <a-input v-model:value="draftQuery.bizId" placeholder="必填，业务记录 ID" allow-clear />
+          </a-form-item>
+          <a-form-item label="单据号">
+            <a-input v-model:value="draftQuery.bizCode" placeholder="选填" allow-clear />
+          </a-form-item>
+        </AppSearchForm>
+      </template>
 
-      <a-space class="toolbar">
+      <template #actions>
         <a-button
           v-perm="'system:attachment:upload'"
           type="primary"
@@ -155,7 +158,7 @@ function confirmDelete(record: AttachmentVO): void {
           上传附件
         </a-button>
         <span class="toolbar-tip">附件按业务类型 + 业务主键归档，请先输入查询条件</span>
-      </a-space>
+      </template>
 
       <a-table
         row-key="id"
@@ -198,19 +201,15 @@ function confirmDelete(record: AttachmentVO): void {
           </template>
         </template>
       </a-table>
-    </a-card>
+    </AppPageContainer>
 
     <UploadModal ref="uploadModalRef" :biz-type-options="bizTypeOptions" @saved="handleUploaded" />
   </div>
 </template>
 
 <style scoped>
-.toolbar {
-  margin-bottom: 16px;
-}
-
 .toolbar-tip {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--erp-text-tertiary);
   font-size: 12px;
 }
 </style>

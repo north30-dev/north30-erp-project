@@ -9,11 +9,13 @@ import {
   EditOutlined,
   ExportOutlined,
   KeyOutlined,
+  MoreOutlined,
   PlusOutlined,
   ProfileOutlined,
   TeamOutlined,
 } from '@ant-design/icons-vue'
 import AppSearchForm from '../../../components/AppSearchForm/index.vue'
+import AppPageContainer from '../../../components/AppPageContainer/index.vue'
 import { useTable } from '../../../composables/useTable'
 import { getDeptTree } from '../../../api/dept'
 import { useAuthStore } from '../../../stores/auth'
@@ -144,37 +146,40 @@ async function handleExport(): Promise<void> {
 
 <template>
   <div class="user-page">
-    <a-card>
-      <AppSearchForm :model="draftQuery" :loading="loading" @search="search" @reset="reset">
-        <a-form-item label="用户名">
-          <a-input v-model:value="draftQuery.username" placeholder="请输入用户名" allow-clear />
-        </a-form-item>
-        <a-form-item label="真实姓名">
-          <a-input v-model:value="draftQuery.realName" placeholder="请输入真实姓名" allow-clear />
-        </a-form-item>
-        <a-form-item label="所属部门">
-          <a-tree-select
-            v-model:value="draftQuery.deptId"
-            :tree-data="deptTreeData"
-            :field-names="{ label: 'deptName', value: 'id', children: 'children' }"
-            placeholder="请选择所属部门"
-            allow-clear
-            show-search
-            tree-node-filter-prop="deptName"
-            tree-default-expand-all
-          />
-        </a-form-item>
-        <a-form-item label="状态">
-          <a-select
-            v-model:value="draftQuery.status"
-            :options="[...STATUS_OPTIONS]"
-            placeholder="请选择状态"
-            allow-clear
-          />
-        </a-form-item>
-      </AppSearchForm>
+    <AppPageContainer>
+      <template #search>
+        <AppSearchForm :model="draftQuery" :loading="loading" @search="search" @reset="reset">
+          <a-form-item label="用户名">
+            <a-input v-model:value="draftQuery.username" placeholder="请输入用户名" allow-clear />
+          </a-form-item>
+          <a-form-item label="真实姓名">
+            <a-input v-model:value="draftQuery.realName" placeholder="请输入真实姓名" allow-clear />
+          </a-form-item>
+          <a-form-item label="所属部门">
+            <a-tree-select
+              v-model:value="draftQuery.deptId"
+              :tree-data="deptTreeData"
+              :field-names="{ label: 'deptName', value: 'id', children: 'children' }"
+              placeholder="请选择所属部门"
+              allow-clear
+              show-search
+              tree-node-filter-prop="deptName"
+              tree-default-expand-all
+              class="user-page__dept-select"
+            />
+          </a-form-item>
+          <a-form-item label="状态">
+            <a-select
+              v-model:value="draftQuery.status"
+              :options="[...STATUS_OPTIONS]"
+              placeholder="请选择状态"
+              allow-clear
+            />
+          </a-form-item>
+        </AppSearchForm>
+      </template>
 
-      <a-space class="toolbar">
+      <template #actions>
         <a-button v-perm="'system:user:create'" type="primary" @click="formModalRef?.show('create')">
           <template #icon><PlusOutlined /></template>
           新增
@@ -183,7 +188,7 @@ async function handleExport(): Promise<void> {
           <template #icon><ExportOutlined /></template>
           导出
         </a-button>
-      </a-space>
+      </template>
 
       <a-table
         row-key="id"
@@ -251,23 +256,21 @@ async function handleExport(): Promise<void> {
               >
                 <EditOutlined /> 编辑
               </a-button>
-              <a-button
-                v-perm="'system:user:resetpwd'"
-                type="link"
-                size="small"
-                :disabled="(record as UserVO).isAdmin === 1"
-                @click="resetModalRef?.show(record as UserVO)"
-              >
-                <KeyOutlined /> 重置密码
-              </a-button>
-              <a-button
-                v-perm="'system:user:assignrole'"
-                type="link"
-                size="small"
-                @click="openAssign(record as UserVO)"
-              >
-                <TeamOutlined /> 分配角色
-              </a-button>
+              <a-dropdown>
+                <a-button type="link" size="small">
+                  <MoreOutlined /> 更多
+                </a-button>
+                <template #overlay>
+                  <a-menu>
+                    <a-menu-item v-perm="'system:user:resetpwd'" key="resetpwd" :disabled="(record as UserVO).isAdmin === 1" @click="resetModalRef?.show(record as UserVO)">
+                      <KeyOutlined /> 重置密码
+                    </a-menu-item>
+                    <a-menu-item v-perm="'system:user:assignrole'" key="assignrole" @click="openAssign(record as UserVO)">
+                      <TeamOutlined /> 分配角色
+                    </a-menu-item>
+                  </a-menu>
+                </template>
+              </a-dropdown>
               <a-button
                 v-perm="'system:user:delete'"
                 type="link"
@@ -283,7 +286,7 @@ async function handleExport(): Promise<void> {
           </template>
         </template>
       </a-table>
-    </a-card>
+    </AppPageContainer>
 
     <UserFormModal ref="formModalRef" @saved="reload" />
     <ResetPasswordModal ref="resetModalRef" />
@@ -293,11 +296,12 @@ async function handleExport(): Promise<void> {
 </template>
 
 <style scoped>
-.toolbar {
-  margin-bottom: 16px;
-}
-
 .builtin-tag {
   margin-inline-start: 4px;
+}
+
+/* 部门名较长，inline 搜索布局下默认宽度会导致下拉选项文字换行 */
+.user-page__dept-select {
+  width: 240px;
 }
 </style>

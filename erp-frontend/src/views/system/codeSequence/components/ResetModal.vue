@@ -64,12 +64,13 @@ defineExpose({ show })
   <a-modal
     v-model:open="open"
     title="重置编号流水"
+    :width="760"
     :confirm-loading="submitting"
     :mask-closable="false"
     destroy-on-close
     @ok="handleOk"
   >
-    <a-form ref="formRef" layout="vertical" :model="form" :rules="rules">
+    <a-form ref="formRef" layout="horizontal" :label-col="{ style: { width: '110px' } }" label-wrap :model="form" :rules="rules">
       <a-row :gutter="16">
         <a-col :span="12">
           <a-form-item label="单据类型">

@@ -337,6 +337,49 @@ class DictIntegrationTest extends ApiIntegrationTest {
                 .then().statusCode(422)
                 .body("code", equalTo(SystemErrorCode.DICT_TYPE_NOT_FOUND.getCode()));
         }
+
+        @Test
+        @DisplayName("类型已禁用，返回422字典类型已禁用；重新启用后恢复返回选项")
+        void shouldReturn422DictTypeDisabled_whenTypeDisabled_thenRecoverAfterEnable() {
+            // Given：自建类型 + 字典项
+            CreatedType type = createType();
+            createItem(type.dictType(), "V1");
+            try {
+                // When：停用类型（新建行 version=0）
+                given().port(port).header("Authorization", "Bearer " + adminToken())
+                    .contentType(ContentType.JSON)
+                    .body(Map.of("status", 0, "version", 0))
+                    .when().post(TYPE_PATH + "/" + type.id() + "/status")
+                    .then().statusCode(200).body("code", equalTo(200));
+
+                // Then：/options 被类型级守卫拦截（18043）
+                given().port(port).header("Authorization", "Bearer " + adminToken())
+                    .queryParam("dictType", type.dictType())
+                    .when().get(ITEM_PATH + "/options")
+                    .then().statusCode(422)
+                    .body("code", equalTo(SystemErrorCode.DICT_TYPE_DISABLED.getCode()));
+
+                // When：重新启用（停用后 version=1）
+                given().port(port).header("Authorization", "Bearer " + adminToken())
+                    .contentType(ContentType.JSON)
+                    .body(Map.of("status", 1, "version", 1))
+                    .when().post(TYPE_PATH + "/" + type.id() + "/status")
+                    .then().statusCode(200).body("code", equalTo(200));
+
+                // Then：恢复返回启用项选项
+                given().port(port).header("Authorization", "Bearer " + adminToken())
+                    .queryParam("dictType", type.dictType())
+                    .when().get(ITEM_PATH + "/options")
+                    .then().statusCode(200)
+                    .body("code", equalTo(200))
+                    .body("data.size()", equalTo(1))
+                    .body("data[0].itemValue", equalTo("V1"));
+            } finally {
+                cleanupItems(type.dictType());
+                given().port(port).header("Authorization", "Bearer " + adminToken())
+                    .when().delete(TYPE_PATH + "/" + type.id());
+            }
+        }
     }
 
     @Nested

@@ -218,12 +218,12 @@ defineExpose({ show })
 <style scoped>
 /* 密码复杂度提示三态：默认灰、校验通过绿、不通过红（取 antd 标准色板） */
 .pwd-hint {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--erp-text-tertiary);
 }
 .pwd-hint--ok {
-  color: #52c41a;
+  color: var(--erp-state-success);
 }
 .pwd-hint--error {
-  color: #ff4d4f;
+  color: var(--erp-state-error);
 }
 </style>

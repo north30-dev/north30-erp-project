@@ -3,6 +3,7 @@
 // 事件时间区间为日期粒度（后端 yyyy-MM-dd 解析为当天起止、左闭右开），提交时拆为 startTime/endTime。
 import { onMounted } from 'vue'
 import AppSearchForm from '../../../components/AppSearchForm/index.vue'
+import AppPageContainer from '../../../components/AppPageContainer/index.vue'
 import { useTable } from '../../../composables/useTable'
 import { getLoginLogPage } from '../../../api/log'
 import type { PageQuery, PageResult, LoginLogQueryDTO, LoginLogVO } from '../../../types/api'
@@ -44,31 +45,33 @@ onMounted(() => {
 
 <template>
   <div class="login-log-page">
-    <a-card>
-      <AppSearchForm :model="draftQuery" :loading="loading" @search="search" @reset="reset">
-        <a-form-item label="用户名">
-          <a-input v-model:value="draftQuery.username" placeholder="请输入用户名" allow-clear />
-        </a-form-item>
-        <a-form-item label="事件类型">
-          <a-select
-            v-model:value="draftQuery.loginType"
-            :options="[...LOGIN_TYPE_OPTIONS]"
-            placeholder="请选择事件类型"
-            allow-clear
-          />
-        </a-form-item>
-        <a-form-item label="结果">
-          <a-select
-            v-model:value="draftQuery.resultStatus"
-            :options="[...RESULT_STATUS_OPTIONS]"
-            placeholder="请选择结果"
-            allow-clear
-          />
-        </a-form-item>
-        <a-form-item label="事件时间">
-          <a-range-picker v-model:value="draftQuery.timeRange" value-format="YYYY-MM-DD" />
-        </a-form-item>
-      </AppSearchForm>
+    <AppPageContainer>
+      <template #search>
+        <AppSearchForm :model="draftQuery" :loading="loading" @search="search" @reset="reset">
+          <a-form-item label="用户名">
+            <a-input v-model:value="draftQuery.username" placeholder="请输入用户名" allow-clear />
+          </a-form-item>
+          <a-form-item label="事件类型">
+            <a-select
+              v-model:value="draftQuery.loginType"
+              :options="[...LOGIN_TYPE_OPTIONS]"
+              placeholder="请选择事件类型"
+              allow-clear
+            />
+          </a-form-item>
+          <a-form-item label="结果">
+            <a-select
+              v-model:value="draftQuery.resultStatus"
+              :options="[...RESULT_STATUS_OPTIONS]"
+              placeholder="请选择结果"
+              allow-clear
+            />
+          </a-form-item>
+          <a-form-item label="事件时间">
+            <a-range-picker v-model:value="draftQuery.timeRange" value-format="YYYY-MM-DD" />
+          </a-form-item>
+        </AppSearchForm>
+      </template>
 
       <a-table
         row-key="id"
@@ -110,6 +113,6 @@ onMounted(() => {
           </template>
         </template>
       </a-table>
-    </a-card>
+    </AppPageContainer>
   </div>
 </template>

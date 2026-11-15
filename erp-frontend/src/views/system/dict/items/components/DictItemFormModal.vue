@@ -114,7 +114,7 @@ defineExpose({ show })
   <AppCrudModal
     ref="crudRef"
     title="字典项"
-    :width="640"
+    :width="760"
     :initial-form="initialForm"
     :rules="rules"
     :on-submit="handleSubmit"

@@ -177,8 +177,8 @@ public class SysDictItemServiceImpl implements SysDictItemService {
     @Override
     @Transactional(readOnly = true)
     public List<DictItemOptionVO> listEnabledOptions(String dictType, String lang) {
-        // 类型存在性守卫（不存在即抛 18028）
-        sysDictTypeService.requireByDictType(dictType);
+        // 类型存在性 + 启用状态守卫（不存在抛 18028，禁用抛 18043）
+        sysDictTypeService.requireByDictType(dictType).requireEnabled();
         String targetLang = StringUtils.hasText(lang) ? lang : DEFAULT_LANG;
         List<SysDictItem> items = sysDictItemMapper.selectList(new LambdaQueryWrapper<SysDictItem>()
             .eq(SysDictItem::getDictType, dictType)
@@ -194,6 +194,8 @@ public class SysDictItemServiceImpl implements SysDictItemService {
     @Override
     @Transactional(readOnly = true)
     public void requireEnabledItem(String dictType, String itemValue, String lang) {
+        // 类型存在性 + 启用状态守卫（不存在抛 18028，禁用抛 18043）
+        sysDictTypeService.requireByDictType(dictType).requireEnabled();
         String targetLang = StringUtils.hasText(lang) ? lang : DEFAULT_LANG;
         Long count = sysDictItemMapper.selectCount(new LambdaQueryWrapper<SysDictItem>()
             .eq(SysDictItem::getDictType, dictType)

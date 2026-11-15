@@ -633,6 +633,21 @@ class SysDictItemServiceImplTest {
                 .hasMessage("字典类型 no_such_type 不存在");
             verify(sysDictItemMapper, never()).selectList(any());
         }
+
+        @Test
+        @DisplayName("字典类型已禁用，抛出 18043")
+        void shouldThrow_whenDictTypeDisabled() {
+            // Given：类型存在但 status=0（禁用），实体 requireEnabled 守卫抛 18043
+            given(sysDictTypeService.requireByDictType("attachment_biz_type")).willReturn(
+                DictTestFactory.dictType(27L, "attachment_biz_type", "附件业务类型", 0));
+
+            // When + Then：守卫短路，不应触达字典项查询
+            assertThatThrownBy(() -> service.listEnabledOptions("attachment_biz_type", null))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DICT_TYPE_DISABLED.getCode()))
+                .hasMessage("字典类型已禁用");
+            verify(sysDictItemMapper, never()).selectList(any());
+        }
     }
 
     @Nested
@@ -642,7 +657,9 @@ class SysDictItemServiceImplTest {
         @Test
         @DisplayName("启用项存在（计数>0），直接放行")
         void shouldPass_whenEnabledItemExists() {
-            // Given
+            // Given：类型存在且启用
+            given(sysDictTypeService.requireByDictType("attachment_biz_type")).willReturn(
+                DictTestFactory.dictType(27L, "attachment_biz_type", "附件业务类型", 1));
             given(sysDictItemMapper.selectCount(any())).willReturn(1L);
 
             // When + Then（不抛异常）
@@ -652,7 +669,9 @@ class SysDictItemServiceImplTest {
         @Test
         @DisplayName("未启用或不存在（计数=0），抛出 10404")
         void shouldThrow10404_whenItemNotEnabled() {
-            // Given：条件 dictType + itemValue + lang + status=1 计数为 0
+            // Given：类型存在且启用，条件 dictType + itemValue + lang + status=1 计数为 0
+            given(sysDictTypeService.requireByDictType("attachment_biz_type")).willReturn(
+                DictTestFactory.dictType(27L, "attachment_biz_type", "附件业务类型", 1));
             given(sysDictItemMapper.selectCount(any())).willReturn(0L);
 
             // When + Then
@@ -661,6 +680,21 @@ class SysDictItemServiceImplTest {
                     ex -> assertThat(ex.getCode())
                         .isEqualTo(CommonErrorCode.ATTACHMENT_BIZ_TYPE_INVALID.getCode()))
                 .hasMessage("业务类型不合法：FOO");
+        }
+
+        @Test
+        @DisplayName("字典类型已禁用，抛出 18043")
+        void shouldThrow_whenDictTypeDisabled() {
+            // Given：类型存在但 status=0（禁用），实体 requireEnabled 守卫抛 18043
+            given(sysDictTypeService.requireByDictType("attachment_biz_type")).willReturn(
+                DictTestFactory.dictType(27L, "attachment_biz_type", "附件业务类型", 0));
+
+            // When + Then：守卫短路，不应触达字典项计数
+            assertThatThrownBy(() -> service.requireEnabledItem("attachment_biz_type", "MATERIAL", "zh-CN"))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DICT_TYPE_DISABLED.getCode()))
+                .hasMessage("字典类型已禁用");
+            verify(sysDictItemMapper, never()).selectCount(any());
         }
     }
 }

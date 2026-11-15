@@ -9,10 +9,12 @@ import {
   ArrowDownOutlined,
   DeleteOutlined,
   EditOutlined,
+  MoreOutlined,
   PlusOutlined,
   PlusSquareOutlined,
 } from '@ant-design/icons-vue'
 import AppSearchForm from '../../../components/AppSearchForm/index.vue'
+import AppPageContainer from '../../../components/AppPageContainer/index.vue'
 import { changeMenuStatus, deleteMenu, getMenuTree, moveMenu } from '../../../api/menu'
 import {
   MAX_MENU_DEPTH,
@@ -233,30 +235,32 @@ onMounted(() => {
 
 <template>
   <div class="menu-page">
-    <a-card>
-      <AppSearchForm :model="draftQuery" :loading="loading" @search="search" @reset="reset">
-        <a-form-item label="菜单名称">
-          <a-input v-model:value="draftQuery.menuName" placeholder="请输入菜单名称" allow-clear />
-        </a-form-item>
-        <a-form-item label="权限标识">
-          <a-input v-model:value="draftQuery.perms" placeholder="请输入权限标识" allow-clear />
-        </a-form-item>
-        <a-form-item label="状态">
-          <a-select
-            v-model:value="draftQuery.status"
-            :options="[...STATUS_OPTIONS]"
-            placeholder="请选择状态"
-            allow-clear
-          />
-        </a-form-item>
-      </AppSearchForm>
+    <AppPageContainer>
+      <template #search>
+        <AppSearchForm :model="draftQuery" :loading="loading" @search="search" @reset="reset">
+          <a-form-item label="菜单名称">
+            <a-input v-model:value="draftQuery.menuName" placeholder="请输入菜单名称" allow-clear />
+          </a-form-item>
+          <a-form-item label="权限标识">
+            <a-input v-model:value="draftQuery.perms" placeholder="请输入权限标识" allow-clear />
+          </a-form-item>
+          <a-form-item label="状态">
+            <a-select
+              v-model:value="draftQuery.status"
+              :options="[...STATUS_OPTIONS]"
+              placeholder="请选择状态"
+              allow-clear
+            />
+          </a-form-item>
+        </AppSearchForm>
+      </template>
 
-      <a-space class="toolbar">
+      <template #actions>
         <a-button v-perm="'system:menu:create'" type="primary" @click="openCreate()">
           <template #icon><PlusOutlined /></template>
           新增
         </a-button>
-      </a-space>
+      </template>
 
       <a-table
         v-model:expanded-row-keys="expandedRowKeys"
@@ -349,14 +353,18 @@ onMounted(() => {
                   <ArrowDownOutlined /> 下移
                 </a-button>
               </a-tooltip>
-              <a-button
-                v-perm="'system:menu:update'"
-                type="link"
-                size="small"
-                @click="openEdit(record as MenuNodeVO)"
-              >
-                <EditOutlined /> 编辑
-              </a-button>
+              <a-dropdown>
+                <a-button type="link" size="small">
+                  <MoreOutlined /> 更多
+                </a-button>
+                <template #overlay>
+                  <a-menu>
+                    <a-menu-item v-perm="'system:menu:update'" key="edit" @click="openEdit(record as MenuNodeVO)">
+                      <EditOutlined /> 编辑
+                    </a-menu-item>
+                  </a-menu>
+                </template>
+              </a-dropdown>
               <a-button
                 v-perm="'system:menu:delete'"
                 type="link"
@@ -371,14 +379,8 @@ onMounted(() => {
           </template>
         </template>
       </a-table>
-    </a-card>
+    </AppPageContainer>
 
     <MenuFormModal ref="formModalRef" :menus="treeData" @saved="load" />
   </div>
 </template>
-
-<style scoped>
-.toolbar {
-  margin-bottom: 16px;
-}
-</style>

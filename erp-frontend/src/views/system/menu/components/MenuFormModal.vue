@@ -337,7 +337,7 @@ defineExpose({ show })
   <AppCrudModal
     ref="crudRef"
     title="菜单"
-    :width="760"
+    :width="880"
     :initial-form="initialForm"
     :rules="rules"
     :on-submit="handleSubmit"

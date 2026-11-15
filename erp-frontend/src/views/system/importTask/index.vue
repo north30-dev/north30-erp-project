@@ -5,6 +5,7 @@
 // 10503 等失败提示由 request 拦截器统一弹出，抽屉内渲染空态。两个接口均挂 system:import:detail 权限点
 // （任务列表接口文档未单列权限点，沿用 detail，与后端 @PreAuthorize 一致）。
 import { onMounted, ref } from 'vue'
+import AppPageContainer from '../../../components/AppPageContainer/index.vue'
 import { useTable } from '../../../composables/useTable'
 import { getImportResult, getImportTaskPage } from '../../../api/importTask'
 import type { ImportErrorVO, ImportResultVO, ImportTaskVO, PageQuery } from '../../../types/api'
@@ -58,15 +59,15 @@ onMounted(() => {
 
 <template>
   <div class="import-task-page">
-    <a-card>
-      <a-alert
-        class="placeholder-tip"
-        type="info"
-        show-icon
-        message="导入执行能力由各业务模块陆续落地，当前仅提供任务列表与结果查询能力"
-      />
+    <a-alert
+      class="placeholder-tip"
+      type="info"
+      show-icon
+      message="导入执行能力由各业务模块陆续落地，当前仅提供任务列表与结果查询能力"
+    />
 
-      <a-space class="toolbar">
+    <AppPageContainer>
+      <template #actions>
         <a-input
           v-model:value="taskId"
           placeholder="输入导入任务号查询结果"
@@ -82,7 +83,7 @@ onMounted(() => {
         >
           查询结果
         </a-button>
-      </a-space>
+      </template>
 
       <a-table
         row-key="taskId"
@@ -117,7 +118,7 @@ onMounted(() => {
           </template>
           <template v-else-if="column.dataIndex === 'committed'">
             <a-tag v-if="(record as ImportTaskVO).committed === true" color="green">已提交</a-tag>
-            <a-tag v-else-if="(record as ImportTaskVO).committed === false" color="orange">未提交</a-tag>
+            <a-tag v-else-if="(record as ImportTaskVO).committed === false" color="warning">未提交</a-tag>
             <span v-else>-</span>
           </template>
           <template v-else-if="column.key === 'action'">
@@ -132,24 +133,42 @@ onMounted(() => {
           </template>
         </template>
       </a-table>
-    </a-card>
+    </AppPageContainer>
 
     <a-drawer v-model:open="drawerVisible" title="导入结果" width="720" destroy-on-close>
       <a-spin :spinning="detailLoading">
         <template v-if="detail">
-          <a-descriptions :column="2" size="small" bordered>
-            <a-descriptions-item label="任务 ID" :span="2">{{ detail.taskId }}</a-descriptions-item>
-            <a-descriptions-item label="总行数">{{ detail.totalRows ?? '-' }}</a-descriptions-item>
-            <a-descriptions-item label="成功行数">{{ detail.successRows ?? '-' }}</a-descriptions-item>
-            <a-descriptions-item label="失败行数">{{ detail.failRows ?? '-' }}</a-descriptions-item>
-            <a-descriptions-item label="提交状态">
-              <a-tag v-if="detail.committed === true" color="green">已提交</a-tag>
-              <a-tag v-else-if="detail.committed === false" color="orange">未提交</a-tag>
-              <span v-else>-</span>
-            </a-descriptions-item>
-          </a-descriptions>
+          <div class="detail-section">
+            <div class="section-title">任务概要</div>
+            <dl class="detail-kv">
+              <div class="detail-kv__row">
+                <dt>任务 ID</dt>
+                <dd>{{ detail.taskId }}</dd>
+              </div>
+              <div class="detail-kv__row">
+                <dt>总行数</dt>
+                <dd>{{ detail.totalRows ?? '-' }}</dd>
+              </div>
+              <div class="detail-kv__row">
+                <dt>成功行数</dt>
+                <dd>{{ detail.successRows ?? '-' }}</dd>
+              </div>
+              <div class="detail-kv__row">
+                <dt>失败行数</dt>
+                <dd>{{ detail.failRows ?? '-' }}</dd>
+              </div>
+              <div class="detail-kv__row">
+                <dt>提交状态</dt>
+                <dd>
+                  <a-tag v-if="detail.committed === true" color="green">已提交</a-tag>
+                  <a-tag v-else-if="detail.committed === false" color="warning">未提交</a-tag>
+                  <span v-else>-</span>
+                </dd>
+              </div>
+            </dl>
+          </div>
 
-          <div class="section">
+          <div class="detail-section">
             <div class="section-title">错误行明细（{{ detail.errors?.length ?? 0 }}）</div>
             <a-table
               :columns="IMPORT_ERROR_COLUMNS"
@@ -189,16 +208,44 @@ onMounted(() => {
   margin-bottom: 16px;
 }
 
-.toolbar {
-  margin-bottom: 16px;
-}
-
-.section {
+.detail-section {
   margin-top: 24px;
 }
 
 .section-title {
   margin-bottom: 8px;
+  color: var(--erp-text);
+  font-size: 14px;
   font-weight: 600;
+}
+
+.detail-kv {
+  margin: 0;
+}
+
+.detail-kv__row {
+  display: flex;
+  padding: 6px 0;
+  font-size: 14px;
+  line-height: 22px;
+  border-bottom: 1px solid var(--erp-border-line);
+}
+
+.detail-kv__row:last-child {
+  border-bottom: none;
+}
+
+.detail-kv dt {
+  flex: none;
+  width: 110px;
+  color: var(--erp-text-tertiary);
+}
+
+.detail-kv dd {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: var(--erp-text);
+  word-break: break-all;
 }
 </style>

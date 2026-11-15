@@ -153,7 +153,10 @@ public enum SystemErrorCode implements ErrorCode {
     SELF_OPERATION_FORBIDDEN(18041, "禁止对当前登录账号执行该操作"),
 
     /** 认证接口请求过于频繁（IP 维度限流） */
-    REQUEST_TOO_FREQUENT(18042, "操作过于频繁，请稍后重试");
+    REQUEST_TOO_FREQUENT(18042, "操作过于频繁，请稍后重试"),
+
+    /** 字典类型已禁用（类型级状态守卫，禁用类型的选项/校验一律不可用） */
+    DICT_TYPE_DISABLED(18043, "字典类型已禁用");
 
     /** 业务状态码 */
     private final int code;

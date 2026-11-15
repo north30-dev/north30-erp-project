@@ -10,9 +10,9 @@ const router = useRouter()
   <div class="not-found">
     <a-result status="404" title="404" sub-title="抱歉，您访问的页面不存在或无权访问">
       <template #extra>
-        <a-button type="primary" @click="router.replace('/')">
+        <a-button type="primary" @click="router.replace('/dashboard')">
           <template #icon><HomeOutlined /></template>
-          返回首页
+          返回工作台
         </a-button>
       </template>
     </a-result>
@@ -25,6 +25,6 @@ const router = useRouter()
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: #f0f2f5;
+  background: var(--erp-bg-layout);
 }
 </style>

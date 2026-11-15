@@ -13,6 +13,7 @@ import {
   PlusOutlined,
 } from '@ant-design/icons-vue'
 import AppSearchForm from '../../../../components/AppSearchForm/index.vue'
+import AppPageContainer from '../../../../components/AppPageContainer/index.vue'
 import { useTable } from '../../../../composables/useTable'
 import { changeDictItemStatus, deleteDictItem, getDictItemPage, moveDictItem } from '../../../../api/dict'
 import {
@@ -120,32 +121,34 @@ function confirmDelete(record: DictItemVO): void {
 
 <template>
   <div class="dict-items-page">
-    <a-card>
-      <a-space class="page-header">
-        <a-button @click="goBack">
-          <template #icon><ArrowLeftOutlined /></template>
-          返回
-        </a-button>
-        <a-typography-title :level="4" class="page-title">
-          字典项管理 - {{ currentDictType }}
-        </a-typography-title>
-      </a-space>
+    <a-space class="page-header">
+      <a-button @click="goBack">
+        <template #icon><ArrowLeftOutlined /></template>
+        返回
+      </a-button>
+      <a-typography-title :level="4" class="page-title">
+        字典项管理 - {{ currentDictType }}
+      </a-typography-title>
+    </a-space>
 
-      <AppSearchForm :model="draftQuery" :loading="loading" @search="search" @reset="reset">
-        <a-form-item label="语言">
-          <a-input v-model:value="draftQuery.lang" :placeholder="`如 ${DICT_LANG_DEFAULT}`" allow-clear />
-        </a-form-item>
-        <a-form-item label="状态">
-          <a-select
-            v-model:value="draftQuery.status"
-            :options="[...STATUS_OPTIONS]"
-            placeholder="请选择状态"
-            allow-clear
-          />
-        </a-form-item>
-      </AppSearchForm>
+    <AppPageContainer>
+      <template #search>
+        <AppSearchForm :model="draftQuery" :loading="loading" @search="search" @reset="reset">
+          <a-form-item label="语言">
+            <a-input v-model:value="draftQuery.lang" :placeholder="`如 ${DICT_LANG_DEFAULT}`" allow-clear />
+          </a-form-item>
+          <a-form-item label="状态">
+            <a-select
+              v-model:value="draftQuery.status"
+              :options="[...STATUS_OPTIONS]"
+              placeholder="请选择状态"
+              allow-clear
+            />
+          </a-form-item>
+        </AppSearchForm>
+      </template>
 
-      <a-space class="toolbar">
+      <template #actions>
         <a-button
           v-perm="'system:dict:create'"
           type="primary"
@@ -154,7 +157,7 @@ function confirmDelete(record: DictItemVO): void {
           <template #icon><PlusOutlined /></template>
           新增
         </a-button>
-      </a-space>
+      </template>
 
       <a-table
         row-key="id"
@@ -236,7 +239,7 @@ function confirmDelete(record: DictItemVO): void {
           </template>
         </template>
       </a-table>
-    </a-card>
+    </AppPageContainer>
 
     <DictItemFormModal ref="formModalRef" @saved="reload" />
   </div>

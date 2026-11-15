@@ -136,12 +136,12 @@ public class SysDictItemController {
     }
 
     /**
-     * 字典项启用项下拉选项（仅 status=1，按显示顺序排序；无权限点，登录即可访问，
-     * 供附件业务类型等受控词表下拉消费）。
+     * 字典项启用项下拉选项（仅 status=1，按显示顺序排序；类型须存在且启用；
+     * 无权限点，登录即可访问，供附件业务类型等受控词表下拉消费）。
      */
     @GetMapping("/options")
     @Operation(summary = "字典项下拉选项", description = "仅返回启用项（status=1），按 itemSort,id 升序；"
-        + "dictType 必填（缺失/空白返回 400），类型不存在返回 422/18028；lang 缺省 zh-CN")
+        + "dictType 必填（缺失/空白返回 400），类型不存在返回 422/18028，类型已禁用返回 422/18043；lang 缺省 zh-CN")
     public Result<List<DictItemOptionVO>> options(
             @RequestParam @NotBlank(message = "字典类型编码不能为空") String dictType,
             @RequestParam(required = false) String lang) {

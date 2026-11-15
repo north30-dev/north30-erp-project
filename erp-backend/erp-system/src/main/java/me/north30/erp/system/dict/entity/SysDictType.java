@@ -6,6 +6,7 @@ import lombok.EqualsAndHashCode;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
 import me.north30.erp.common.mybatis.BaseEntity;
+import me.north30.erp.system.common.enums.SystemErrorCode;
 
 /**
  * 字典类型表（sys_dict_type）。
@@ -47,6 +48,17 @@ public class SysDictType extends BaseEntity {
     public void applyCreateDefault() {
         if (status == null) {
             status = 1;
+        }
+    }
+
+    /**
+     * 类型级启用守卫：status != 1 时抛 18043。
+     * <p>仅校验自身状态，不查库；供选项查询（options）、词表校验（requireEnabledItem）
+     * 等消费链路复用，保证类型禁用后整类字典一起下线。</p>
+     */
+    public void requireEnabled() {
+        if (status == null || status != 1) {
+            throw new BusinessException(SystemErrorCode.DICT_TYPE_DISABLED);
         }
     }
 }

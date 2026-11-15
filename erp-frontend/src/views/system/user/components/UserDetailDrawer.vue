@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 用户详情抽屉（页面私有组件，只读）：按行 id 拉详情，分区展示基本信息/角色与仓库/登录与安全。
+// 用户详情抽屉（页面私有组件，只读）：按行 id 拉详情，卡片分节 + 轻量键值行展示（方案 10 第 4.5 节排版规范）。
 import { ref } from 'vue'
 import { getUserDetail } from '../../../../api/user'
 import { GENDER_OPTIONS, STATUS_ENABLED, STATUS_MAP } from '../../../../constants'
@@ -33,50 +33,99 @@ defineExpose({ show })
   <a-drawer v-model:open="open" title="用户详情" width="560" destroy-on-close>
     <a-spin :spinning="loading">
       <template v-if="detail">
-        <a-descriptions title="基本信息" :column="2" size="small" bordered>
-          <a-descriptions-item label="用户编码">{{ detail.userCode }}</a-descriptions-item>
-          <a-descriptions-item label="用户名">{{ detail.username }}</a-descriptions-item>
-          <a-descriptions-item label="姓名">{{ detail.realName }}</a-descriptions-item>
-          <a-descriptions-item label="部门">{{ detail.deptName ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="手机号">{{ detail.phone ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="邮箱">{{ detail.email ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="性别">{{ genderText(detail.gender) }}</a-descriptions-item>
-          <a-descriptions-item label="状态">
-            <a-tag :color="detail.status === STATUS_ENABLED ? 'green' : 'red'">
-              {{ STATUS_MAP[detail.status] ?? '-' }}
-            </a-tag>
-            <a-tag v-if="detail.isAdmin === 1" color="purple">内置</a-tag>
-          </a-descriptions-item>
-        </a-descriptions>
-
-        <a-descriptions title="角色与仓库" :column="1" size="small" bordered class="section">
-          <a-descriptions-item label="角色">
-            <a-space v-if="detail.roles?.length" wrap>
-              <a-tag v-for="role in detail.roles" :key="role" color="blue">{{ role }}</a-tag>
-            </a-space>
-            <span v-else>-</span>
-          </a-descriptions-item>
-          <a-descriptions-item label="仓库">
-            <template v-if="detail.warehouseIds?.length">
-              <a-space wrap>
-                <a-tag v-for="warehouseId in detail.warehouseIds" :key="warehouseId">
-                  {{ warehouseId }}
+        <div class="detail-section">
+          <div class="detail-section__title">基本信息</div>
+          <dl class="detail-kv">
+            <div class="detail-kv__row">
+              <dt>用户编码</dt>
+              <dd>{{ detail.userCode }}</dd>
+            </div>
+            <div class="detail-kv__row">
+              <dt>用户名</dt>
+              <dd>{{ detail.username }}<a-tag v-if="detail.isAdmin === 1" color="purple" class="detail-kv__tag">内置</a-tag></dd>
+            </div>
+            <div class="detail-kv__row">
+              <dt>姓名</dt>
+              <dd>{{ detail.realName }}</dd>
+            </div>
+            <div class="detail-kv__row">
+              <dt>部门</dt>
+              <dd>{{ detail.deptName ?? '-' }}</dd>
+            </div>
+            <div class="detail-kv__row">
+              <dt>手机号</dt>
+              <dd>{{ detail.phone ?? '-' }}</dd>
+            </div>
+            <div class="detail-kv__row">
+              <dt>邮箱</dt>
+              <dd>{{ detail.email ?? '-' }}</dd>
+            </div>
+            <div class="detail-kv__row">
+              <dt>性别</dt>
+              <dd>{{ genderText(detail.gender) }}</dd>
+            </div>
+            <div class="detail-kv__row">
+              <dt>状态</dt>
+              <dd>
+                <a-tag :color="detail.status === STATUS_ENABLED ? 'green' : 'red'">
+                  {{ STATUS_MAP[detail.status] ?? '-' }}
                 </a-tag>
-              </a-space>
-              <div class="hint">详情接口未返回仓库名称，以上为仓库 ID</div>
-            </template>
-            <span v-else>-</span>
-          </a-descriptions-item>
-        </a-descriptions>
+              </dd>
+            </div>
+          </dl>
+        </div>
 
-        <a-descriptions title="登录与安全" :column="2" size="small" bordered class="section">
-          <a-descriptions-item label="最后登录时间">{{ detail.lastLoginTime ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="登录失败次数">{{ detail.loginFailCount }}</a-descriptions-item>
-          <a-descriptions-item label="锁定时间">{{ detail.lockUntil ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="密码更新时间">{{ detail.passwordUpdateTime ?? '-' }}</a-descriptions-item>
-          <a-descriptions-item label="创建时间">{{ detail.createTime }}</a-descriptions-item>
-          <a-descriptions-item label="备注">{{ detail.remark ?? '-' }}</a-descriptions-item>
-        </a-descriptions>
+        <div class="detail-section">
+          <div class="detail-section__title">角色与仓库</div>
+          <dl class="detail-kv">
+            <div class="detail-kv__row">
+              <dt>角色</dt>
+              <dd>
+                <a-space v-if="detail.roles?.length" wrap>
+                  <a-tag v-for="role in detail.roles" :key="role" color="blue">{{ role }}</a-tag>
+                </a-space>
+                <span v-else>-</span>
+              </dd>
+            </div>
+            <div class="detail-kv__row">
+              <dt>仓库</dt>
+              <dd>
+                <span v-if="detail.warehouseIds?.length" class="detail-kv__hint">详情接口未返回仓库名称，暂不可展示</span>
+                <span v-else>-</span>
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section__title">登录与安全</div>
+          <dl class="detail-kv">
+            <div class="detail-kv__row">
+              <dt>最后登录时间</dt>
+              <dd>{{ detail.lastLoginTime ?? '-' }}</dd>
+            </div>
+            <div class="detail-kv__row">
+              <dt>登录失败次数</dt>
+              <dd>{{ detail.loginFailCount }}</dd>
+            </div>
+            <div class="detail-kv__row">
+              <dt>锁定时间</dt>
+              <dd>{{ detail.lockUntil ?? '-' }}</dd>
+            </div>
+            <div class="detail-kv__row">
+              <dt>密码更新时间</dt>
+              <dd>{{ detail.passwordUpdateTime ?? '-' }}</dd>
+            </div>
+            <div class="detail-kv__row">
+              <dt>创建时间</dt>
+              <dd>{{ detail.createTime }}</dd>
+            </div>
+            <div class="detail-kv__row">
+              <dt>备注</dt>
+              <dd>{{ detail.remark ?? '-' }}</dd>
+            </div>
+          </dl>
+        </div>
       </template>
       <a-empty v-else-if="!loading" description="未获取到用户详情" />
     </a-spin>
@@ -84,13 +133,57 @@ defineExpose({ show })
 </template>
 
 <style scoped>
-.section {
-  margin-top: 24px;
+.detail-section {
+  margin-top: 16px;
 }
 
-.hint {
-  margin-top: 4px;
-  color: rgba(0, 0, 0, 0.45);
+.detail-section:first-child {
+  margin-top: 0;
+}
+
+.detail-section__title {
+  margin-bottom: 8px;
+  color: var(--erp-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.detail-kv {
+  margin: 0;
+}
+
+.detail-kv__row {
+  display: flex;
+  padding: 6px 0;
+  font-size: 14px;
+  line-height: 22px;
+  border-bottom: 1px solid var(--erp-border-line);
+}
+
+.detail-kv__row:last-child {
+  border-bottom: none;
+}
+
+.detail-kv dt {
+  flex: none;
+  width: 110px;
+  color: var(--erp-text-tertiary);
+}
+
+.detail-kv dd {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: var(--erp-text);
+  word-break: break-all;
+}
+
+.detail-kv__tag {
+  margin-inline-start: 8px;
+}
+
+.detail-kv__hint {
+  color: var(--erp-text-tertiary);
   font-size: 12px;
 }
 </style>

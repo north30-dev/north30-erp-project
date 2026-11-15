@@ -142,7 +142,7 @@ defineExpose({ show })
     :initial-form="initialForm"
     :rules="rules"
     :on-submit="handleSubmit"
-    :width="640"
+    :width="760"
   >
     <template #default="{ form }">
       <a-row :gutter="16">

@@ -77,7 +77,7 @@ defineExpose({ show })
     destroy-on-close
     @ok="handleOk"
   >
-    <a-form ref="formRef" layout="vertical" :model="form" :rules="rules">
+    <a-form ref="formRef" layout="horizontal" :label-col="{ style: { width: '110px' } }" label-wrap :model="form" :rules="rules">
       <a-form-item
         label="新密码"
         name="newPassword"

@@ -91,7 +91,7 @@ public interface SysDictItemService {
 
     /**
      * 查询指定类型下的启用字典项选项（仅 status=1，按 itemSort, id 升序，供下拉框消费；
-     * 类型不存在抛 18028 业务异常）。
+     * 类型不存在抛 18028 业务异常，类型已禁用抛 18043 业务异常）。
      *
      * @param dictType 字典类型编码
      * @param lang     语言（空则默认 zh-CN）
@@ -100,8 +100,8 @@ public interface SysDictItemService {
     List<DictItemOptionVO> listEnabledOptions(String dictType, String lang);
 
     /**
-     * 校验字典项为该类型下的启用项（dictType + itemValue + lang + status=1 计数为 0 时
-     * 抛 10404 业务异常，供附件业务类型等受控词表校验复用）。
+     * 校验字典项为该类型下的启用项（类型须存在且启用；dictType + itemValue + lang + status=1
+     * 计数为 0 时抛 10404 业务异常，供附件业务类型等受控词表校验复用）。
      *
      * @param dictType  字典类型编码
      * @param itemValue 字典项值

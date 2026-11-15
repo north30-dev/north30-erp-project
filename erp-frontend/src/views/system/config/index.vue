@@ -6,6 +6,7 @@ import { onMounted, ref } from 'vue'
 import { message, Modal } from 'ant-design-vue'
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import AppSearchForm from '../../../components/AppSearchForm/index.vue'
+import AppPageContainer from '../../../components/AppPageContainer/index.vue'
 import { useTable } from '../../../composables/useTable'
 import { changeConfigStatus, deleteConfig, getConfigPage } from '../../../api/config'
 import { IS_SYSTEM_YES, STATUS_DISABLED, STATUS_ENABLED, STATUS_OPTIONS } from '../../../constants'
@@ -62,33 +63,35 @@ function confirmDelete(record: ConfigVO): void {
 
 <template>
   <div class="config-page">
-    <a-card>
-      <AppSearchForm :model="draftQuery" :loading="loading" @search="search" @reset="reset">
-        <a-form-item label="参数键">
-          <a-input v-model:value="draftQuery.configKey" placeholder="请输入参数键" allow-clear />
-        </a-form-item>
-        <a-form-item label="参数名称">
-          <a-input v-model:value="draftQuery.configName" placeholder="请输入参数名称" allow-clear />
-        </a-form-item>
-        <a-form-item label="分组">
-          <a-input v-model:value="draftQuery.configGroup" placeholder="请输入分组" allow-clear />
-        </a-form-item>
-        <a-form-item label="状态">
-          <a-select
-            v-model:value="draftQuery.status"
-            :options="[...STATUS_OPTIONS]"
-            placeholder="请选择状态"
-            allow-clear
-          />
-        </a-form-item>
-      </AppSearchForm>
+    <AppPageContainer>
+      <template #search>
+        <AppSearchForm :model="draftQuery" :loading="loading" @search="search" @reset="reset">
+          <a-form-item label="参数键">
+            <a-input v-model:value="draftQuery.configKey" placeholder="请输入参数键" allow-clear />
+          </a-form-item>
+          <a-form-item label="参数名称">
+            <a-input v-model:value="draftQuery.configName" placeholder="请输入参数名称" allow-clear />
+          </a-form-item>
+          <a-form-item label="分组">
+            <a-input v-model:value="draftQuery.configGroup" placeholder="请输入分组" allow-clear />
+          </a-form-item>
+          <a-form-item label="状态">
+            <a-select
+              v-model:value="draftQuery.status"
+              :options="[...STATUS_OPTIONS]"
+              placeholder="请选择状态"
+              allow-clear
+            />
+          </a-form-item>
+        </AppSearchForm>
+      </template>
 
-      <a-space class="toolbar">
+      <template #actions>
         <a-button v-perm="'system:config:create'" type="primary" @click="formModalRef?.show('create')">
           <template #icon><PlusOutlined /></template>
           新增
         </a-button>
-      </a-space>
+      </template>
 
       <a-table
         row-key="id"
@@ -154,14 +157,8 @@ function confirmDelete(record: ConfigVO): void {
           </template>
         </template>
       </a-table>
-    </a-card>
+    </AppPageContainer>
 
     <ConfigFormModal ref="formModalRef" @saved="reload" />
   </div>
 </template>
-
-<style scoped>
-.toolbar {
-  margin-bottom: 16px;
-}
-</style>

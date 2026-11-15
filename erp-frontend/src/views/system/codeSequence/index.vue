@@ -4,6 +4,7 @@
 // 区间冲突（18035/18036）与乐观锁冲突（10601）由后端拦截，前端只做 reason 必填校验。
 import { onMounted, ref } from 'vue'
 import AppSearchForm from '../../../components/AppSearchForm/index.vue'
+import AppPageContainer from '../../../components/AppPageContainer/index.vue'
 import { useTable } from '../../../composables/useTable'
 import { getCodeSequencePage } from '../../../api/codeSequence'
 import type { CodeSequenceQueryDTO, CodeSequenceVO } from '../../../types/api'
@@ -26,15 +27,17 @@ onMounted(() => {
 
 <template>
   <div class="code-sequence-page">
-    <a-card>
-      <AppSearchForm :model="draftQuery" :loading="loading" @search="search" @reset="reset">
-        <a-form-item label="单据类型">
-          <a-input v-model:value="draftQuery.bizType" placeholder="请输入单据类型" allow-clear />
-        </a-form-item>
-        <a-form-item label="期间">
-          <a-input v-model:value="draftQuery.period" placeholder="yyyyMM，如 202601" allow-clear />
-        </a-form-item>
-      </AppSearchForm>
+    <AppPageContainer>
+      <template #search>
+        <AppSearchForm :model="draftQuery" :loading="loading" @search="search" @reset="reset">
+          <a-form-item label="单据类型">
+            <a-input v-model:value="draftQuery.bizType" placeholder="请输入单据类型" allow-clear />
+          </a-form-item>
+          <a-form-item label="期间">
+            <a-input v-model:value="draftQuery.period" placeholder="yyyyMM，如 202601" allow-clear />
+          </a-form-item>
+        </AppSearchForm>
+      </template>
 
       <a-table
         row-key="id"
@@ -69,7 +72,7 @@ onMounted(() => {
           </template>
         </template>
       </a-table>
-    </a-card>
+    </AppPageContainer>
 
     <ResetModal ref="resetModalRef" @saved="reload" />
   </div>

@@ -11,6 +11,7 @@ import {
   PlusOutlined,
 } from '@ant-design/icons-vue'
 import AppSearchForm from '../../../components/AppSearchForm/index.vue'
+import AppPageContainer from '../../../components/AppPageContainer/index.vue'
 import { useTable } from '../../../composables/useTable'
 import { useAuthStore } from '../../../stores/auth'
 import { changeRoleStatus, deleteRole, getRolePage } from '../../../api/role'
@@ -92,30 +93,32 @@ function confirmDelete(record: RoleVO): void {
 
 <template>
   <div class="role-page">
-    <a-card>
-      <AppSearchForm :model="draftQuery" :loading="loading" @search="search" @reset="reset">
-        <a-form-item label="角色编码">
-          <a-input v-model:value="draftQuery.roleCode" placeholder="请输入角色编码" allow-clear />
-        </a-form-item>
-        <a-form-item label="角色名称">
-          <a-input v-model:value="draftQuery.roleName" placeholder="请输入角色名称" allow-clear />
-        </a-form-item>
-        <a-form-item label="状态">
-          <a-select
-            v-model:value="draftQuery.status"
-            :options="[...STATUS_OPTIONS]"
-            placeholder="请选择状态"
-            allow-clear
-          />
-        </a-form-item>
-      </AppSearchForm>
+    <AppPageContainer>
+      <template #search>
+        <AppSearchForm :model="draftQuery" :loading="loading" @search="search" @reset="reset">
+          <a-form-item label="角色编码">
+            <a-input v-model:value="draftQuery.roleCode" placeholder="请输入角色编码" allow-clear />
+          </a-form-item>
+          <a-form-item label="角色名称">
+            <a-input v-model:value="draftQuery.roleName" placeholder="请输入角色名称" allow-clear />
+          </a-form-item>
+          <a-form-item label="状态">
+            <a-select
+              v-model:value="draftQuery.status"
+              :options="[...STATUS_OPTIONS]"
+              placeholder="请选择状态"
+              allow-clear
+            />
+          </a-form-item>
+        </AppSearchForm>
+      </template>
 
-      <a-space class="toolbar">
+      <template #actions>
         <a-button v-perm="'system:role:create'" type="primary" @click="formModalRef?.show('create')">
           <template #icon><PlusOutlined /></template>
           新增
         </a-button>
-      </a-space>
+      </template>
 
       <a-table
         row-key="id"
@@ -187,15 +190,9 @@ function confirmDelete(record: RoleVO): void {
           </template>
         </template>
       </a-table>
-    </a-card>
+    </AppPageContainer>
 
     <RoleFormModal ref="formModalRef" @saved="reload" />
     <AssignMenusModal ref="assignModalRef" @saved="reload" />
   </div>
 </template>
-
-<style scoped>
-.toolbar {
-  margin-bottom: 16px;
-}
-</style>

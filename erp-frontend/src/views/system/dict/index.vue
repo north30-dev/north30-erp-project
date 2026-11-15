@@ -12,6 +12,7 @@ import {
   PlusOutlined,
 } from '@ant-design/icons-vue'
 import AppSearchForm from '../../../components/AppSearchForm/index.vue'
+import AppPageContainer from '../../../components/AppPageContainer/index.vue'
 import { useTable } from '../../../composables/useTable'
 import { changeDictTypeStatus, deleteDictType, getDictTypePage } from '../../../api/dict'
 import { STATUS_DISABLED, STATUS_ENABLED, STATUS_OPTIONS } from '../../../constants'
@@ -84,30 +85,32 @@ function goItems(record: DictTypeVO): void {
 
 <template>
   <div class="dict-page">
-    <a-card>
-      <AppSearchForm :model="draftQuery" :loading="loading" @search="search" @reset="reset">
-        <a-form-item label="类型编码">
-          <a-input v-model:value="draftQuery.dictType" placeholder="请输入类型编码" allow-clear />
-        </a-form-item>
-        <a-form-item label="类型名称">
-          <a-input v-model:value="draftQuery.dictName" placeholder="请输入类型名称" allow-clear />
-        </a-form-item>
-        <a-form-item label="状态">
-          <a-select
-            v-model:value="draftQuery.status"
-            :options="[...STATUS_OPTIONS]"
-            placeholder="请选择状态"
-            allow-clear
-          />
-        </a-form-item>
-      </AppSearchForm>
+    <AppPageContainer>
+      <template #search>
+        <AppSearchForm :model="draftQuery" :loading="loading" @search="search" @reset="reset">
+          <a-form-item label="类型编码">
+            <a-input v-model:value="draftQuery.dictType" placeholder="请输入类型编码" allow-clear />
+          </a-form-item>
+          <a-form-item label="类型名称">
+            <a-input v-model:value="draftQuery.dictName" placeholder="请输入类型名称" allow-clear />
+          </a-form-item>
+          <a-form-item label="状态">
+            <a-select
+              v-model:value="draftQuery.status"
+              :options="[...STATUS_OPTIONS]"
+              placeholder="请选择状态"
+              allow-clear
+            />
+          </a-form-item>
+        </AppSearchForm>
+      </template>
 
-      <a-space class="toolbar">
+      <template #actions>
         <a-button v-perm="'system:dict:create'" type="primary" @click="formModalRef?.show('create')">
           <template #icon><PlusOutlined /></template>
           新增
         </a-button>
-      </a-space>
+      </template>
 
       <a-table
         row-key="id"
@@ -171,14 +174,8 @@ function goItems(record: DictTypeVO): void {
           </template>
         </template>
       </a-table>
-    </a-card>
+    </AppPageContainer>
 
     <DictTypeFormModal ref="formModalRef" @saved="reload" />
   </div>
 </template>
-
-<style scoped>
-.toolbar {
-  margin-bottom: 16px;
-}
-</style>
