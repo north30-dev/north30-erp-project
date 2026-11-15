@@ -1,7 +1,11 @@
 package me.north30.erp.system.dept.service.impl;
 
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.exception.BusinessException;
@@ -33,6 +37,17 @@ public class SysDeptDomainServiceImpl implements SysDeptDomainService {
     @Transactional(readOnly = true)
     public SysDept getById(Long id) {
         return sysDeptMapper.selectById(id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, String> getDeptNameMap(Collection<Long> deptIds) {
+        // 返回可变 HashMap：调用方可能以 dept_id=null 做映射取值，不可变 Map.get(null) 会抛 NPE
+        if (deptIds == null || deptIds.isEmpty()) {
+            return new HashMap<>();
+        }
+        return sysDeptMapper.selectByIds(deptIds).stream()
+            .collect(Collectors.toMap(SysDept::getId, SysDept::getDeptName, (a, b) -> a, HashMap::new));
     }
 
     @Override

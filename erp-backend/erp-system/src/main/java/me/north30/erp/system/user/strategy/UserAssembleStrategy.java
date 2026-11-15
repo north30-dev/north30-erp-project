@@ -1,15 +1,12 @@
 package me.north30.erp.system.user.strategy;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.util.DateTimeFormatUtil;
 import me.north30.erp.common.util.DesensitizeUtil;
-import me.north30.erp.system.dept.entity.SysDept;
-import me.north30.erp.system.dept.mapper.SysDeptMapper;
-import me.north30.erp.system.role.entity.SysRole;
+import me.north30.erp.system.dept.service.SysDeptDomainService;
 import me.north30.erp.system.role.entity.SysUserRole;
-import me.north30.erp.system.role.mapper.SysRoleMapper;
-import me.north30.erp.system.role.mapper.SysUserRoleMapper;
+import me.north30.erp.system.role.service.SysRoleDomainService;
+import me.north30.erp.system.role.service.SysUserRoleService;
 import me.north30.erp.system.user.converter.UserConverter;
 import me.north30.erp.system.user.entity.SysUser;
 import me.north30.erp.system.user.vo.UserVO;
@@ -26,7 +23,8 @@ import java.util.stream.Collectors;
 
 /**
  * 用户装配策略：VO 批量装配与 CSV 导出。
- * <p>IO 类策略（@Component），组织名/角色编码取数依赖 sys_dept/sys_user_role/sys_role；
+ * <p>IO 类策略（@Component），组织名/角色编码取数跨域走 dept/role 域 Service
+ * （SysDeptDomainService/SysUserRoleService/SysRoleDomainService）；
  * 全程一次 IN 查询后内存关联，避免循环查库（N+1）。</p>
  */
 @Component
@@ -36,9 +34,9 @@ public class UserAssembleStrategy {
     /** CSV 导出 UTF-8 BOM（Excel 兼容） */
     private static final String CSV_BOM = "\uFEFF";
 
-    private final SysDeptMapper sysDeptMapper;
-    private final SysUserRoleMapper sysUserRoleMapper;
-    private final SysRoleMapper sysRoleMapper;
+    private final SysDeptDomainService sysDeptDomainService;
+    private final SysUserRoleService sysUserRoleService;
+    private final SysRoleDomainService sysRoleDomainService;
     private final UserConverter userConverter;
 
     /**
@@ -71,8 +69,7 @@ public class UserAssembleStrategy {
         if (roleIds == null || roleIds.isEmpty()) {
             return Map.of();
         }
-        return sysRoleMapper.selectByIds(roleIds).stream()
-            .collect(Collectors.toMap(SysRole::getId, SysRole::getRoleName));
+        return sysRoleDomainService.getRoleNameMap(roleIds);
     }
 
     /**
@@ -121,8 +118,7 @@ public class UserAssembleStrategy {
             // 用 HashMap 而非 Map.of()：用户 dept_id 可为 null，不可变 Map.get(null) 会抛 NPE
             return new HashMap<>();
         }
-        return sysDeptMapper.selectByIds(deptIds).stream()
-            .collect(Collectors.toMap(SysDept::getId, SysDept::getDeptName));
+        return sysDeptDomainService.getDeptNameMap(deptIds);
     }
 
     /**
@@ -135,8 +131,7 @@ public class UserAssembleStrategy {
         if (userIds.isEmpty()) {
             return Map.of();
         }
-        List<SysUserRole> userRoles = sysUserRoleMapper.selectList(
-            new LambdaQueryWrapper<SysUserRole>().in(SysUserRole::getUserId, userIds));
+        List<SysUserRole> userRoles = sysUserRoleService.listByUserIds(userIds);
         if (userRoles.isEmpty()) {
             return Map.of();
         }

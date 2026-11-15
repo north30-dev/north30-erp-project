@@ -9,8 +9,6 @@ import me.north30.erp.common.result.PageResult;
 import me.north30.erp.system.dept.entity.SysDept;
 import me.north30.erp.system.dept.mapper.SysDeptMapper;
 import me.north30.erp.system.dept.service.SysDeptDomainService;
-import me.north30.erp.system.role.mapper.SysRoleMapper;
-import me.north30.erp.system.role.mapper.SysUserRoleMapper;
 import me.north30.erp.system.role.service.SysRoleDomainService;
 import me.north30.erp.system.role.service.SysUserRoleService;
 import me.north30.erp.system.user.converter.UserConverter;
@@ -54,7 +52,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -70,20 +70,15 @@ import static org.mockito.Mockito.when;
 
 /**
  * {@link SysUserApplicationServiceImpl} 纯 Mockito 单元测试：不连 DB/Redis。
- * 查询/装配/角色关联策略用真实实例（内部 Mapper mock，保持 Wrapper 断言能力），
- * 会话清理策略与 SysUserDomainService 存在性校验用 mock。
+ * 查询策略用真实实例（内部 Mapper mock，保持 Wrapper 断言能力），装配/角色关联策略
+ * 用真实实例（跨域取数走 dept/role 域 Service mock），会话清理策略与
+ * SysUserDomainService 存在性校验用 mock。
  */
 @ExtendWith(MockitoExtension.class)
 class SysUserApplicationServiceImplTest {
 
     @Mock
     private SysUserMapper sysUserMapper;
-
-    @Mock
-    private SysUserRoleMapper sysUserRoleMapper;
-
-    @Mock
-    private SysRoleMapper sysRoleMapper;
 
     @Mock
     private SysDeptMapper sysDeptMapper;
@@ -122,11 +117,11 @@ class SysUserApplicationServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        // 查询/装配策略用真实实例 + mock Mapper（保持 Wrapper 断言能力）；
-        // 角色关联策略构造依赖 role 域 Service mock；部门存在性/取数走部门域 Service mock
+        // 查询策略用真实实例 + mock Mapper（保持 Wrapper 断言能力）；
+        // 装配/角色关联策略用真实实例，跨域取数走 dept/role 域 Service mock
         UserQueryStrategy userQueryStrategy = new UserQueryStrategy(sysDeptMapper);
         UserAssembleStrategy userAssembleStrategy =
-            new UserAssembleStrategy(sysDeptMapper, sysUserRoleMapper, sysRoleMapper, userConverter);
+            new UserAssembleStrategy(sysDeptDomainService, sysUserRoleService, sysRoleDomainService, userConverter);
         UserRoleStrategy userRoleStrategy =
             new UserRoleStrategy(sysRoleDomainService, sysUserRoleService);
         UserRoleGrantStrategy userRoleGrantStrategy =
@@ -148,10 +143,10 @@ class SysUserApplicationServiceImplTest {
                 page.setTotal(1);
                 return page;
             });
-            when(sysDeptMapper.selectByIds(any())).thenReturn(List.of(UserTestFactory.sysDept()));
-            when(sysUserRoleMapper.selectList(any()))
+            when(sysDeptDomainService.getDeptNameMap(any())).thenReturn(new HashMap<>(Map.of(3L, "生产部")));
+            when(sysUserRoleService.listByUserIds(any()))
                 .thenReturn(List.of(UserTestFactory.sysUserRole(10L, 20L)));
-            when(sysRoleMapper.selectByIds(any())).thenReturn(List.of(UserTestFactory.sysRole(20L, "keeper")));
+            when(sysRoleDomainService.getRoleNameMap(any())).thenReturn(new HashMap<>(Map.of(20L, "角色20")));
             UserQueryDTO query = new UserQueryDTO(null, null, null, null, null, null, null);
 
             // When
@@ -241,7 +236,7 @@ class SysUserApplicationServiceImplTest {
                 page.setTotal(1);
                 return page;
             });
-            when(sysUserRoleMapper.selectList(any())).thenReturn(List.of());
+            when(sysUserRoleService.listByUserIds(any())).thenReturn(List.of());
             UserQueryDTO query = new UserQueryDTO(null, null, null, 1L, null, 1, 10);
 
             // When
@@ -251,7 +246,8 @@ class SysUserApplicationServiceImplTest {
             assertThat(result.list()).hasSize(1);
             // 组织及下级一次全量查询后内存过滤：无循环查库（仅 1 次 selectList）
             verify(sysDeptMapper, never()).selectByIds(any());
-            verify(sysRoleMapper, never()).selectByIds(any());
+            verify(sysDeptDomainService, never()).getDeptNameMap(any());
+            verify(sysRoleDomainService, never()).getRoleNameMap(any());
             verify(sysDeptMapper, times(1)).selectList(any());
             verify(sysUserMapper).selectPage(ArgumentMatchers.<Page<SysUser>>any(), argThat(wrapper -> {
                 LambdaQueryWrapper<SysUser> condition = (LambdaQueryWrapper<SysUser>) wrapper;
@@ -280,7 +276,7 @@ class SysUserApplicationServiceImplTest {
             // Then
             assertThat(result.total()).isZero();
             assertThat(result.list()).isEmpty();
-            verifyNoInteractions(sysDeptMapper, sysUserRoleMapper, sysRoleMapper);
+            verifyNoInteractions(sysDeptDomainService, sysUserRoleService, sysRoleDomainService);
         }
     }
 
@@ -292,9 +288,9 @@ class SysUserApplicationServiceImplTest {
             // Given
             when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
             when(sysUserRoleService.listRoleIdsByUserId(10L)).thenReturn(List.of(20L, 21L));
-            when(sysRoleMapper.selectByIds(any())).thenReturn(List.of(
-                UserTestFactory.sysRole(20L, "admin"),
-                UserTestFactory.sysRole(21L, "operator")));
+            when(sysRoleDomainService.getRoleNameMap(any())).thenReturn(new HashMap<>(Map.of(
+                20L, "角色20",
+                21L, "角色21")));
             when(sysDeptDomainService.getById(3L)).thenReturn(UserTestFactory.sysDept());
 
             // When
@@ -338,7 +334,7 @@ class SysUserApplicationServiceImplTest {
             assertThat(vo.roleIds()).isEmpty();
             assertThat(vo.roles()).isEmpty();
             assertThat(vo.warehouseIds()).isNull();
-            verifyNoInteractions(sysDeptDomainService, sysRoleMapper);
+            verifyNoInteractions(sysDeptDomainService, sysRoleDomainService);
         }
 
         @Test
@@ -1009,9 +1005,9 @@ class SysUserApplicationServiceImplTest {
             second.setIsAdmin(1);
             second.setLastLoginTime(null);
             when(sysUserMapper.selectList(any())).thenReturn(List.of(UserTestFactory.sysUser(), second));
-            when(sysDeptMapper.selectByIds(any())).thenReturn(List.of(UserTestFactory.sysDept()));
-            when(sysUserRoleMapper.selectList(any())).thenReturn(List.of(UserTestFactory.sysUserRole(10L, 5L)));
-            when(sysRoleMapper.selectByIds(any())).thenReturn(List.of(UserTestFactory.sysRole(5L, "keeper")));
+            when(sysDeptDomainService.getDeptNameMap(any())).thenReturn(new HashMap<>(Map.of(3L, "生产部")));
+            when(sysUserRoleService.listByUserIds(any())).thenReturn(List.of(UserTestFactory.sysUserRole(10L, 5L)));
+            when(sysRoleDomainService.getRoleNameMap(any())).thenReturn(new HashMap<>(Map.of(5L, "角色5")));
             UserQueryDTO query = new UserQueryDTO(null, null, null, null, null, null, null);
 
             // When
@@ -1039,7 +1035,7 @@ class SysUserApplicationServiceImplTest {
             String csv = new String(bytes, StandardCharsets.UTF_8);
             assertThat(csv).isEqualTo("\uFEFF"
                 + "用户ID,用户编号,用户名,姓名,联系电话,邮箱,所属组织,角色,状态,是否管理员,最后登录时间,创建时间\r\n");
-            verifyNoInteractions(sysDeptMapper, sysUserRoleMapper, sysRoleMapper);
+            verifyNoInteractions(sysDeptDomainService, sysUserRoleService, sysRoleDomainService);
         }
     }
 }

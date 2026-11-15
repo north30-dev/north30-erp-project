@@ -1,6 +1,8 @@
 package me.north30.erp.system.dept.service;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import me.north30.erp.system.dept.entity.SysDept;
 
@@ -16,6 +18,15 @@ public interface SysDeptDomainService {
      * @return 组织部门实体
      */
     SysDept getById(Long id);
+
+    /**
+     * 按组织 ID 集合批量加载组织名称映射（单次 IN 查询，装配用）。
+     * <p>返回可变 HashMap：调用方可能以 dept_id=null 做映射取值，不可变 Map.get(null) 会抛 NPE。</p>
+     *
+     * @param deptIds 组织 ID 集合
+     * @return 组织 ID 映射组织名称的映射
+     */
+    Map<Long, String> getDeptNameMap(Collection<Long> deptIds);
 
     /**
      * 校验组织存在，不存在抛 18024（@TableLogic 自动过滤已删除行）。
