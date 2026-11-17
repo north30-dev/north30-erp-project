@@ -156,7 +156,10 @@ public enum SystemErrorCode implements ErrorCode {
     REQUEST_TOO_FREQUENT(18042, "操作过于频繁，请稍后重试"),
 
     /** 字典类型已禁用（类型级状态守卫，禁用类型的选项/校验一律不可用） */
-    DICT_TYPE_DISABLED(18043, "字典类型已禁用");
+    DICT_TYPE_DISABLED(18043, "字典类型已禁用"),
+
+    /** 编号序列流水已用尽（原子发号达到流水上限仍取号；业务域可按自身语义转译，如物料域 11014） */
+    SEQUENCE_EXHAUSTED(18044, "编号流水已用尽");
 
     /** 业务状态码 */
     private final int code;

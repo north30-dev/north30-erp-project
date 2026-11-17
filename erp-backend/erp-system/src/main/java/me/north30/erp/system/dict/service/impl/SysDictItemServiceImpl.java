@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.exception.CommonErrorCode;
+import me.north30.erp.common.spi.DictValidator;
+import me.north30.erp.common.spi.DictOptionsResolver;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.common.util.QueryGuardUtil;
 import me.north30.erp.common.util.UpdateGuardUtil;
@@ -32,7 +34,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * 字典项服务实现（A 类单层：字典项侧 4 个管理端用例 + 守卫）。
@@ -42,7 +46,7 @@ import java.util.Objects;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class SysDictItemServiceImpl implements SysDictItemService {
+public class SysDictItemServiceImpl implements SysDictItemService, DictValidator, DictOptionsResolver {
 
     /** 默认语言（E-03 预留，本期仅 zh-CN） */
     private static final String DEFAULT_LANG = "zh-CN";
@@ -204,5 +208,30 @@ public class SysDictItemServiceImpl implements SysDictItemService {
             .eq(SysDictItem::getStatus, 1));
         QueryGuardUtil.requireCountPositive(count, CommonErrorCode.ATTACHMENT_BIZ_TYPE_INVALID,
             "业务类型不合法：" + itemValue);
+    }
+
+    /**
+     * 字典项启用校验（{@link DictValidator} SPI，缺省语言 zh-CN）。
+     * <p>供跨模块业务域（如 base 物料计量单位校验）经 common 抽象调用，复用带语言的既有校验逻辑。</p>
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public void requireEnabledItem(String dictType, String itemValue) {
+        requireEnabledItem(dictType, itemValue, null);
+    }
+
+    /**
+     * 加载指定字典类型的启用项 value→label 映射（common {@link DictOptionsResolver} SPI 适配）：
+     * 复用 {@link #listEnabledOptions(String, String)}（zh-CN），一次查询批量返回，
+     * 供业务模块导出/展示场景渲染标签，消除展示文案硬编码。
+     *
+     * @param dictType 字典类型编码（sys_dict_type.dict_type）
+     * @return 启用项 value → label 映射（无启用项时返回空映射）
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, String> loadItemLabels(String dictType) {
+        return listEnabledOptions(dictType, DEFAULT_LANG).stream()
+            .collect(Collectors.toMap(DictItemOptionVO::itemValue, DictItemOptionVO::itemLabel, (a, b) -> a));
     }
 }
