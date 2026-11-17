@@ -51,6 +51,11 @@
             <groupId>org.mapstruct</groupId>
             <artifactId>mapstruct</artifactId>
         </dependency>
+        <!-- Hutool 核心：CSV 读写封装（CsvWriter/CsvReader，版本由父工程 hutool-bom 管控） -->
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-core</artifactId>
+        </dependency>
         <!-- 持久层异常语义：UpdateGuardUtil 抛 OptimisticLockingFailureException（409 乐观锁冲突） -->
         <dependency>
             <groupId>org.springframework</groupId>
