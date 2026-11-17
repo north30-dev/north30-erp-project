@@ -56,10 +56,21 @@ public class UserAccessServiceImpl implements UserAccessService {
         // 用户关联的角色（一次查出），仅保留启用角色
         List<SysRole> roles = accessAssembleStrategy.loadEnabledRoles(userId);
         List<String> roleCodes = roles.stream().map(SysRole::getRoleCode).toList();
-        // 权限点：admin 全量；普通用户按角色并集（role_menu → menu）
-        List<String> perms = List.copyOf(accessAssembleStrategy.loadPerms(user.isAdmin(), roles));
+        // 权限点：超管（is_admin 或持 ADMIN 角色）全量；普通用户按角色并集（role_menu → menu）
+        List<String> perms = List.copyOf(accessAssembleStrategy.loadPerms(isSuperAdmin(userId), roles));
         return new UserSecurityData(userId, user.getStatus(), user.getIsAdmin(), roleCodes,
             perms, accessAssembleStrategy.resolveWidestDataScope(roles));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isSuperAdmin(Long userId) {
+        SysUser user = sysUserDomainService.getById(userId);
+        if (user != null && Integer.valueOf(1).equals(user.getIsAdmin())) {
+            return true;
+        }
+        return accessAssembleStrategy.loadEnabledRoles(userId).stream()
+            .anyMatch(role -> SysRole.ROLE_CODE_ADMIN.equals(role.getRoleCode()));
     }
 
     @Override
@@ -109,8 +120,8 @@ public class UserAccessServiceImpl implements UserAccessService {
     public List<MenuTreeVO> listMenuTree(Long userId, boolean isAdmin) {
         List<SysMenu> menus;
         if (isAdmin) {
-            // admin：全量启用菜单（过滤按钮），内存组树
-            menus = sysMenuDomainService.listEnabled().stream()
+            // 超管：全量菜单（含停用，自锁兜底 08 文档 2.3），过滤按钮后内存组树
+            menus = sysMenuDomainService.listAll().stream()
                 .filter(menu -> menu.getMenuType() != null && menu.getMenuType() != 3)
                 .toList();
         } else {

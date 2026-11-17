@@ -16,12 +16,14 @@ import me.north30.erp.system.common.vo.MutationVO;
 import me.north30.erp.system.dict.converter.DictConverter;
 import me.north30.erp.system.dict.dto.DictTypeCreateDTO;
 import me.north30.erp.system.dict.dto.DictTypeQueryDTO;
+import me.north30.erp.system.dict.dto.DictTypeStatusDTO;
 import me.north30.erp.system.dict.dto.DictTypeUpdateDTO;
 import me.north30.erp.system.dict.entity.SysDictItem;
 import me.north30.erp.system.dict.entity.SysDictType;
 import me.north30.erp.system.dict.mapper.SysDictItemMapper;
 import me.north30.erp.system.dict.mapper.SysDictTypeMapper;
 import me.north30.erp.system.dict.service.SysDictTypeService;
+import me.north30.erp.system.dict.vo.DictTypeStatusVO;
 import me.north30.erp.system.dict.vo.DictTypeVO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -97,6 +99,20 @@ public class SysDictTypeServiceImpl implements SysDictTypeService {
             "字典类型 " + dictType.getDictType() + " 下存在 " + itemCount + " 个字典项，不可删除");
         sysDictTypeMapper.deleteById(id);
         return new DeleteResultVO(id, DELETED);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public DictTypeStatusVO changeStatusType(Long id, DictTypeStatusDTO dto) {
+        SysDictType dictType = requireById(id);
+        // 状态值域守卫（10001）收敛于实体 changeStatus，字典类型无内置保护
+        dictType.changeStatus(dto.status());
+        SysDictType patch = new SysDictType();
+        patch.setId(id);
+        patch.setStatus(dictType.getStatus());
+        patch.setVersion(dto.version());
+        UpdateGuardUtil.checkOptimisticLockConflict(sysDictTypeMapper.updateById(patch));
+        return new DictTypeStatusVO(dictType.getStatus());
     }
 
     @Override

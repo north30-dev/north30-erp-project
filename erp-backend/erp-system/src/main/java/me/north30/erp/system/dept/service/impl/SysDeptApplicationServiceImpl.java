@@ -6,8 +6,11 @@ import lombok.extern.slf4j.Slf4j;
 import me.north30.erp.common.util.DateTimeFormatUtil;
 import me.north30.erp.common.util.UpdateGuardUtil;
 import me.north30.erp.system.common.util.DeptTreeUtil;
+import me.north30.erp.system.common.util.SiblingSortUtil;
 import me.north30.erp.system.dept.converter.DeptConverter;
 import me.north30.erp.system.dept.dto.DeptCreateDTO;
+import me.north30.erp.system.dept.dto.DeptMoveDTO;
+import me.north30.erp.system.dept.dto.DeptStatusDTO;
 import me.north30.erp.system.dept.dto.DeptTreeQueryDTO;
 import me.north30.erp.system.dept.dto.DeptUpdateDTO;
 import me.north30.erp.system.dept.entity.SysDept;
@@ -16,6 +19,7 @@ import me.north30.erp.system.dept.service.SysDeptApplicationService;
 import me.north30.erp.system.dept.service.SysDeptDomainService;
 import me.north30.erp.system.dept.strategy.DeptTreeStrategy;
 import me.north30.erp.system.dept.vo.DeptMutationVO;
+import me.north30.erp.system.dept.vo.DeptStatusVO;
 import me.north30.erp.system.dept.vo.DeptTreeVO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -68,6 +72,10 @@ public class SysDeptApplicationServiceImpl implements SysDeptApplicationService 
             dept.applyParent(null);
         }
         dept.applyCreateDefault();
+        // 未显式指定显示顺序时取同级 max(deptSort)+10（08 文档阶段四排序统一）
+        if (dto.deptSort() == null) {
+            dept.setDeptSort(sysDeptService.nextDeptSort(dto.parentId()));
+        }
         sysDeptMapper.insert(dept);
         return new DeptMutationVO(dept.getId(), dept.getAncestors(), dept.getDeptLevel(),
             DateTimeFormatUtil.format(dept.getUpdateTime()), null);
@@ -106,4 +114,32 @@ public class SysDeptApplicationServiceImpl implements SysDeptApplicationService 
         sysDeptMapper.deleteById(id);
         return new DeptMutationVO(id, null, null, null, DELETED);
     }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public DeptStatusVO changeStatus(Long id, DeptStatusDTO dto) {
+        SysDept dept = sysDeptService.requireDept(id);
+        // 状态值域守卫（10001）收敛于实体 changeStatus，组织无内置保护
+        dept.changeStatus(dto.status());
+        SysDept patch = new SysDept();
+        patch.setId(id);
+        patch.setStatus(dept.getStatus());
+        patch.setVersion(dto.version());
+        UpdateGuardUtil.checkOptimisticLockConflict(sysDeptMapper.updateById(patch));
+        return new DeptStatusVO(dept.getStatus());
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void move(Long id, DeptMoveDTO dto) {
+        SysDept dept = sysDeptService.requireDept(id);
+        // 同级按 sort ASC, id ASC 一次查出，规范化重排 + 相邻交换，变更行逐一乐观锁落库
+        List<SysDept> siblings = sysDeptService.listSiblings(dept.getParentId());
+        List<SysDept> changed = SiblingSortUtil.moveSibling(siblings, dept,
+            "up".equals(dto.direction()), SysDept::getId, SysDept::getDeptSort, SysDept::setDeptSort);
+        for (SysDept row : changed) {
+            UpdateGuardUtil.checkOptimisticLockConflict(sysDeptMapper.updateById(row));
+        }
+    }
+
 }

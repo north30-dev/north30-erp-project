@@ -5,16 +5,19 @@ import me.north30.erp.system.role.dto.RoleAssignMenuDTO;
 import me.north30.erp.system.role.dto.RoleCreateDTO;
 import me.north30.erp.system.role.dto.RoleDataScopeSaveDTO;
 import me.north30.erp.system.role.dto.RolePageQueryDTO;
+import me.north30.erp.system.role.dto.RoleStatusDTO;
 import me.north30.erp.system.role.dto.RoleUpdateDTO;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.role.vo.RoleCreatedVO;
 import me.north30.erp.system.role.vo.RoleDataScopeVO;
 import me.north30.erp.system.role.vo.RoleMenuAssignedVO;
+import me.north30.erp.system.role.vo.RoleMenuIdsVO;
+import me.north30.erp.system.role.vo.RoleStatusVO;
 import me.north30.erp.system.role.vo.RoleUpdatedVO;
 import me.north30.erp.system.role.vo.RoleVO;
 
 /**
- * 角色管理服务接口（接口文档 5.2，7 个接口）。
+ * 角色管理服务接口（接口文档 5.2，8 个接口）。
  */
 public interface SysRoleApplicationService {
 
@@ -41,6 +44,15 @@ public interface SysRoleApplicationService {
     RoleUpdatedVO update(Long id, RoleUpdateDTO dto);
 
     /**
+     * 变更角色状态（内置角色不可停用，18017；乐观锁更新）。
+     *
+     * @param id  角色 ID
+     * @param dto 状态变更参数
+     * @return RoleStatusVO 状态变更响应
+     */
+    RoleStatusVO changeStatus(Long id, RoleStatusDTO dto);
+
+    /**
      * 删除角色（逻辑删除；内置角色、已分配用户角色不可删）。
      * @param id 角色 ID
      * @return 删除结果 VO
@@ -54,6 +66,13 @@ public interface SysRoleApplicationService {
      * @return 角色菜单分配 VO
      */
     RoleMenuAssignedVO assignMenus(Long id, RoleAssignMenuDTO dto);
+
+    /**
+     * 查询角色已分配菜单权限点 ID 集合（分配菜单弹窗回显用）。
+     * @param id 角色 ID
+     * @return 角色已分配菜单 ID VO
+     */
+    RoleMenuIdsVO listRoleMenuIds(Long id);
 
     /**
      * 配置角色数据范围（全删全插 sys_role_data_scope）。

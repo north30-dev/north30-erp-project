@@ -2,6 +2,7 @@ package me.north30.erp.system.unit.config;
 
 import me.north30.erp.system.config.dto.ConfigCreateDTO;
 import me.north30.erp.system.config.dto.ConfigQueryDTO;
+import me.north30.erp.system.config.dto.ConfigStatusDTO;
 import me.north30.erp.system.config.dto.ConfigUpdateDTO;
 import me.north30.erp.system.config.entity.SysConfig;
 
@@ -41,11 +42,11 @@ public final class ConfigTestFactory {
     }
 
     /**
-     * 修改系统参数请求 DTO。
+     * 修改系统参数请求 DTO（状态变更统一走 changeStatus，update 不含状态字段）。
      */
-    public static ConfigUpdateDTO updateDTO(String configValue, String configName, Integer status,
+    public static ConfigUpdateDTO updateDTO(String configValue, String configName,
                                             String remark, Integer version) {
-        return new ConfigUpdateDTO(configValue, configName, status, remark, version);
+        return new ConfigUpdateDTO(configValue, configName, remark, version);
     }
 
     /**
@@ -54,5 +55,12 @@ public final class ConfigTestFactory {
     public static ConfigQueryDTO queryDTO(String configKey, String configName, String configGroup,
                                           Integer status, Integer pageNum, Integer pageSize) {
         return new ConfigQueryDTO(configKey, configName, configGroup, status, pageNum, pageSize);
+    }
+
+    /**
+     * 状态变更请求 DTO。
+     */
+    public static ConfigStatusDTO statusDTO(Integer status, Integer version) {
+        return new ConfigStatusDTO(status, version);
     }
 }

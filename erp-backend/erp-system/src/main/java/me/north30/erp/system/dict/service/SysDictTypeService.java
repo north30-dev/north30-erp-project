@@ -5,8 +5,10 @@ import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.common.vo.MutationVO;
 import me.north30.erp.system.dict.dto.DictTypeCreateDTO;
 import me.north30.erp.system.dict.dto.DictTypeQueryDTO;
+import me.north30.erp.system.dict.dto.DictTypeStatusDTO;
 import me.north30.erp.system.dict.dto.DictTypeUpdateDTO;
 import me.north30.erp.system.dict.entity.SysDictType;
+import me.north30.erp.system.dict.vo.DictTypeStatusVO;
 import me.north30.erp.system.dict.vo.DictTypeVO;
 
 /**
@@ -47,6 +49,15 @@ public interface SysDictTypeService {
      * @return 删除结果
      */
     DeleteResultVO deleteType(Long id);
+
+    /**
+     * 变更字典类型状态（启用/停用，08 文档阶段四状态开关统一）。
+     *
+     * @param id  字典类型 ID
+     * @param dto 状态变更参数
+     * @return 状态变更结果
+     */
+    DictTypeStatusVO changeStatusType(Long id, DictTypeStatusDTO dto);
 
     /**
      * 校验字典类型编码可用（未被占用），已存在抛 18029 业务异常。

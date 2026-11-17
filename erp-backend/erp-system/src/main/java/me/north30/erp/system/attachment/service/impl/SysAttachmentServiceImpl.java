@@ -42,6 +42,8 @@ public class SysAttachmentServiceImpl implements SysAttachmentService {
     public AttachmentVO upload(MultipartFile file, AttachmentBizQueryDTO dto) {
         fileValidStrategy.requireFileNotEmpty(file);
         String bizType = dto.bizTypeNormalized();
+        // 业务类型须在字典 attachment_biz_type 词表内（10404），且必须先于写盘校验，避免失败留下孤儿文件
+        fileValidStrategy.validateBizType(bizType);
         String fileType = fileStorageStrategy.resolveFileType(file.getOriginalFilename());
         // 大小/数量上限走 sys_config 运行时参数，校验逻辑收敛在 FileValidStrategy（兜底 20MB/20 个）
         fileValidStrategy.validateFileSize(file);

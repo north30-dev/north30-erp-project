@@ -6,13 +6,21 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
+import me.north30.erp.common.audit.AuditLog;
+import me.north30.erp.common.audit.AuditModuleEnum;
+import me.north30.erp.common.audit.OperateTypeEnum;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.common.result.Result;
 import me.north30.erp.system.dict.dto.DictItemCreateDTO;
+import me.north30.erp.system.dict.dto.DictItemMoveDTO;
 import me.north30.erp.system.dict.dto.DictItemQueryDTO;
+import me.north30.erp.system.dict.dto.DictItemStatusDTO;
 import me.north30.erp.system.dict.dto.DictItemUpdateDTO;
 import me.north30.erp.system.dict.service.SysDictItemService;
+import me.north30.erp.system.dict.vo.DictItemOptionVO;
+import me.north30.erp.system.dict.vo.DictItemStatusVO;
 import me.north30.erp.system.dict.vo.DictItemVO;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.common.vo.MutationVO;
@@ -25,7 +33,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 /**
  * 数据字典项管理接口（/api/system/dict-items，接口文档 5.5.5-5.5.8，37-40 号接口）。
@@ -58,6 +69,7 @@ public class SysDictItemController {
      */
     @PostMapping
     @PreAuthorize("hasAuthority('system:dict:create')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.CREATE)
     @Operation(summary = "新增字典项", description = "权限点 system:dict:create")
     @ApiResponse(responseCode = "422", description = "业务校验失败（18028 字典类型不存在、18031 字典项已存在）",
         content = @Content(mediaType = "application/json",
@@ -71,6 +83,7 @@ public class SysDictItemController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('system:dict:update')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     @Operation(summary = "修改字典项", description = "权限点 system:dict:update")
     @ApiResponse(responseCode = "422", description = "业务校验失败（10004 字典项不存在、10601 乐观锁冲突）",
         content = @Content(mediaType = "application/json",
@@ -84,11 +97,54 @@ public class SysDictItemController {
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('system:dict:delete')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.DELETE)
     @Operation(summary = "删除字典项", description = "权限点 system:dict:delete")
     @ApiResponse(responseCode = "422", description = "业务校验失败（10004 字典项不存在）",
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<DeleteResultVO> delete(@PathVariable Long id) {
         return Result.success(sysDictItemService.deleteItem(id));
+    }
+
+    /**
+     * 变更字典项状态（启用/停用，08 文档阶段四状态开关统一）。
+     */
+    @PostMapping("/{id}/status")
+    @PreAuthorize("hasAuthority('system:dict:update')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
+    @Operation(summary = "变更字典项状态", description = "权限点 system:dict:update；乐观锁冲突返回 409/10601")
+    @ApiResponse(responseCode = "422", description = "业务校验失败（10004 字典项不存在）",
+        content = @Content(mediaType = "application/json",
+            examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
+    public Result<DictItemStatusVO> changeStatus(@PathVariable Long id, @Valid @RequestBody DictItemStatusDTO dto) {
+        return Result.success(sysDictItemService.changeStatusItem(id, dto));
+    }
+
+    /**
+     * 字典项上移/下移（08 文档阶段四排序统一）。
+     */
+    @PostMapping("/{id}/move")
+    @PreAuthorize("hasAuthority('system:dict:update')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
+    @Operation(summary = "字典项上移/下移", description = "权限点 system:dict:update；同 dict_type+lang 分组内规范化重排（10,20,30…）后相邻交换，乐观锁冲突返回 409/10601，已处于顶部/底部返回 422/10001")
+    @ApiResponse(responseCode = "422", description = "业务校验失败（10004 字典项不存在/10001 无法移动）",
+        content = @Content(mediaType = "application/json",
+            examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
+    public Result<Void> move(@PathVariable Long id, @Valid @RequestBody DictItemMoveDTO dto) {
+        sysDictItemService.moveItem(id, dto);
+        return Result.success();
+    }
+
+    /**
+     * 字典项启用项下拉选项（仅 status=1，按显示顺序排序；类型须存在且启用；
+     * 无权限点，登录即可访问，供附件业务类型等受控词表下拉消费）。
+     */
+    @GetMapping("/options")
+    @Operation(summary = "字典项下拉选项", description = "仅返回启用项（status=1），按 itemSort,id 升序；"
+        + "dictType 必填（缺失/空白返回 400），类型不存在返回 422/18028，类型已禁用返回 422/18043；lang 缺省 zh-CN")
+    public Result<List<DictItemOptionVO>> options(
+            @RequestParam @NotBlank(message = "字典类型编码不能为空") String dictType,
+            @RequestParam(required = false) String lang) {
+        return Result.success(sysDictItemService.listEnabledOptions(dictType, lang));
     }
 }

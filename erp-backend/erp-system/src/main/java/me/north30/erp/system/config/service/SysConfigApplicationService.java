@@ -3,7 +3,9 @@ package me.north30.erp.system.config.service;
 import me.north30.erp.common.result.PageResult;
 import me.north30.erp.system.config.dto.ConfigCreateDTO;
 import me.north30.erp.system.config.dto.ConfigQueryDTO;
+import me.north30.erp.system.config.dto.ConfigStatusDTO;
 import me.north30.erp.system.config.dto.ConfigUpdateDTO;
+import me.north30.erp.system.config.vo.ConfigStatusVO;
 import me.north30.erp.system.config.vo.ConfigUpdateVO;
 import me.north30.erp.system.config.vo.ConfigVO;
 import me.north30.erp.system.common.vo.DeleteResultVO;
@@ -34,4 +36,9 @@ public interface SysConfigApplicationService {
      * 删除系统参数（逻辑删除）：内置参数（is_system=1）不可删。
      */
     DeleteResultVO delete(Long id);
+
+    /**
+     * 变更系统参数状态（启用/停用，08 文档阶段四状态开关统一）：内置参数（is_system=1）不可停用。
+     */
+    ConfigStatusVO changeStatus(Long id, ConfigStatusDTO dto);
 }

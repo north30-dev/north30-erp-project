@@ -41,18 +41,18 @@ public final class MenuTestFactory {
     }
 
     /**
-     * 目录型菜单实体（menuType=1，无组件与权限点）。
+     * 目录型菜单实体（menuType=1，无组件与权限点；path 由 id 派生以保证格式合法）。
      */
     public static SysMenu dirMenu(Long id, String menuName, Long parentId, Integer menuSort) {
-        return menu(id, menuName, parentId, TYPE_DIR, "/" + menuName, null, null, menuSort);
+        return menu(id, menuName, parentId, TYPE_DIR, "/dir-" + id, null, null, menuSort);
     }
 
     /**
-     * 页面型菜单实体（menuType=2，含组件与权限点）。
+     * 页面型菜单实体（menuType=2，含组件与权限点；path 由 id 派生以保证格式合法）。
      */
     public static SysMenu pageMenu(Long id, String menuName, Long parentId, String component,
                                    String perms, Integer menuSort) {
-        return menu(id, menuName, parentId, TYPE_MENU, "/" + menuName, component, perms, menuSort);
+        return menu(id, menuName, parentId, TYPE_MENU, "/page-" + id, component, perms, menuSort);
     }
 
     /**
@@ -85,11 +85,11 @@ public final class MenuTestFactory {
     }
 
     /**
-     * 修改菜单请求 DTO（全字段，icon/visible/status/remark 固定为 null 表示不修改）。
+     * 修改菜单请求 DTO（全字段，icon/visible/remark 固定为 null 表示不修改，状态变更走 changeStatus）。
      */
     public static MenuUpdateDTO updateDTO(Integer version, String menuName, Long parentId, Integer menuType,
                                           String path, String component, String perms, Integer menuSort) {
-        return new MenuUpdateDTO(menuName, parentId, menuType, path, component, perms, null, menuSort, null, null, null, version);
+        return new MenuUpdateDTO(menuName, parentId, menuType, path, component, perms, null, menuSort, null, null, version);
     }
 
     /**

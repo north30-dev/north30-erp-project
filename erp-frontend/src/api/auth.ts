@@ -1,4 +1,4 @@
-import { get, post } from '../utils/request'
+import { get, post, put } from '../utils/request'
 import type {
   CaptchaVO,
   ChangePasswordDTO,
@@ -44,5 +44,5 @@ export function getCurrentUserPerms(): Promise<UserPermsVO> {
 }
 
 export function changePassword(data: ChangePasswordDTO): Promise<ChangePasswordVO> {
-  return post<ChangePasswordVO>('/auth/password', data).then((r) => r.data)
+  return put<ChangePasswordVO>('/auth/password', data).then((r) => r.data)
 }

@@ -12,7 +12,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 角色服务实现。
@@ -42,6 +45,17 @@ public class SysRoleDomainServiceImpl implements SysRoleDomainService {
             return List.of();
         }
         return sysRoleMapper.selectByIds(ids);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, String> getRoleNameMap(Collection<Long> roleIds) {
+        // 返回可变 HashMap：调用方可能以 null key 做映射取值，不可变 Map.get(null) 会抛 NPE
+        if (roleIds == null || roleIds.isEmpty()) {
+            return new HashMap<>();
+        }
+        return sysRoleMapper.selectByIds(roleIds).stream()
+            .collect(Collectors.toMap(SysRole::getId, SysRole::getRoleName, (a, b) -> a, HashMap::new));
     }
 
     @Override

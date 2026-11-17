@@ -1,8 +1,10 @@
 # system 模块分层校验收敛方案
 
-> **状态：方案定稿（2026-10-09），待执行。**
+> **状态：方案定稿（2026-10-09），主体已执行。**
 > 背景：四个 Manage 实现（user/role/menu/dept）中仍存在私有校验方法与内联事实校验；user 域存在跨域注入 `SysDeptMapper` 的硬规则违规；部分守卫绕过本域 Service 内联重写。
 > 目标：ManagementService 收敛为**纯业务编排层**（零私有校验方法、零内联事实校验），每类校验有唯一归属。
+>
+> **收敛登记（2026-11-15）**：`UserAssembleStrategy` 撤销全部跨域 Mapper 直插（SysDeptMapper/SysUserRoleMapper/SysRoleMapper），改走 dept/role 域 Service 最小接口——`SysDeptDomainService.getDeptNameMap`、`SysRoleDomainService.getRoleNameMap`、`SysUserRoleService.listByUserIds`（新增批量方法）。至此 **user 域代码不允许出现任何其他域 Mapper**（含关联表 sys_user_role，一律走 role 域 Service），铁律从严：user 域策略/编排层跨域取数只剩 Service 接口一种途径。两个名称映射方法返回可变 HashMap——调用方可能以 null key 做映射取值（dept_id 可空），不可变 Map.get(null) 会抛 NPE。
 
 ## 一、分层校验归属原则（四分法）
 

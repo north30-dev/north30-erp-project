@@ -31,6 +31,12 @@ public interface SysUserDomainService {
     SysUser requireUser(Long id);
 
     /**
+     * 校验操作目标非当前登录用户本人，是本人抛 18041（自我操作守卫）。
+     * @param id 目标用户 ID
+     */
+    void requireNotSelf(Long id);
+
+    /**
      * 校验用户名可用（全局唯一），已存在抛 18006。
      * @param username 用户名
      */

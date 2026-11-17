@@ -47,6 +47,16 @@ public class SysUserRoleServiceImpl implements SysUserRoleService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<SysUserRole> listByUserIds(Collection<Long> userIds) {
+        if (CollectionUtils.isEmpty(userIds)) {
+            return List.of();
+        }
+        return sysUserRoleMapper.selectList(
+            new LambdaQueryWrapper<SysUserRole>().in(SysUserRole::getUserId, userIds));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public long countUsersByRoleId(Long roleId) {
         Long count = sysUserRoleMapper.selectCount(
             new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getRoleId, roleId));

@@ -1,6 +1,7 @@
 package me.north30.erp.system.unit.dept;
 
 import me.north30.erp.system.dept.dto.DeptCreateDTO;
+import me.north30.erp.system.dept.dto.DeptStatusDTO;
 import me.north30.erp.system.dept.dto.DeptTreeQueryDTO;
 import me.north30.erp.system.dept.dto.DeptUpdateDTO;
 import me.north30.erp.system.dept.entity.SysDept;
@@ -48,10 +49,17 @@ public final class DeptTestFactory {
     }
 
     /**
-     * 修改组织请求 DTO（负责人/电话/排序/状态/备注固定为 null 表示不修改）。
+     * 修改组织请求 DTO（负责人/电话/排序/备注固定为 null 表示不修改，状态变更走 changeStatus）。
      */
     public static DeptUpdateDTO updateDTO(Long parentId, String deptName, Integer deptType, Integer version) {
-        return new DeptUpdateDTO(deptName, parentId, deptType, null, null, null, null, null, version);
+        return new DeptUpdateDTO(deptName, parentId, deptType, null, null, null, null, version);
+    }
+
+    /**
+     * 状态变更请求 DTO。
+     */
+    public static DeptStatusDTO statusDTO(Integer status, Integer version) {
+        return new DeptStatusDTO(status, version);
     }
 
     /**
@@ -65,6 +73,6 @@ public final class DeptTestFactory {
      * 组织树节点 VO（DeptTreeUtil 测试用）。
      */
     public static DeptTreeVO treeVO(Long id, Long parentId, Integer deptSort) {
-        return new DeptTreeVO(id, "ORG" + id, "组织" + id, parentId, 1, 1, "0", null, null, deptSort, 1, null);
+        return new DeptTreeVO(id, "ORG" + id, "组织" + id, parentId, 1, 1, "0", null, null, deptSort, 1, null, 0, null);
     }
 }

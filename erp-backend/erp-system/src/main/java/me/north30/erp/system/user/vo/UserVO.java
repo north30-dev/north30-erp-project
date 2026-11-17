@@ -15,6 +15,7 @@ import java.util.List;
  * @param deptName 部门名称
  * @param roles 角色列表
  * @param status 状态
+ * @param version 乐观锁版本号（前端提交状态切换时回传）
  * @param isAdmin 是否是管理员
  * @param lastLoginTime 最后登录时间
  * @param createTime 创建时间
@@ -30,6 +31,7 @@ public record UserVO(
     String deptName,
     List<String> roles,
     Integer status,
+    Integer version,
     Integer isAdmin,
     String lastLoginTime,
     String createTime

@@ -5,7 +5,7 @@ import me.north30.erp.common.exception.ErrorCode;
 
 /**
  * 系统管理域错误码（18001-18999，接口文档 2.10，模块内唯一来源）。
- * <p>号段独占：18001-18013 认证/用户、18014-18023 角色与菜单、18024-18038 组织/字典/参数/编号序列/日志/附件。
+ * <p>号段独占：18001-18013 认证/用户、18014-18023 角色与菜单、18024-18038 组织/字典/参数/编号序列/日志/附件；18039 起新码追加不插入（08 文档 2.7）。
  * 通用段码（10202/10401-10403/10503）见 {@code me.north30.erp.common.exception.CommonErrorCode}。</p>
  */
 @Getter
@@ -83,8 +83,8 @@ public enum SystemErrorCode implements ErrorCode {
     /** 权限标识重复（perms 唯一冲突） */
     MENU_PERMS_DUPLICATED(18022, "权限标识已存在"),
 
-    /** 菜单超过三级（按钮下不可再建子节点） */
-    MENU_LEVEL_EXCEEDED(18023, "菜单仅支持三级（目录/菜单/按钮）"),
+    /** 菜单层级超过上限（按钮下不可建子；深度最多 4 级） */
+    MENU_LEVEL_EXCEEDED(18023, "菜单层级超过上限（最多 4 级）"),
 
     // ---------- 组织（18024-18027） ----------
 
@@ -139,7 +139,24 @@ public enum SystemErrorCode implements ErrorCode {
     AUDIT_LOG_NOT_FOUND(18037, "审计日志不存在"),
 
     /** 附件不存在 */
-    ATTACHMENT_NOT_FOUND(18038, "附件不存在");
+    ATTACHMENT_NOT_FOUND(18038, "附件不存在"),
+
+    // ---------- 权限保护（18039 起，追加不插入，见 08 文档 2.7） ----------
+
+    /** 内置菜单不可停用或删除（is_system=1，含子树含内置节点的级联停用） */
+    SYSTEM_MENU_PROTECTED(18039, "内置菜单不可停用或删除"),
+
+    /** 仅超级管理员可分配超级管理员角色（提权守卫） */
+    ONLY_SUPER_ADMIN_ASSIGN_ADMIN(18040, "仅超级管理员可分配超级管理员角色"),
+
+    /** 禁止对当前登录账号执行该操作（自我操作守卫） */
+    SELF_OPERATION_FORBIDDEN(18041, "禁止对当前登录账号执行该操作"),
+
+    /** 认证接口请求过于频繁（IP 维度限流） */
+    REQUEST_TOO_FREQUENT(18042, "操作过于频繁，请稍后重试"),
+
+    /** 字典类型已禁用（类型级状态守卫，禁用类型的选项/校验一律不可用） */
+    DICT_TYPE_DISABLED(18043, "字典类型已禁用");
 
     /** 业务状态码 */
     private final int code;

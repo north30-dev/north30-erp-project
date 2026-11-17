@@ -11,7 +11,6 @@ import jakarta.validation.constraints.Size;
  * @param cssClass  前端标签样式
  * @param isDefault 是否默认选中 0-否 1-是
  * @param extJson   扩展属性 JSON
- * @param status    状态 0-停用 1-启用
  * @param remark    备注
  * @param version   乐观锁版本号
  */
@@ -28,8 +27,6 @@ public record DictItemUpdateDTO(
     Integer isDefault,
 
     String extJson,
-
-    Integer status,
 
     @Size(max = 500, message = "备注长度不能超过 500")
     String remark,

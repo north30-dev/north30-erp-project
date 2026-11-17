@@ -9,6 +9,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,13 +55,17 @@ class UserIntegrationTest extends ApiIntegrationTest {
             .then().extract().response();
     }
 
-    /** 经分页检索取 admin 用户 id（不假设 admin 主键值） */
+    /** 经分页检索取 admin 用户 id（不假设 admin 主键值；username 为模糊匹配，需精确比对） */
     private long adminId() {
-        return given().port(port).header("Authorization", "Bearer " + adminToken())
+        List<Map<String, Object>> list = given().port(port).header("Authorization", "Bearer " + adminToken())
             .queryParam("username", "admin").queryParam("pageSize", 10)
             .when().get(BASE_PATH)
             .then().statusCode(200)
-            .extract().jsonPath().getLong("data.list[0].id");
+            .extract().jsonPath().getList("data.list");
+        return list.stream()
+            .filter(user -> "admin".equals(user.get("username")))
+            .findFirst().map(user -> Long.parseLong(String.valueOf(user.get("id"))))
+            .orElseThrow(() -> new IllegalStateException("测试库应存在内置 admin 用户"));
     }
 
     @AfterEach
@@ -228,15 +233,16 @@ class UserIntegrationTest extends ApiIntegrationTest {
             // Given（新建行乐观锁版本为 0；详情 VO 不含 version 字段）
             long id = createUser(Map.of());
 
-            // When
+            // When（update 不含 status 字段，状态变更统一走 /status 接口）
             given().port(port).header("Authorization", "Bearer " + adminToken())
                 .contentType(ContentType.JSON)
-                .body(Map.of("realName", "集成测试用户_已修改", "version", 0, "status", 1))
+                .body(Map.of("realName", "集成测试用户_已修改", "version", 0))
                 .when().put(BASE_PATH + "/" + id)
                 .then().statusCode(200).body("code", equalTo(200));
 
-            // Then
-            getDetail(id).then().body("data.realName", equalTo("集成测试用户_已修改"));
+            // Then（姓名已改、状态保持新建时的启用）
+            getDetail(id).then().body("data.realName", equalTo("集成测试用户_已修改"))
+                .body("data.status", equalTo(1));
         }
 
         @Test
@@ -253,6 +259,18 @@ class UserIntegrationTest extends ApiIntegrationTest {
                 .when().put(BASE_PATH + "/" + id)
                 .then().statusCode(409)
                 .body("code", equalTo(CommonErrorCode.OPTIMISTIC_LOCK_CONFLICT.getCode()));
+        }
+
+        @Test
+        @DisplayName("修改内置admin资料，返回422管理员保护")
+        void shouldReturn422AdminProtected_whenUpdateAdmin() {
+            // When / Then（目标为内置管理员，守卫先于乐观锁校验，version 取任意非空值）
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("realName", "越权修改", "version", 1))
+                .when().put(BASE_PATH + "/" + adminId())
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.ADMIN_PROTECTED.getCode()));
         }
 
         @Test
@@ -292,6 +310,16 @@ class UserIntegrationTest extends ApiIntegrationTest {
         }
 
         @Test
+        @DisplayName("删除当前登录账号，返回422禁止自我操作")
+        void shouldReturn422SelfOperation_whenDeleteSelf() {
+            // Given：admin 删除自己（自我操作守卫优先于内置管理员保护）
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .when().delete(BASE_PATH + "/" + adminId())
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.SELF_OPERATION_FORBIDDEN.getCode()));
+        }
+
+        @Test
         @DisplayName("删除不存在的用户id，返回422用户不存在")
         void shouldReturn422UserNotFound_whenIdNotExist() {
             // When / Then
@@ -321,13 +349,25 @@ class UserIntegrationTest extends ApiIntegrationTest {
         }
 
         @Test
+        @DisplayName("停用当前登录账号，返回422禁止自我操作")
+        void shouldReturn422SelfOperation_whenDisableSelf() {
+            // Given：admin 停用自己（自我操作守卫优先于内置管理员保护）
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 0, "version", 1))
+                .when().post(BASE_PATH + "/" + adminId() + "/status")
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.SELF_OPERATION_FORBIDDEN.getCode()));
+        }
+
+        @Test
         @DisplayName("停用admin账号，返回422管理员保护")
         void shouldReturn422AdminProtected_whenDisableAdmin() {
-            // Given（admin id 经分页检索确认；请求被拒，环境不变）
+            // Given（由非内置操作者发起，避免先触发自我操作守卫 18041；admin 版本号无关，守卫先于乐观锁）
             Map<String, Object> body = Map.of("status", 0, "version", 1);
 
             // When / Then
-            given().port(port).header("Authorization", "Bearer " + adminToken())
+            given().port(port).header("Authorization", "Bearer " + adminRoleOperatorToken())
                 .contentType(ContentType.JSON)
                 .body(body)
                 .when().post(BASE_PATH + "/" + adminId() + "/status")
@@ -352,6 +392,18 @@ class UserIntegrationTest extends ApiIntegrationTest {
                 .body(Map.of("newPassword", "Reset@123456"))
                 .when().post(BASE_PATH + "/" + id + "/reset-password")
                 .then().statusCode(200).body("code", equalTo(200));
+        }
+
+        @Test
+        @DisplayName("重置内置admin密码，返回422管理员保护")
+        void shouldReturn422AdminProtected_whenResetAdminPassword() {
+            // Given：目标为内置管理员（is_admin=1），任何重置均被拒
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("newPassword", "Reset@123456"))
+                .when().post(BASE_PATH + "/" + adminId() + "/reset-password")
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.ADMIN_PROTECTED.getCode()));
         }
 
         @Test
@@ -390,6 +442,18 @@ class UserIntegrationTest extends ApiIntegrationTest {
         }
 
         @Test
+        @DisplayName("移除自己持有的ADMIN角色，返回422禁止自我操作")
+        void shouldReturn422SelfOperation_whenRemoveOwnAdminRole() {
+            // Given：操作者 is_admin=0 但持有 ADMIN 角色，本次仅保留自定义角色（摘除 ADMIN）
+            given().port(port).header("Authorization", "Bearer " + adminRoleOperatorToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("roleIds", List.of(adminRoleOperatorRoleId())))
+                .when().put(BASE_PATH + "/" + adminRoleOperatorUserId() + "/roles")
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.SELF_OPERATION_FORBIDDEN.getCode()));
+        }
+
+        @Test
         @DisplayName("分配不存在的角色id，返回422角色不存在")
         void shouldReturn422RoleNotFound_whenRoleIdNotExist() {
             // Given
@@ -403,6 +467,107 @@ class UserIntegrationTest extends ApiIntegrationTest {
                 .when().put(BASE_PATH + "/" + id + "/roles")
                 .then().statusCode(422)
                 .body("code", equalTo(SystemErrorCode.ROLE_NOT_FOUND.getCode()));
+        }
+    }
+
+    @Nested
+    @DisplayName("提权保护（18040）")
+    class AssignAdminGuardTest {
+
+        /** 递归收集指定 perms 的全部菜单 id（内置权限点按钮），无匹配返回空集 */
+        @SuppressWarnings("unchecked")
+        private List<Long> collectMenuIdsByPerms(List<Map<String, Object>> nodes, String perms) {
+            List<Long> acc = new ArrayList<>();
+            if (nodes == null) {
+                return acc;
+            }
+            for (Map<String, Object> node : nodes) {
+                if (perms.equals(node.get("perms"))) {
+                    acc.add(Long.parseLong(String.valueOf(node.get("id"))));
+                }
+                acc.addAll(collectMenuIdsByPerms(
+                    (List<Map<String, Object>>) node.get("children"), perms));
+            }
+            return acc;
+        }
+
+        @Test
+        @DisplayName("非超管用户创建持有 ADMIN 角色的用户，返回422仅超管可分配（18040）")
+        void shouldReturn422OnlySuperAdmin_whenNonSuperAdminAssignsAdmin() {
+            // Given：创建含 system:user:create + system:user:assignrole 权限点的角色 + 持有该角色的普通用户
+            List<Map<String, Object>> tree = given()
+                .port(port).header("Authorization", "Bearer " + adminToken())
+                .when().get("/api/system/menus/tree")
+                .then().statusCode(200)
+                .extract().jsonPath().getList("data");
+            List<Long> menuIds = new ArrayList<>(collectMenuIdsByPerms(tree, "system:user:create"));
+            menuIds.addAll(collectMenuIdsByPerms(tree, "system:user:assignrole"));
+            org.assertj.core.api.Assertions.assertThat(menuIds)
+                .as("应存在 system:user:create / system:user:assignrole 权限点菜单").isNotEmpty();
+
+            String suffix = suffix();
+            long roleId = given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("roleCode", "it_role_" + suffix, "roleName", "提权守卫角色_" + suffix, "status", 1))
+                .when().post("/api/system/roles")
+                .then().statusCode(200)
+                .extract().jsonPath().getLong("data.id");
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("menuIds", menuIds))
+                .when().put("/api/system/roles/" + roleId + "/menus")
+                .then().statusCode(200);
+
+            String username = "it_guard_" + suffix;
+            long userId = given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("userCode", "IT-GUARD-" + suffix, "username", username,
+                    "password", LIMITED_PASSWORD, "realName", "提权守卫用户", "status", 1,
+                    "roleIds", List.of(roleId)))
+                .when().post(BASE_PATH)
+                .then().statusCode(200)
+                .extract().jsonPath().getLong("data");
+            try {
+                // Given：该普通用户登录；ADMIN 角色经分页检索（roleCode 为模糊匹配，需精确比对编码）
+                String guardToken = doLogin(username, LIMITED_PASSWORD);
+                List<Map<String, Object>> adminRoles = given().port(port).header("Authorization", "Bearer " + adminToken())
+                    .queryParam("roleCode", "ADMIN").queryParam("pageSize", 10)
+                    .when().get("/api/system/roles")
+                    .then().statusCode(200)
+                    .extract().jsonPath().getList("data.list");
+                long adminRoleId = adminRoles.stream()
+                    .filter(role -> "ADMIN".equals(role.get("roleCode")))
+                    .findFirst().map(role -> Long.parseLong(String.valueOf(role.get("id"))))
+                    .orElseThrow(() -> new IllegalStateException("测试库应存在内置 ADMIN 角色"));
+
+                // When / Then：非超管创建持有 ADMIN 角色的用户被拒（请求体带齐必填字段，避免 400 先行）
+                given().port(port).header("Authorization", "Bearer " + guardToken)
+                    .contentType(ContentType.JSON)
+                    .body(Map.of("userCode", "IT-ADMIN-" + suffix, "username", "it_admin_" + suffix,
+                        "password", LIMITED_PASSWORD, "realName", "被提权用户", "status", 1,
+                        "roleIds", List.of(adminRoleId)))
+                    .when().post(BASE_PATH)
+                    .then().statusCode(422)
+                    .body("code", equalTo(SystemErrorCode.ONLY_SUPER_ADMIN_ASSIGN_ADMIN.getCode()));
+
+                // When / Then：非超管给自己分配 ADMIN 角色同样被拒
+                given().port(port).header("Authorization", "Bearer " + guardToken)
+                    .contentType(ContentType.JSON)
+                    .body(Map.of("roleIds", List.of(adminRoleId)))
+                    .when().put(BASE_PATH + "/" + userId + "/roles")
+                    .then().statusCode(422)
+                    .body("code", equalTo(SystemErrorCode.ONLY_SUPER_ADMIN_ASSIGN_ADMIN.getCode()));
+            } finally {
+                // 清理：解绑角色 → 删用户 → 删角色
+                given().port(port).header("Authorization", "Bearer " + adminToken())
+                    .contentType(ContentType.JSON)
+                    .body(Map.of("roleIds", List.of()))
+                    .when().put(BASE_PATH + "/" + userId + "/roles");
+                given().port(port).header("Authorization", "Bearer " + adminToken())
+                    .when().delete(BASE_PATH + "/" + userId);
+                given().port(port).header("Authorization", "Bearer " + adminToken())
+                    .when().delete("/api/system/roles/" + roleId);
+            }
         }
     }
 

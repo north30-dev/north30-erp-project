@@ -8,6 +8,7 @@ package me.north30.erp.system.dict.vo;
  * @param dictName 字典类型名称
  * @param status 状态 0-停用 1-启用
  * @param remark 备注
+ * @param version 乐观锁版本号（编辑弹窗回填与提交用）
  * @param createTime 创建时间（yyyy-MM-dd HH:mm:ss）
  * @param itemCount 字典项数量（派生：sys_dict_item 计数，is_deleted=0）
  */
@@ -17,6 +18,7 @@ public record DictTypeVO(
     String dictName,
     Integer status,
     String remark,
+    Integer version,
     String createTime,
     long itemCount
 ) {

@@ -16,12 +16,15 @@ import me.north30.erp.system.role.dto.RoleAssignMenuDTO;
 import me.north30.erp.system.role.dto.RoleCreateDTO;
 import me.north30.erp.system.role.dto.RoleDataScopeSaveDTO;
 import me.north30.erp.system.role.dto.RolePageQueryDTO;
+import me.north30.erp.system.role.dto.RoleStatusDTO;
 import me.north30.erp.system.role.dto.RoleUpdateDTO;
 import me.north30.erp.system.role.service.SysRoleApplicationService;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.role.vo.RoleCreatedVO;
 import me.north30.erp.system.role.vo.RoleDataScopeVO;
 import me.north30.erp.system.role.vo.RoleMenuAssignedVO;
+import me.north30.erp.system.role.vo.RoleMenuIdsVO;
+import me.north30.erp.system.role.vo.RoleStatusVO;
 import me.north30.erp.system.role.vo.RoleUpdatedVO;
 import me.north30.erp.system.role.vo.RoleVO;
 import org.springdoc.core.annotations.ParameterObject;
@@ -90,6 +93,20 @@ public class SysRoleController {
     }
 
     /**
+     * 变更角色状态（启用/停用，08 文档阶段四状态开关统一）。
+     */
+    @PostMapping("/{id}/status")
+    @PreAuthorize("hasAuthority('system:role:update')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
+    @Operation(summary = "变更角色状态", description = "权限点 system:role:update；内置角色（isBuiltin=1）不可停用（18017），乐观锁冲突返回 409/10601")
+    @ApiResponse(responseCode = "422", description = "业务校验失败（18014 角色不存在/18017 内置角色不可停用）",
+        content = @Content(mediaType = "application/json",
+            examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
+    public Result<RoleStatusVO> changeStatus(@PathVariable Long id, @Valid @RequestBody RoleStatusDTO dto) {
+        return Result.success(sysRoleApplicationService.changeStatus(id, dto));
+    }
+
+    /**
      * 5.2.4 删除角色。
      */
     @DeleteMapping("/{id}")
@@ -115,6 +132,16 @@ public class SysRoleController {
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<RoleMenuAssignedVO> assignMenus(@PathVariable Long id, @Valid @RequestBody RoleAssignMenuDTO dto) {
         return Result.success(sysRoleApplicationService.assignMenus(id, dto));
+    }
+
+    /**
+     * 5.2.8 查询角色已分配菜单（分配菜单弹窗回显用）。
+     */
+    @GetMapping("/{id}/menus")
+    @PreAuthorize("hasAuthority('system:role:assignmenu')")
+    @Operation(summary = "查询角色已分配菜单", description = "权限点 system:role:assignmenu；返回 sys_role_menu 逻辑未删除关联的 menuIds 集合")
+    public Result<RoleMenuIdsVO> listRoleMenuIds(@PathVariable Long id) {
+        return Result.success(sysRoleApplicationService.listRoleMenuIds(id));
     }
 
     /**

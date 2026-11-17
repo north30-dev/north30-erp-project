@@ -1,5 +1,12 @@
 package me.north30.erp.system.dept.service.impl;
 
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
 import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.system.common.enums.SystemErrorCode;
@@ -20,6 +27,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 @RequiredArgsConstructor
 public class SysDeptDomainServiceImpl implements SysDeptDomainService {
 
+    /** 顶级组织父 ID */
+    private static final long ROOT_PARENT_ID = 0L;
+
     private final SysDeptMapper sysDeptMapper;
     private final SysUserDomainService sysUserDomainService;
 
@@ -27,6 +37,17 @@ public class SysDeptDomainServiceImpl implements SysDeptDomainService {
     @Transactional(readOnly = true)
     public SysDept getById(Long id) {
         return sysDeptMapper.selectById(id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, String> getDeptNameMap(Collection<Long> deptIds) {
+        // 返回可变 HashMap：调用方可能以 dept_id=null 做映射取值，不可变 Map.get(null) 会抛 NPE
+        if (deptIds == null || deptIds.isEmpty()) {
+            return new HashMap<>();
+        }
+        return sysDeptMapper.selectByIds(deptIds).stream()
+            .collect(Collectors.toMap(SysDept::getId, SysDept::getDeptName, (a, b) -> a, HashMap::new));
     }
 
     @Override
@@ -68,4 +89,26 @@ public class SysDeptDomainServiceImpl implements SysDeptDomainService {
                 "组织 " + dept.getDeptName() + " 存在下级组织或绑定用户，不可删除");
         }
     }
+
+    
+    @Override
+    @Transactional(readOnly = true)
+    public List<SysDept> listSiblings(Long parentId) {
+        long pid = parentId == null ? ROOT_PARENT_ID : parentId;
+        return sysDeptMapper.selectList(new LambdaQueryWrapper<SysDept>()
+            .eq(SysDept::getParentId, pid)
+            .orderByAsc(SysDept::getDeptSort)
+            .orderByAsc(SysDept::getId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int nextDeptSort(Long parentId) {
+        return listSiblings(parentId).stream()
+            .map(SysDept::getDeptSort)
+            .filter(Objects::nonNull)
+            .max(Integer::compareTo)
+            .orElse(0) + 10;
+    }
+
 }

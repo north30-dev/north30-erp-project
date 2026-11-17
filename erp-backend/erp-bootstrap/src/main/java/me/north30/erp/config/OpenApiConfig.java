@@ -42,9 +42,9 @@ public class OpenApiConfig {
     public OpenAPI openAPI() {
         return new OpenAPI()
             .info(new Info()
-                .title("north30 ERP API")
+                .title("North30 ERP API")
                 .version("0.0.1")
-                .description("north30 ERP 系统接口文档，契约以本页为准，规则详见 docs/ERP系统开发API设计与规范文档.md"))
+                .description("North30 ERP 系统接口文档，契约以本页为准，规则详见 docs/ERP系统开发API设计与规范文档.md"))
             .components(new Components().addSecuritySchemes(SECURITY_SCHEME_NAME,
                 new SecurityScheme().type(SecurityScheme.Type.HTTP).scheme("bearer").bearerFormat("JWT")))
             // 全局安全要求：Swagger UI 出现 Authorize 按钮，每个接口自动携带 Authorization 头

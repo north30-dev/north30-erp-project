@@ -12,6 +12,7 @@ package me.north30.erp.system.config.vo;
  * @param isSystem 是否系统内置 0-否 1-是
  * @param status 状态 0-停用 1-启用
  * @param remark 备注
+ * @param version 乐观锁版本号（编辑弹窗回填与提交用）
  */
 public record ConfigVO(
     Long id,
@@ -22,6 +23,7 @@ public record ConfigVO(
     String configGroup,
     Integer isSystem,
     Integer status,
-    String remark
+    String remark,
+    Integer version
 ) {
 }

@@ -9,8 +9,6 @@ import me.north30.erp.common.result.PageResult;
 import me.north30.erp.system.dept.entity.SysDept;
 import me.north30.erp.system.dept.mapper.SysDeptMapper;
 import me.north30.erp.system.dept.service.SysDeptDomainService;
-import me.north30.erp.system.role.mapper.SysRoleMapper;
-import me.north30.erp.system.role.mapper.SysUserRoleMapper;
 import me.north30.erp.system.role.service.SysRoleDomainService;
 import me.north30.erp.system.role.service.SysUserRoleService;
 import me.north30.erp.system.user.converter.UserConverter;
@@ -27,14 +25,18 @@ import me.north30.erp.system.user.service.SysUserDomainService;
 import me.north30.erp.system.user.service.impl.SysUserApplicationServiceImpl;
 import me.north30.erp.system.user.strategy.UserAssembleStrategy;
 import me.north30.erp.system.user.strategy.UserQueryStrategy;
+import me.north30.erp.system.user.strategy.UserRoleGrantStrategy;
 import me.north30.erp.system.user.strategy.UserRoleStrategy;
 import me.north30.erp.system.user.strategy.UserSessionRevokeStrategy;
+import me.north30.erp.system.auth.service.UserAccessService;
+import me.north30.erp.system.security.LoginUser;
 import me.north30.erp.system.user.vo.UserAssignRolesVO;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.user.vo.UserDetailVO;
 import me.north30.erp.system.user.vo.UserResetPasswordVO;
 import me.north30.erp.system.user.vo.UserStatusVO;
 import me.north30.erp.system.user.vo.UserVO;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -45,10 +47,14 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -64,20 +70,15 @@ import static org.mockito.Mockito.when;
 
 /**
  * {@link SysUserApplicationServiceImpl} 纯 Mockito 单元测试：不连 DB/Redis。
- * 查询/装配/角色关联策略用真实实例（内部 Mapper mock，保持 Wrapper 断言能力），
- * 会话清理策略与 SysUserDomainService 存在性校验用 mock。
+ * 查询策略用真实实例（内部 Mapper mock，保持 Wrapper 断言能力），装配/角色关联策略
+ * 用真实实例（跨域取数走 dept/role 域 Service mock），会话清理策略与
+ * SysUserDomainService 存在性校验用 mock。
  */
 @ExtendWith(MockitoExtension.class)
 class SysUserApplicationServiceImplTest {
 
     @Mock
     private SysUserMapper sysUserMapper;
-
-    @Mock
-    private SysUserRoleMapper sysUserRoleMapper;
-
-    @Mock
-    private SysRoleMapper sysRoleMapper;
 
     @Mock
     private SysDeptMapper sysDeptMapper;
@@ -93,6 +94,9 @@ class SysUserApplicationServiceImplTest {
 
     @Mock
     private SysUserDomainService sysUserDomainService;
+
+    @Mock
+    private UserAccessService userAccessService;
 
     @Mock
     private UserSessionRevokeStrategy userSessionRevokeStrategy;
@@ -113,16 +117,18 @@ class SysUserApplicationServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        // 查询/装配策略用真实实例 + mock Mapper（保持 Wrapper 断言能力）；
-        // 角色关联策略构造依赖 role 域 Service mock；部门存在性/取数走部门域 Service mock
+        // 查询策略用真实实例 + mock Mapper（保持 Wrapper 断言能力）；
+        // 装配/角色关联策略用真实实例，跨域取数走 dept/role 域 Service mock
         UserQueryStrategy userQueryStrategy = new UserQueryStrategy(sysDeptMapper);
         UserAssembleStrategy userAssembleStrategy =
-            new UserAssembleStrategy(sysDeptMapper, sysUserRoleMapper, sysRoleMapper, userConverter);
+            new UserAssembleStrategy(sysDeptDomainService, sysUserRoleService, sysRoleDomainService, userConverter);
         UserRoleStrategy userRoleStrategy =
             new UserRoleStrategy(sysRoleDomainService, sysUserRoleService);
-        service = new SysUserApplicationServiceImpl(sysUserMapper, sysDeptDomainService, passwordEncoder,
-            userConverter, sysUserDomainService, userQueryStrategy, userAssembleStrategy,
-            userRoleStrategy, userSessionRevokeStrategy);
+        UserRoleGrantStrategy userRoleGrantStrategy =
+            new UserRoleGrantStrategy(sysRoleDomainService, userAccessService);
+        service = new SysUserApplicationServiceImpl(sysUserMapper, sysDeptDomainService,
+            passwordEncoder, userConverter, sysUserDomainService, userQueryStrategy,
+            userAssembleStrategy, userRoleStrategy, userRoleGrantStrategy, userSessionRevokeStrategy);
     }
 
     @Nested
@@ -137,10 +143,10 @@ class SysUserApplicationServiceImplTest {
                 page.setTotal(1);
                 return page;
             });
-            when(sysDeptMapper.selectByIds(any())).thenReturn(List.of(UserTestFactory.sysDept()));
-            when(sysUserRoleMapper.selectList(any()))
+            when(sysDeptDomainService.getDeptNameMap(any())).thenReturn(new HashMap<>(Map.of(3L, "生产部")));
+            when(sysUserRoleService.listByUserIds(any()))
                 .thenReturn(List.of(UserTestFactory.sysUserRole(10L, 20L)));
-            when(sysRoleMapper.selectByIds(any())).thenReturn(List.of(UserTestFactory.sysRole(20L, "keeper")));
+            when(sysRoleDomainService.getRoleNameMap(any())).thenReturn(new HashMap<>(Map.of(20L, "角色20")));
             UserQueryDTO query = new UserQueryDTO(null, null, null, null, null, null, null);
 
             // When
@@ -156,7 +162,7 @@ class SysUserApplicationServiceImplTest {
             assertThat(vo.username()).isEqualTo("zhangsan");
             assertThat(vo.phone()).isEqualTo("138****5678");
             assertThat(vo.deptName()).isEqualTo("生产部");
-            assertThat(vo.roles()).containsExactly("keeper");
+            assertThat(vo.roles()).containsExactly("角色20");
             assertThat(vo.lastLoginTime()).isEqualTo("2026-01-02 09:30:00");
             assertThat(vo.createTime()).isEqualTo("2026-01-01 08:00:00");
             verify(sysUserMapper).selectPage(argThat((Page<SysUser> page) ->
@@ -230,7 +236,7 @@ class SysUserApplicationServiceImplTest {
                 page.setTotal(1);
                 return page;
             });
-            when(sysUserRoleMapper.selectList(any())).thenReturn(List.of());
+            when(sysUserRoleService.listByUserIds(any())).thenReturn(List.of());
             UserQueryDTO query = new UserQueryDTO(null, null, null, 1L, null, 1, 10);
 
             // When
@@ -240,7 +246,8 @@ class SysUserApplicationServiceImplTest {
             assertThat(result.list()).hasSize(1);
             // 组织及下级一次全量查询后内存过滤：无循环查库（仅 1 次 selectList）
             verify(sysDeptMapper, never()).selectByIds(any());
-            verify(sysRoleMapper, never()).selectByIds(any());
+            verify(sysDeptDomainService, never()).getDeptNameMap(any());
+            verify(sysRoleDomainService, never()).getRoleNameMap(any());
             verify(sysDeptMapper, times(1)).selectList(any());
             verify(sysUserMapper).selectPage(ArgumentMatchers.<Page<SysUser>>any(), argThat(wrapper -> {
                 LambdaQueryWrapper<SysUser> condition = (LambdaQueryWrapper<SysUser>) wrapper;
@@ -269,7 +276,7 @@ class SysUserApplicationServiceImplTest {
             // Then
             assertThat(result.total()).isZero();
             assertThat(result.list()).isEmpty();
-            verifyNoInteractions(sysDeptMapper, sysUserRoleMapper, sysRoleMapper);
+            verifyNoInteractions(sysDeptDomainService, sysUserRoleService, sysRoleDomainService);
         }
     }
 
@@ -277,13 +284,13 @@ class SysUserApplicationServiceImplTest {
     class GetDetailTest {
 
         @Test
-        void shouldReturnDetailWithDistinctRolesAndMaskedPhone() {
+        void shouldReturnDetailWithDistinctRolesAndPlainPhone() {
             // Given
             when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
             when(sysUserRoleService.listRoleIdsByUserId(10L)).thenReturn(List.of(20L, 21L));
-            when(sysRoleMapper.selectByIds(any())).thenReturn(List.of(
-                UserTestFactory.sysRole(20L, "admin"),
-                UserTestFactory.sysRole(21L, "operator")));
+            when(sysRoleDomainService.getRoleNameMap(any())).thenReturn(new HashMap<>(Map.of(
+                20L, "角色20",
+                21L, "角色21")));
             when(sysDeptDomainService.getById(3L)).thenReturn(UserTestFactory.sysDept());
 
             // When
@@ -292,11 +299,11 @@ class SysUserApplicationServiceImplTest {
             // Then
             assertThat(vo.id()).isEqualTo(10L);
             assertThat(vo.username()).isEqualTo("zhangsan");
-            assertThat(vo.phone()).isEqualTo("138****5678");
+            assertThat(vo.phone()).isEqualTo("13812345678");
             assertThat(vo.deptId()).isEqualTo(3L);
             assertThat(vo.deptName()).isEqualTo("生产部");
             assertThat(vo.roleIds()).containsExactly(20L, 21L);
-            assertThat(vo.roles()).containsExactly("admin", "operator");
+            assertThat(vo.roles()).containsExactly("角色20", "角色21");
             assertThat(vo.warehouseIds()).containsExactly(1L, 2L);
             assertThat(vo.status()).isEqualTo(1);
             assertThat(vo.isAdmin()).isZero();
@@ -327,7 +334,7 @@ class SysUserApplicationServiceImplTest {
             assertThat(vo.roleIds()).isEmpty();
             assertThat(vo.roles()).isEmpty();
             assertThat(vo.warehouseIds()).isNull();
-            verifyNoInteractions(sysDeptDomainService, sysRoleMapper);
+            verifyNoInteractions(sysDeptDomainService, sysRoleDomainService);
         }
 
         @Test
@@ -467,7 +474,7 @@ class SysUserApplicationServiceImplTest {
             when(sysDeptDomainService.requireDept(3L)).thenReturn(UserTestFactory.sysDept());
             when(sysUserMapper.updateById(any(SysUser.class))).thenReturn(1);
             UserUpdateDTO dto = new UserUpdateDTO("李四", 3L, List.of(1L, 2L),
-                "13900001111", "ls@north30.com", 2, 0, "更新备注", 5);
+                "13900001111", "ls@north30.com", 2, "更新备注", 5);
 
             // When
             String updateTime = service.update(10L, dto);
@@ -482,25 +489,9 @@ class SysUserApplicationServiceImplTest {
                     && "13900001111".equals(entity.getPhone())
                     && "ls@north30.com".equals(entity.getEmail())
                     && Integer.valueOf(2).equals(entity.getGender())
-                    && Integer.valueOf(0).equals(entity.getStatus())
                     && "更新备注".equals(entity.getRemark())
                     && Integer.valueOf(5).equals(entity.getVersion())
                     && entity.getUpdateTime() != null));
-        }
-
-        @Test
-        void shouldThrow18012_whenDisableAdminUser() {
-            // Given
-            when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.adminUser());
-            UserUpdateDTO dto = new UserUpdateDTO(null, null, null, null, null, null, 0, null, 5);
-
-            // When / Then
-            assertThatThrownBy(() -> service.update(10L, dto))
-                .isInstanceOfSatisfying(BusinessException.class,
-                    ex -> assertThat(ex.getCode()).isEqualTo(18012))
-                .hasMessage("内置超级管理员不可删除或停用");
-            verify(sysUserMapper, never()).updateById(any(SysUser.class));
-            verifyNoInteractions(sysDeptDomainService);
         }
 
         @Test
@@ -508,7 +499,7 @@ class SysUserApplicationServiceImplTest {
             // Given
             when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
             when(sysUserMapper.updateById(any(SysUser.class))).thenReturn(0);
-            UserUpdateDTO dto = new UserUpdateDTO("李四", null, null, null, null, null, null, null, 5);
+            UserUpdateDTO dto = new UserUpdateDTO("李四", null, null, null, null, null, null, 5);
 
             // When / Then
             assertThatThrownBy(() -> service.update(10L, dto))
@@ -517,12 +508,26 @@ class SysUserApplicationServiceImplTest {
         }
 
         @Test
+        void shouldThrow18012_whenUpdateAdminUser() {
+            // Given：内置管理员资料不可修改
+            when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.adminUser());
+            UserUpdateDTO dto = new UserUpdateDTO("李四", null, null, null, null, null, null, 5);
+
+            // When / Then
+            assertThatThrownBy(() -> service.update(10L, dto))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(18012))
+                .hasMessage("内置超级管理员不可删除或停用");
+            verify(sysUserMapper, never()).updateById(any(SysUser.class));
+        }
+
+        @Test
         void shouldThrow18024_whenDeptNotFound() {
             // Given
             when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
             when(sysDeptDomainService.requireDept(99L)).thenThrow(
                 new BusinessException(SystemErrorCode.DEPT_NOT_FOUND, "组织 99 不存在"));
-            UserUpdateDTO dto = new UserUpdateDTO(null, 99L, null, null, null, null, null, null, 5);
+            UserUpdateDTO dto = new UserUpdateDTO(null, 99L, null, null, null, null, null, 5);
 
             // When / Then
             assertThatThrownBy(() -> service.update(10L, dto))
@@ -537,7 +542,7 @@ class SysUserApplicationServiceImplTest {
             // Given
             when(sysUserDomainService.requireUser(99L)).thenThrow(
                 new BusinessException(SystemErrorCode.USER_NOT_FOUND, "用户 99 不存在"));
-            UserUpdateDTO dto = new UserUpdateDTO("李四", null, null, null, null, null, null, null, 5);
+            UserUpdateDTO dto = new UserUpdateDTO("李四", null, null, null, null, null, null, 5);
 
             // When / Then
             assertThatThrownBy(() -> service.update(99L, dto))
@@ -562,7 +567,24 @@ class SysUserApplicationServiceImplTest {
             // Then
             assertThat(vo.id()).isEqualTo(10L);
             assertThat(vo.isDeleted()).isEqualTo(1);
+            verify(sysUserDomainService).requireNotSelf(10L);
             verify(sysUserMapper).deleteById(10L);
+        }
+
+        @Test
+        void shouldThrow18041_whenDeleteSelf() {
+            // Given：自我操作守卫拒绝删除当前登录账号
+            when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
+            doThrow(new BusinessException(SystemErrorCode.SELF_OPERATION_FORBIDDEN))
+                .when(sysUserDomainService).requireNotSelf(10L);
+
+            // When / Then
+            assertThatThrownBy(() -> service.delete(10L))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(18041))
+                .hasMessage("禁止对当前登录账号执行该操作");
+            verify(sysUserMapper, never()).deleteById(10L);
+            verifyNoInteractions(sysUserRoleService);
         }
 
         @Test
@@ -704,6 +726,22 @@ class SysUserApplicationServiceImplTest {
         }
 
         @Test
+        void shouldThrow18041_whenDisableSelf() {
+            // Given：停用分支的自我操作守卫拒绝
+            when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
+            doThrow(new BusinessException(SystemErrorCode.SELF_OPERATION_FORBIDDEN))
+                .when(sysUserDomainService).requireNotSelf(10L);
+
+            // When / Then
+            assertThatThrownBy(() -> service.changeStatus(10L, new UserStatusDTO(0, 2)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(18041))
+                .hasMessage("禁止对当前登录账号执行该操作");
+            verify(sysUserMapper, never()).updateById(any(SysUser.class));
+            verifyNoInteractions(userSessionRevokeStrategy);
+        }
+
+        @Test
         void shouldThrow10601_whenOptimisticLockConflict() {
             // Given
             when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
@@ -765,6 +803,20 @@ class SysUserApplicationServiceImplTest {
         }
 
         @Test
+        void shouldThrow18012_whenResetAdminPassword() {
+            // Given：内置管理员密码不可重置
+            when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.adminUser());
+
+            // When / Then
+            assertThatThrownBy(() -> service.resetPassword(10L, new UserResetPasswordDTO(null)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(18012))
+                .hasMessage("内置超级管理员不可删除或停用");
+            verify(sysUserMapper, never()).update(any(SysUser.class), any());
+            verifyNoInteractions(passwordEncoder);
+        }
+
+        @Test
         void shouldThrow18009_whenExplicitPasswordTooWeak() {
             // Given
             when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
@@ -794,6 +846,17 @@ class SysUserApplicationServiceImplTest {
 
     @Nested
     class AssignRolesTest {
+
+        @BeforeEach
+        void setUpSecurityContext() {
+            SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(new LoginUser(2L, "operator", "jti", "rjti"), null));
+        }
+
+        @AfterEach
+        void clearSecurityContext() {
+            SecurityContextHolder.clearContext();
+        }
 
         @Test
         void shouldReplaceRolesWithDistinctIds_whenAssign() {
@@ -856,6 +919,72 @@ class SysUserApplicationServiceImplTest {
             verify(sysUserRoleService, never()).deleteByUserId(any());
             verify(sysUserRoleService, never()).createForUser(any(), any());
         }
+
+        @Test
+        void shouldThrow18040_whenNonSuperAdminAssignsAdminRole() {
+            // Given：目标角色含 ADMIN，操作者非超管（提权守卫 18040）
+            when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
+            when(sysRoleDomainService.listByIds(any()))
+                .thenReturn(List.of(UserTestFactory.sysRole(1L, "ADMIN")));
+            SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(new LoginUser(2L, "zhangsan", "jti", "rjti"), null));
+            when(userAccessService.isSuperAdmin(2L)).thenReturn(false);
+
+            // When / Then
+            assertThatThrownBy(() -> service.assignRoles(10L, new UserAssignRolesDTO(List.of(1L))))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode())
+                        .isEqualTo(SystemErrorCode.ONLY_SUPER_ADMIN_ASSIGN_ADMIN.getCode()));
+            verify(sysUserRoleService, never()).deleteByUserId(any());
+            SecurityContextHolder.clearContext();
+        }
+
+        @Test
+        void shouldAssignAdminRole_whenOperatorIsSuperAdmin() {
+            // Given：操作者为超管（持 ADMIN 角色），分配合法
+            when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
+            when(sysRoleDomainService.listByIds(any()))
+                .thenReturn(List.of(UserTestFactory.sysRole(1L, "ADMIN")));
+            SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(new LoginUser(1L, "admin", "jti", "rjti"), null));
+            when(userAccessService.isSuperAdmin(1L)).thenReturn(true);
+
+            // When
+            UserAssignRolesVO vo = service.assignRoles(10L, new UserAssignRolesDTO(List.of(1L)));
+
+            // Then
+            assertThat(vo.roleIds()).containsExactly(1L);
+            verify(sysUserRoleService).createForUser(10L, 1L);
+        }
+
+        @Test
+        void shouldThrow18041_whenAssignRolesToSelf() {
+            // Given：操作者修改自己的角色（无论增/删/清空），自我操作守卫一律拦截，
+            // 防止多步合法操作组合出自我提权或无法自愈的自我降权
+            when(sysUserDomainService.requireUser(10L)).thenReturn(UserTestFactory.sysUser());
+            SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(new LoginUser(10L, "self", "jti", "rjti"), null));
+
+            // When / Then：给自己移除角色
+            assertThatThrownBy(() -> service.assignRoles(10L, new UserAssignRolesDTO(List.of(2L))))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode())
+                        .isEqualTo(SystemErrorCode.SELF_OPERATION_FORBIDDEN.getCode()))
+                .hasMessage("不允许修改自己的角色");
+            // 给自己清空角色同样拦截
+            assertThatThrownBy(() -> service.assignRoles(10L, new UserAssignRolesDTO(List.of())))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode())
+                        .isEqualTo(SystemErrorCode.SELF_OPERATION_FORBIDDEN.getCode()))
+                .hasMessage("不允许修改自己的角色");
+            // 给自己新增角色同样拦截
+            assertThatThrownBy(() -> service.assignRoles(10L, new UserAssignRolesDTO(List.of(2L))))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode())
+                        .isEqualTo(SystemErrorCode.SELF_OPERATION_FORBIDDEN.getCode()));
+            verify(sysUserRoleService, never()).deleteByUserId(any());
+            verify(sysUserRoleService, never()).createForUser(any(), any());
+        }
     }
 
     @Nested
@@ -876,9 +1005,9 @@ class SysUserApplicationServiceImplTest {
             second.setIsAdmin(1);
             second.setLastLoginTime(null);
             when(sysUserMapper.selectList(any())).thenReturn(List.of(UserTestFactory.sysUser(), second));
-            when(sysDeptMapper.selectByIds(any())).thenReturn(List.of(UserTestFactory.sysDept()));
-            when(sysUserRoleMapper.selectList(any())).thenReturn(List.of(UserTestFactory.sysUserRole(10L, 5L)));
-            when(sysRoleMapper.selectByIds(any())).thenReturn(List.of(UserTestFactory.sysRole(5L, "keeper")));
+            when(sysDeptDomainService.getDeptNameMap(any())).thenReturn(new HashMap<>(Map.of(3L, "生产部")));
+            when(sysUserRoleService.listByUserIds(any())).thenReturn(List.of(UserTestFactory.sysUserRole(10L, 5L)));
+            when(sysRoleDomainService.getRoleNameMap(any())).thenReturn(new HashMap<>(Map.of(5L, "角色5")));
             UserQueryDTO query = new UserQueryDTO(null, null, null, null, null, null, null);
 
             // When
@@ -888,7 +1017,7 @@ class SysUserApplicationServiceImplTest {
             String csv = new String(bytes, StandardCharsets.UTF_8);
             assertThat(csv).startsWith("\uFEFF");
             assertThat(csv).contains("用户ID,用户编号,用户名,姓名,联系电话,邮箱,所属组织,角色,状态,是否管理员,最后登录时间,创建时间\r\n");
-            assertThat(csv).contains("10,E001,zhangsan,张三,138****5678,zs@north30.com,生产部,keeper,启用,否,"
+            assertThat(csv).contains("10,E001,zhangsan,张三,138****5678,zs@north30.com,生产部,角色5,启用,否,"
                 + "2026-01-02 09:30:00,2026-01-01 08:00:00\r\n");
             assertThat(csv).contains("2,E002,lisi,\"李,四\",,,,,停用,是,,2026-01-01 08:00:00\r\n");
         }
@@ -906,7 +1035,7 @@ class SysUserApplicationServiceImplTest {
             String csv = new String(bytes, StandardCharsets.UTF_8);
             assertThat(csv).isEqualTo("\uFEFF"
                 + "用户ID,用户编号,用户名,姓名,联系电话,邮箱,所属组织,角色,状态,是否管理员,最后登录时间,创建时间\r\n");
-            verifyNoInteractions(sysDeptMapper, sysUserRoleMapper, sysRoleMapper);
+            verifyNoInteractions(sysDeptDomainService, sysUserRoleService, sysRoleDomainService);
         }
     }
 }

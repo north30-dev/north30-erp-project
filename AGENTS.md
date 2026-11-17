@@ -4,7 +4,7 @@
 
 ## 1. 项目定位
 
-- north30 ERP：面向 MTO 离散制造企业的 ERP 系统，**模块化单体**架构（非微服务），后续可平滑拆分。
+- North30 ERP：面向 MTO 离散制造企业的 ERP 系统，**模块化单体**架构（非微服务），后续可平滑拆分。
 - 技术栈：Java 21 + Spring Boot 4.0.8 + Spring Security 7 + MyBatis-Plus 3.5.17 + PostgreSQL 16 + Redis 8；前端 Vue 3.4+ / TypeScript / Ant Design Vue 4 / Pinia / Vite。
 - 回复语言与代码注释语言遵循用户当前消息语言。
 

@@ -9,11 +9,13 @@ import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.common.vo.MutationVO;
 import me.north30.erp.system.dict.converter.DictConverter;
 import me.north30.erp.system.dict.converter.DictConverterImpl;
+import me.north30.erp.system.dict.dto.DictItemMoveDTO;
 import me.north30.erp.system.dict.entity.SysDictItem;
 import me.north30.erp.system.dict.mapper.SysDictItemMapper;
 import me.north30.erp.system.dict.service.SysDictTypeService;
 import me.north30.erp.system.dict.service.impl.SysDictItemServiceImpl;
 import me.north30.erp.system.dict.vo.DictItemVO;
+import me.north30.erp.system.dict.vo.DictItemOptionVO;
 import me.north30.erp.system.unit.dict.DictTestFactory;
 import me.north30.erp.system.unit.security.support.MpTableInfoInit;
 
@@ -232,7 +234,7 @@ class SysDictItemServiceImplTest {
             assertThat(inserted.getItemLabel()).isEqualTo("现金");
             assertThat(inserted.getItemValue()).isEqualTo("CASH");
             assertThat(inserted.getLang()).isEqualTo("zh-CN");
-            assertThat(inserted.getItemSort()).isZero();
+            assertThat(inserted.getItemSort()).isEqualTo(10);
             assertThat(inserted.getIsDefault()).isZero();
             assertThat(inserted.getStatus()).isEqualTo(1);
         }
@@ -281,7 +283,7 @@ class SysDictItemServiceImplTest {
         void shouldUpdateFields_whenItemExists() {
             // Given：item_value 与 lang 不在修改范围
             SysDictItem item = DictTestFactory.dictItem(1L, "settlement_method", "现金", "CASH", "zh-CN", 5);
-            var dto = DictTestFactory.itemUpdateDTO(2, "现金（更新）", 1, 0);
+            var dto = DictTestFactory.itemUpdateDTO(2, "现金（更新）", 1);
             given(sysDictItemMapper.selectById(1L)).willReturn(item);
             given(sysDictItemMapper.updateById(any(SysDictItem.class))).willReturn(1);
 
@@ -295,7 +297,7 @@ class SysDictItemServiceImplTest {
             SysDictItem updated = itemCaptor.getValue();
             assertThat(updated.getItemLabel()).isEqualTo("现金（更新）");
             assertThat(updated.getItemSort()).isEqualTo(1);
-            assertThat(updated.getStatus()).isEqualTo(0);
+            assertThat(updated.getStatus()).isEqualTo(1);
             assertThat(updated.getItemValue()).isEqualTo("CASH");
             assertThat(updated.getVersion()).isEqualTo(2);
         }
@@ -307,7 +309,7 @@ class SysDictItemServiceImplTest {
             given(sysDictItemMapper.selectById(1L)).willReturn(null);
 
             // When + Then
-            assertThatThrownBy(() -> service.updateItem(1L, DictTestFactory.itemUpdateDTO(1, "现金", null, null)))
+            assertThatThrownBy(() -> service.updateItem(1L, DictTestFactory.itemUpdateDTO(1, "现金", null)))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.NOT_FOUND.getCode()))
                 .hasMessage("字典项 1 不存在");
@@ -323,7 +325,7 @@ class SysDictItemServiceImplTest {
             given(sysDictItemMapper.updateById(any(SysDictItem.class))).willReturn(0);
 
             // When + Then
-            assertThatThrownBy(() -> service.updateItem(1L, DictTestFactory.itemUpdateDTO(9, "现金", null, null)))
+            assertThatThrownBy(() -> service.updateItem(1L, DictTestFactory.itemUpdateDTO(9, "现金", null)))
                 .isInstanceOf(OptimisticLockingFailureException.class)
                 .hasMessage("数据已被其他操作修改，请重试");
         }
@@ -363,6 +365,94 @@ class SysDictItemServiceImplTest {
                     ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.NOT_FOUND.getCode()))
                 .hasMessage("字典项 1 不存在");
             verify(sysDictItemMapper, never()).deleteById(anyLong());
+        }
+    }
+
+    @Nested
+    @DisplayName("changeStatusItem：变更字典项状态")
+    class ChangeStatusTest {
+
+        @Test
+        @DisplayName("成功启用，仅更新状态与乐观锁版本")
+        void shouldEnableItem_whenStatusOne() {
+            // Given：字典项存在且当前停用
+            SysDictItem item = DictTestFactory.dictItem(1L, "settlement_method", "现金", "CASH", "zh-CN", 1);
+            item.setStatus(0);
+            given(sysDictItemMapper.selectById(1L)).willReturn(item);
+            given(sysDictItemMapper.updateById(any(SysDictItem.class))).willReturn(1);
+
+            // When
+            var vo = service.changeStatusItem(1L, DictTestFactory.itemStatusDTO(1, 2));
+
+            // Then：patch 实体仅承载 id/status/version
+            assertThat(vo.status()).isEqualTo(1);
+            verify(sysDictItemMapper).updateById(itemCaptor.capture());
+            SysDictItem patch = itemCaptor.getValue();
+            assertThat(patch.getId()).isEqualTo(1L);
+            assertThat(patch.getStatus()).isEqualTo(1);
+            assertThat(patch.getVersion()).isEqualTo(2);
+            assertThat(patch.getDictType()).isNull();
+        }
+
+        @Test
+        @DisplayName("成功停用")
+        void shouldDisableItem_whenStatusZero() {
+            // Given：字典项存在且当前启用
+            SysDictItem item = DictTestFactory.dictItem(1L, "settlement_method", "现金", "CASH", "zh-CN", 1);
+            given(sysDictItemMapper.selectById(1L)).willReturn(item);
+            given(sysDictItemMapper.updateById(any(SysDictItem.class))).willReturn(1);
+
+            // When
+            var vo = service.changeStatusItem(1L, DictTestFactory.itemStatusDTO(0, 3));
+
+            // Then
+            assertThat(vo.status()).isZero();
+            verify(sysDictItemMapper).updateById(itemCaptor.capture());
+            assertThat(itemCaptor.getValue().getStatus()).isZero();
+            assertThat(itemCaptor.getValue().getVersion()).isEqualTo(3);
+        }
+
+        @Test
+        @DisplayName("状态值非法，抛出 10001")
+        void shouldThrow10001_whenStatusValueIllegal() {
+            // Given
+            SysDictItem item = DictTestFactory.dictItem(1L, "settlement_method", "现金", "CASH", "zh-CN", 1);
+            given(sysDictItemMapper.selectById(1L)).willReturn(item);
+
+            // When + Then
+            assertThatThrownBy(() -> service.changeStatusItem(1L, DictTestFactory.itemStatusDTO(2, 2)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
+                .hasMessage("状态取值非法，仅支持 0-停用 1-启用");
+            verify(sysDictItemMapper, never()).updateById(any(SysDictItem.class));
+        }
+
+        @Test
+        @DisplayName("字典项不存在，抛出 10004")
+        void shouldThrow10004_whenItemNotFound() {
+            // Given
+            given(sysDictItemMapper.selectById(99L)).willReturn(null);
+
+            // When + Then
+            assertThatThrownBy(() -> service.changeStatusItem(99L, DictTestFactory.itemStatusDTO(1, 2)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.NOT_FOUND.getCode()))
+                .hasMessage("字典项 99 不存在");
+            verify(sysDictItemMapper, never()).updateById(any(SysDictItem.class));
+        }
+
+        @Test
+        @DisplayName("乐观锁冲突（更新 0 行），抛出 10601")
+        void shouldThrow10601_whenOptimisticLockConflict() {
+            // Given
+            SysDictItem item = DictTestFactory.dictItem(1L, "settlement_method", "现金", "CASH", "zh-CN", 1);
+            given(sysDictItemMapper.selectById(1L)).willReturn(item);
+            given(sysDictItemMapper.updateById(any(SysDictItem.class))).willReturn(0);
+
+            // When + Then
+            assertThatThrownBy(() -> service.changeStatusItem(1L, DictTestFactory.itemStatusDTO(1, 9)))
+                .isInstanceOf(OptimisticLockingFailureException.class)
+                .hasMessage("数据已被其他操作修改，请重试");
         }
     }
 
@@ -419,6 +509,192 @@ class SysDictItemServiceImplTest {
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.NOT_FOUND.getCode()))
                 .hasMessage("字典项 1 不存在");
+        }
+    }
+
+    @Nested
+    @DisplayName("moveItem：字典项上移/下移")
+    class MoveItemTest {
+
+        @Test
+        @DisplayName("上移时与同分组前一节点交换并规范化重排，仅变更行落库")
+        void shouldSwapWithNeighborAndNormalize_whenMoveUp() {
+            // Given：同分组（dict_type + lang）三项 sort=10/20/30，目标为第二项
+            SysDictItem first = DictTestFactory.dictItem(1L, "settlement_method", "现金", "CASH", "zh-CN", 10);
+            SysDictItem target = DictTestFactory.dictItem(2L, "settlement_method", "银行", "BANK", "zh-CN", 20);
+            SysDictItem third = DictTestFactory.dictItem(3L, "settlement_method", "票据", "NOTE", "zh-CN", 30);
+            given(sysDictItemMapper.selectById(2L)).willReturn(target);
+            given(sysDictItemMapper.selectList(any())).willReturn(List.of(first, target, third));
+            given(sysDictItemMapper.updateById(any(SysDictItem.class))).willReturn(1);
+
+            // When
+            service.moveItem(2L, new DictItemMoveDTO("up"));
+
+            // Then：交换后 target=10、first=20，third 不变；仅两行落库
+            assertThat(target.getItemSort()).isEqualTo(10);
+            assertThat(first.getItemSort()).isEqualTo(20);
+            assertThat(third.getItemSort()).isEqualTo(30);
+            verify(sysDictItemMapper, Mockito.times(2)).updateById(any(SysDictItem.class));
+        }
+
+        @Test
+        @DisplayName("已处于分组底部时下移抛 10001")
+        void shouldThrow10001_whenMoveDownAtBottom() {
+            // Given：目标为分组最后一项
+            SysDictItem first = DictTestFactory.dictItem(1L, "settlement_method", "现金", "CASH", "zh-CN", 10);
+            SysDictItem target = DictTestFactory.dictItem(2L, "settlement_method", "银行", "BANK", "zh-CN", 20);
+            given(sysDictItemMapper.selectById(2L)).willReturn(target);
+            given(sysDictItemMapper.selectList(any())).willReturn(List.of(first, target));
+
+            // When + Then
+            assertThatThrownBy(() -> service.moveItem(2L, new DictItemMoveDTO("down")))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
+                .hasMessage("已处于同级底部，无法下移");
+            verify(sysDictItemMapper, never()).updateById(any(SysDictItem.class));
+        }
+
+        @Test
+        @DisplayName("字典项不存在，抛出 10004")
+        void shouldThrow10004_whenItemNotFound() {
+            // Given
+            given(sysDictItemMapper.selectById(99L)).willReturn(null);
+
+            // When + Then
+            assertThatThrownBy(() -> service.moveItem(99L, new DictItemMoveDTO("up")))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.NOT_FOUND.getCode()))
+                .hasMessage("字典项 99 不存在");
+            verify(sysDictItemMapper, never()).selectList(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("listEnabledOptions：查询启用项下拉选项")
+    class ListEnabledOptionsTest {
+
+        @Test
+        @DisplayName("类型存在，返回按 itemSort,id 升序的启用项选项")
+        void shouldReturnSortedOptions_whenDictTypeExists() {
+            // Given：类型存在，启用项 itemSort=20/10 乱序返回，验证按 itemSort 升序映射
+            given(sysDictTypeService.requireByDictType("attachment_biz_type")).willReturn(
+                DictTestFactory.dictType(27L, "attachment_biz_type", "附件业务类型", 1));
+            SysDictItem second = DictTestFactory.dictItem(2L, "attachment_biz_type", "物料", "MATERIAL", "zh-CN", 20);
+            SysDictItem first = DictTestFactory.dictItem(1L, "attachment_biz_type", "BOM 清单", "BOM", "zh-CN", 10);
+            given(sysDictItemMapper.selectList(itemWrapperCaptor.capture())).willReturn(List.of(first, second));
+
+            // When
+            List<DictItemOptionVO> options = service.listEnabledOptions("attachment_biz_type", null);
+
+            // Then：lang 落参 zh-CN + status=1，VO 仅含 itemValue/itemLabel
+            var wrapper = itemWrapperCaptor.getValue();
+            wrapper.getSqlSegment();
+            var params = wrapper.getParamNameValuePairs().values();
+            assertThat(params).contains("zh-CN").contains(1);
+            assertThat(options).hasSize(2);
+            assertThat(options.get(0).itemValue()).isEqualTo("BOM");
+            assertThat(options.get(0).itemLabel()).isEqualTo("BOM 清单");
+            assertThat(options.get(1).itemValue()).isEqualTo("MATERIAL");
+            assertThat(options.get(1).itemLabel()).isEqualTo("物料");
+        }
+
+        @Test
+        @DisplayName("显式传入语言，按该语言过滤")
+        void shouldUseProvidedLang_whenLangPresent() {
+            // Given
+            given(sysDictTypeService.requireByDictType("attachment_biz_type")).willReturn(
+                DictTestFactory.dictType(27L, "attachment_biz_type", "附件业务类型", 1));
+            given(sysDictItemMapper.selectList(any())).willReturn(List.of());
+
+            // When
+            service.listEnabledOptions("attachment_biz_type", "en-US");
+
+            // Then：显式语言条件已写入查询参数（渲染 SQL 片段触发落参）
+            verify(sysDictItemMapper).selectList(itemWrapperCaptor.capture());
+            var wrapper = itemWrapperCaptor.getValue();
+            wrapper.getSqlSegment();
+            var params = wrapper.getParamNameValuePairs().values();
+            assertThat(params).contains("en-US");
+            assertThat(params).doesNotContain("zh-CN");
+        }
+
+        @Test
+        @DisplayName("字典类型不存在，抛出 18028")
+        void shouldThrow_whenDictTypeMissing() {
+            // Given：类型守卫抛出"类型不存在"业务异常
+            given(sysDictTypeService.requireByDictType("no_such_type"))
+                .willThrow(new BusinessException(SystemErrorCode.DICT_TYPE_NOT_FOUND,
+                    "字典类型 no_such_type 不存在"));
+
+            // When + Then
+            assertThatThrownBy(() -> service.listEnabledOptions("no_such_type", null))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DICT_TYPE_NOT_FOUND.getCode()))
+                .hasMessage("字典类型 no_such_type 不存在");
+            verify(sysDictItemMapper, never()).selectList(any());
+        }
+
+        @Test
+        @DisplayName("字典类型已禁用，抛出 18043")
+        void shouldThrow_whenDictTypeDisabled() {
+            // Given：类型存在但 status=0（禁用），实体 requireEnabled 守卫抛 18043
+            given(sysDictTypeService.requireByDictType("attachment_biz_type")).willReturn(
+                DictTestFactory.dictType(27L, "attachment_biz_type", "附件业务类型", 0));
+
+            // When + Then：守卫短路，不应触达字典项查询
+            assertThatThrownBy(() -> service.listEnabledOptions("attachment_biz_type", null))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DICT_TYPE_DISABLED.getCode()))
+                .hasMessage("字典类型已禁用");
+            verify(sysDictItemMapper, never()).selectList(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("requireEnabledItem：校验字典项为启用项")
+    class RequireEnabledItemTest {
+
+        @Test
+        @DisplayName("启用项存在（计数>0），直接放行")
+        void shouldPass_whenEnabledItemExists() {
+            // Given：类型存在且启用
+            given(sysDictTypeService.requireByDictType("attachment_biz_type")).willReturn(
+                DictTestFactory.dictType(27L, "attachment_biz_type", "附件业务类型", 1));
+            given(sysDictItemMapper.selectCount(any())).willReturn(1L);
+
+            // When + Then（不抛异常）
+            service.requireEnabledItem("attachment_biz_type", "MATERIAL", "zh-CN");
+        }
+
+        @Test
+        @DisplayName("未启用或不存在（计数=0），抛出 10404")
+        void shouldThrow10404_whenItemNotEnabled() {
+            // Given：类型存在且启用，条件 dictType + itemValue + lang + status=1 计数为 0
+            given(sysDictTypeService.requireByDictType("attachment_biz_type")).willReturn(
+                DictTestFactory.dictType(27L, "attachment_biz_type", "附件业务类型", 1));
+            given(sysDictItemMapper.selectCount(any())).willReturn(0L);
+
+            // When + Then
+            assertThatThrownBy(() -> service.requireEnabledItem("attachment_biz_type", "FOO", null))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode())
+                        .isEqualTo(CommonErrorCode.ATTACHMENT_BIZ_TYPE_INVALID.getCode()))
+                .hasMessage("业务类型不合法：FOO");
+        }
+
+        @Test
+        @DisplayName("字典类型已禁用，抛出 18043")
+        void shouldThrow_whenDictTypeDisabled() {
+            // Given：类型存在但 status=0（禁用），实体 requireEnabled 守卫抛 18043
+            given(sysDictTypeService.requireByDictType("attachment_biz_type")).willReturn(
+                DictTestFactory.dictType(27L, "attachment_biz_type", "附件业务类型", 0));
+
+            // When + Then：守卫短路，不应触达字典项计数
+            assertThatThrownBy(() -> service.requireEnabledItem("attachment_biz_type", "MATERIAL", "zh-CN"))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DICT_TYPE_DISABLED.getCode()))
+                .hasMessage("字典类型已禁用");
+            verify(sysDictItemMapper, never()).selectCount(any());
         }
     }
 }

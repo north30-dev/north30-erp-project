@@ -4,10 +4,16 @@ import me.north30.erp.common.result.PageResult;
 import me.north30.erp.system.common.vo.DeleteResultVO;
 import me.north30.erp.system.common.vo.MutationVO;
 import me.north30.erp.system.dict.dto.DictItemCreateDTO;
+import me.north30.erp.system.dict.dto.DictItemMoveDTO;
 import me.north30.erp.system.dict.dto.DictItemQueryDTO;
+import me.north30.erp.system.dict.dto.DictItemStatusDTO;
 import me.north30.erp.system.dict.dto.DictItemUpdateDTO;
 import me.north30.erp.system.dict.entity.SysDictItem;
+import me.north30.erp.system.dict.vo.DictItemOptionVO;
+import me.north30.erp.system.dict.vo.DictItemStatusVO;
 import me.north30.erp.system.dict.vo.DictItemVO;
+
+import java.util.List;
 
 /**
  * 字典项服务（A 类单层：4 个管理端用例 + 守卫，接口文档 5.5.5-5.5.8，37-40 号接口）。
@@ -49,6 +55,24 @@ public interface SysDictItemService {
     DeleteResultVO deleteItem(Long id);
 
     /**
+     * 变更字典项状态（启用/停用，08 文档阶段四状态开关统一）。
+     *
+     * @param id  字典项 ID
+     * @param dto 状态变更参数
+     * @return 状态变更结果
+     */
+    DictItemStatusVO changeStatusItem(Long id, DictItemStatusDTO dto);
+
+    /**
+     * 字典项上移/下移（同 dict_type + lang 分组内规范化重排 10,20,30… 后相邻交换，
+     * 08 文档阶段四排序统一）。
+     *
+     * @param id  字典项 ID
+     * @param dto 移动方向参数
+     */
+    void moveItem(Long id, DictItemMoveDTO dto);
+
+    /**
      * 校验字典项可用（同 dict_type + item_value + lang 未被占用），已存在抛 18031 业务异常。
      *
      * @param dictType  字典类型编码
@@ -64,4 +88,24 @@ public interface SysDictItemService {
      * @return 字典项实体
      */
     SysDictItem requireById(Long id);
+
+    /**
+     * 查询指定类型下的启用字典项选项（仅 status=1，按 itemSort, id 升序，供下拉框消费；
+     * 类型不存在抛 18028 业务异常，类型已禁用抛 18043 业务异常）。
+     *
+     * @param dictType 字典类型编码
+     * @param lang     语言（空则默认 zh-CN）
+     * @return 启用项选项列表
+     */
+    List<DictItemOptionVO> listEnabledOptions(String dictType, String lang);
+
+    /**
+     * 校验字典项为该类型下的启用项（类型须存在且启用；dictType + itemValue + lang + status=1
+     * 计数为 0 时抛 10404 业务异常，供附件业务类型等受控词表校验复用）。
+     *
+     * @param dictType  字典类型编码
+     * @param itemValue 字典项值
+     * @param lang      语言（空则默认 zh-CN）
+     */
+    void requireEnabledItem(String dictType, String itemValue, String lang);
 }

@@ -12,9 +12,11 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 
@@ -34,7 +36,7 @@ import jakarta.validation.ConstraintViolationException;
  *     <li>403 鉴权类：方法级越权 10003</li>
  *     <li>404 路由类：资源/路径不存在 10004</li>
  *     <li>409 冲突类：乐观锁 10601、唯一约束 10602</li>
- *     <li>422 业务类：BusinessException 携带业务码（11001-18999）</li>
+ *     <li>422 业务类：BusinessException 携带业务码（11001-18999）；上传超限 10402</li>
  *     <li>500 兜底类：未预期系统错误 10999（日志含堆栈，响应不回传）</li>
  * </ul>
  */
@@ -141,6 +143,19 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 必填请求参数缺失（如 /dict-items/options 缺少 dictType，@RequestParam 默认 required=true）。
+     * <p>参数绑定阶段抛出，早于 @NotBlank 校验；HTTP 400，body.code=10001，
+     * 与参数类型错误同归参数段，避免落入 500 兜底。</p>
+     */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<Result<Void>> handleMissingServletRequestParameterException(MissingServletRequestParameterException e) {
+        String message = "缺少必填参数 " + e.getParameterName();
+        log.warn("必填请求参数缺失：{}", message);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(Result.failure(CommonErrorCode.PARAM_ERROR.getCode(), message));
+    }
+
+    /**
      * HTTP 请求方法不支持（如对 GET 接口发 POST）。
      * <p>HTTP 405，body.code=10001（归参数段），message 固定文案，不透出支持的方法列表。</p>
      */
@@ -171,6 +186,23 @@ public class GlobalExceptionHandler {
         log.warn("唯一约束冲突：{}", e.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT)
             .body(Result.failure(CommonErrorCode.DUPLICATE_KEY.getCode(), CommonErrorCode.DUPLICATE_KEY.getMessage()));
+    }
+
+    /**
+     * 上传文件超过容器 multipart 上限（spring.servlet.multipart.max-file-size/max-request-size）。
+     * <p>该异常在请求解析阶段由 Tomcat 抛出，早于 Controller 入参绑定，因此附件域的
+     * 业务大小校验（10402）无法生效，需在此单独兜底。HTTP 422，body.code=10402，
+     * 与附件接口文档中「文件大小超出上限」的口径一致，避免落入 500 兜底。</p>
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Result<Void>> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e) {
+        long maxUploadSize = e.getMaxUploadSize();
+        String message = maxUploadSize > 0
+            ? "上传文件大小不能超过 " + maxUploadSize / 1024 / 1024 + "MB"
+            : CommonErrorCode.ATTACHMENT_SIZE_EXCEEDED.getMessage();
+        log.warn("上传文件超出上限：{}", message);
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT)
+            .body(Result.failure(CommonErrorCode.ATTACHMENT_SIZE_EXCEEDED.getCode(), message));
     }
 
     /**

@@ -5,6 +5,90 @@ export const MENU_TYPE_DIR = 1
 export const MENU_TYPE_MENU = 2
 export const MENU_TYPE_BUTTON = 3
 
+export const MENU_TYPE_OPTIONS = [
+  { label: '目录', value: MENU_TYPE_DIR },
+  { label: '菜单', value: MENU_TYPE_MENU },
+  { label: '按钮', value: MENU_TYPE_BUTTON },
+] as const
+
+/** 菜单类型反查（表格列渲染用） */
+export const MENU_TYPE_MAP: Record<number, string> = {
+  [MENU_TYPE_DIR]: '目录',
+  [MENU_TYPE_MENU]: '菜单',
+  [MENU_TYPE_BUTTON]: '按钮',
+}
+
+/** 菜单树最大深度（模块 → 子模块 → 页面 → 按钮，对齐后端 SysMenu.MAX_DEPTH） */
+export const MAX_MENU_DEPTH = 4
+
+/* ---------- 权限标识三段式（sys_menu.perms，模块:对象:动作） ---------- */
+
+/** 模块段固定候选域（对齐后端模块划分） */
+export const PERMS_MODULE_OPTIONS = [
+  'system',
+  'base',
+  'purchase',
+  'sales',
+  'inventory',
+  'manufacturing',
+  'finance',
+] as const
+
+/** 动作段预置候选（允许自填，开放集合） */
+export const PERMS_ACTION_SUGGESTIONS = [
+  'list',
+  'query',
+  'create',
+  'update',
+  'delete',
+  'export',
+] as const
+
+/** 单段合法格式（小写字母开头，小写字母/数字/中划线，与后端 PERMS_PATTERN 段语义一致） */
+export const SEGMENT_PATTERN = /^[a-z][a-z0-9-]*$/
+
+/* ---------- 菜单可见性（sys_menu.visible） ---------- */
+export const VISIBLE_HIDDEN = 0
+export const VISIBLE_SHOWN = 1
+
+export const VISIBLE_OPTIONS = [
+  { label: '显示', value: VISIBLE_SHOWN },
+  { label: '隐藏', value: VISIBLE_HIDDEN },
+] as const
+
+/** 可见性反查（表格列渲染用） */
+export const VISIBLE_MAP: Record<number, string> = {
+  [VISIBLE_SHOWN]: '显示',
+  [VISIBLE_HIDDEN]: '隐藏',
+}
+
+/* ---------- 组织部门类型（sys_dept.dept_type，对齐后端 DeptCreateDTO 注释） ---------- */
+export const DEPT_TYPE_GROUP = 1
+export const DEPT_TYPE_FACTORY = 2
+export const DEPT_TYPE_BRANCH = 3
+export const DEPT_TYPE_DEPT = 4
+export const DEPT_TYPE_WORKSHOP = 5
+
+export const DEPT_TYPE_OPTIONS = [
+  { label: '集团', value: DEPT_TYPE_GROUP },
+  { label: '生产基地', value: DEPT_TYPE_FACTORY },
+  { label: '销售分公司', value: DEPT_TYPE_BRANCH },
+  { label: '部门', value: DEPT_TYPE_DEPT },
+  { label: '车间', value: DEPT_TYPE_WORKSHOP },
+] as const
+
+/** 组织类型反查（表格列渲染用） */
+export const DEPT_TYPE_MAP: Record<number, string> = {
+  [DEPT_TYPE_GROUP]: '集团',
+  [DEPT_TYPE_FACTORY]: '生产基地',
+  [DEPT_TYPE_BRANCH]: '销售分公司',
+  [DEPT_TYPE_DEPT]: '部门',
+  [DEPT_TYPE_WORKSHOP]: '车间',
+}
+
+/** 组织树最大深度（对齐后端层级上限 5 级，超限 18027） */
+export const MAX_DEPT_DEPTH = 5
+
 /* ---------- 通用状态 ---------- */
 export const STATUS_ENABLED = 1
 export const STATUS_DISABLED = 0
@@ -19,3 +103,139 @@ export const STATUS_OPTIONS = [
   { label: '启用', value: STATUS_ENABLED },
   { label: '停用', value: STATUS_DISABLED },
 ] as const
+
+/** 状态反查（表格列渲染用） */
+export const STATUS_MAP: Record<number, string> = {
+  [STATUS_ENABLED]: '启用',
+  [STATUS_DISABLED]: '停用',
+}
+
+/* ---------- 数据字典（sys_dict_type / sys_dict_item，对齐后端 DictItemCreateDTO） ---------- */
+
+/** 默认语言编码（后端缺省 zh-CN） */
+export const DICT_LANG_DEFAULT = 'zh-CN'
+
+export const IS_DEFAULT_NO = 0
+export const IS_DEFAULT_YES = 1
+
+export const IS_DEFAULT_OPTIONS = [
+  { label: '否', value: IS_DEFAULT_NO },
+  { label: '是', value: IS_DEFAULT_YES },
+] as const
+
+/* ---------- 性别（sys_user.gender） ---------- */
+export const GENDER_UNKNOWN = 0
+export const GENDER_MALE = 1
+export const GENDER_FEMALE = 2
+
+export const GENDER_OPTIONS = [
+  { label: '未知', value: GENDER_UNKNOWN },
+  { label: '男', value: GENDER_MALE },
+  { label: '女', value: GENDER_FEMALE },
+] as const
+
+/* ---------- 数据范围（sys_role.data_scope，对齐后端 DataScopeEnum：合法取值 1~6、9） ---------- */
+export const DATA_SCOPE_ALL = 1
+export const DATA_SCOPE_ORG_AND_CHILDREN = 2
+export const DATA_SCOPE_ORG_ONLY = 3
+export const DATA_SCOPE_DEPT_AND_CHILDREN = 4
+export const DATA_SCOPE_DEPT_ONLY = 5
+export const DATA_SCOPE_SELF_ONLY = 6
+export const DATA_SCOPE_CUSTOM = 9
+
+export const DATA_SCOPE_OPTIONS = [
+  { label: '全部', value: DATA_SCOPE_ALL },
+  { label: '本组织及下级', value: DATA_SCOPE_ORG_AND_CHILDREN },
+  { label: '本组织', value: DATA_SCOPE_ORG_ONLY },
+  { label: '本部门及下级', value: DATA_SCOPE_DEPT_AND_CHILDREN },
+  { label: '本部门', value: DATA_SCOPE_DEPT_ONLY },
+  { label: '仅本人', value: DATA_SCOPE_SELF_ONLY },
+  { label: '自定义', value: DATA_SCOPE_CUSTOM },
+] as const
+
+/** 数据范围反查（表格列渲染用） */
+export const DATA_SCOPE_MAP: Record<number, string> = Object.fromEntries(
+  DATA_SCOPE_OPTIONS.map((option) => [option.value, option.label]),
+)
+
+/* ---------- 系统内置标记（sys_menu.is_system / sys_config.is_system，跨表通用 0/1 旗标，对齐数据库 DDL） ---------- */
+export const IS_SYSTEM_NO = 0
+export const IS_SYSTEM_YES = 1
+
+export const IS_SYSTEM_OPTIONS = [
+  { label: '否', value: IS_SYSTEM_NO },
+  { label: '是', value: IS_SYSTEM_YES },
+] as const
+
+/** 系统内置反查（表格列渲染用） */
+export const IS_SYSTEM_MAP: Record<number, string> = {
+  [IS_SYSTEM_NO]: '否',
+  [IS_SYSTEM_YES]: '是',
+}
+
+/* ---------- 审计业务模块（对齐后端 AuditModuleEnum，落库为枚举名，覆盖全部业务模块） ---------- */
+export const AUDIT_MODULE_SYSTEM = 'SYSTEM'
+export const AUDIT_MODULE_MATERIAL = 'MATERIAL'
+export const AUDIT_MODULE_PURCHASE = 'PURCHASE'
+export const AUDIT_MODULE_SALES = 'SALES'
+export const AUDIT_MODULE_INVENTORY = 'INVENTORY'
+export const AUDIT_MODULE_MANUFACTURING = 'MANUFACTURING'
+export const AUDIT_MODULE_FINANCE = 'FINANCE'
+
+export const AUDIT_MODULE_OPTIONS = [
+  { label: '系统管理', value: AUDIT_MODULE_SYSTEM },
+  { label: '物料/BOM', value: AUDIT_MODULE_MATERIAL },
+  { label: '采购', value: AUDIT_MODULE_PURCHASE },
+  { label: '销售', value: AUDIT_MODULE_SALES },
+  { label: '库存', value: AUDIT_MODULE_INVENTORY },
+  { label: '生产', value: AUDIT_MODULE_MANUFACTURING },
+  { label: '财务', value: AUDIT_MODULE_FINANCE },
+] as const
+
+/** 审计业务模块反查（表格列渲染用） */
+export const AUDIT_MODULE_MAP: Record<string, string> = Object.fromEntries(
+  AUDIT_MODULE_OPTIONS.map((option) => [option.value, option.label]),
+)
+
+/* ---------- 审计操作类型（对齐后端 OperateTypeEnum，落库为枚举名，单据全生命周期动作跨业务通用） ---------- */
+export const OPERATE_TYPE_CREATE = 'CREATE'
+export const OPERATE_TYPE_UPDATE = 'UPDATE'
+export const OPERATE_TYPE_APPROVE = 'APPROVE'
+export const OPERATE_TYPE_REJECT = 'REJECT'
+export const OPERATE_TYPE_DELETE = 'DELETE'
+export const OPERATE_TYPE_POST = 'POST'
+export const OPERATE_TYPE_UNAPPROVE = 'UNAPPROVE'
+export const OPERATE_TYPE_CLOSE = 'CLOSE'
+export const OPERATE_TYPE_REOPEN = 'REOPEN'
+
+export const OPERATE_TYPE_OPTIONS = [
+  { label: '创建', value: OPERATE_TYPE_CREATE },
+  { label: '修改', value: OPERATE_TYPE_UPDATE },
+  { label: '审核', value: OPERATE_TYPE_APPROVE },
+  { label: '驳回', value: OPERATE_TYPE_REJECT },
+  { label: '删除', value: OPERATE_TYPE_DELETE },
+  { label: '过账', value: OPERATE_TYPE_POST },
+  { label: '反审核', value: OPERATE_TYPE_UNAPPROVE },
+  { label: '关闭', value: OPERATE_TYPE_CLOSE },
+  { label: '期间重开', value: OPERATE_TYPE_REOPEN },
+] as const
+
+/** 审计操作类型反查（表格列渲染用） */
+export const OPERATE_TYPE_MAP: Record<string, string> = Object.fromEntries(
+  OPERATE_TYPE_OPTIONS.map((option) => [option.value, option.label]),
+)
+
+/* ---------- 操作/登录结果（sys_login_log.result_status / sys_audit_log.result_status：0-失败 1-成功，语义与通用启停状态不同） ---------- */
+export const RESULT_FAILED = 0
+export const RESULT_SUCCESS = 1
+
+export const RESULT_STATUS_OPTIONS = [
+  { label: '成功', value: RESULT_SUCCESS },
+  { label: '失败', value: RESULT_FAILED },
+] as const
+
+/** 操作/登录结果反查（表格列渲染用） */
+export const RESULT_STATUS_MAP: Record<number, string> = {
+  [RESULT_SUCCESS]: '成功',
+  [RESULT_FAILED]: '失败',
+}

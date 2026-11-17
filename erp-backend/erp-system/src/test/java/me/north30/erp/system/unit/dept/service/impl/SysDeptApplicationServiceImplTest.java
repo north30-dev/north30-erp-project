@@ -9,6 +9,7 @@ import me.north30.erp.system.unit.security.support.MpTableInfoInit;
 import me.north30.erp.system.dept.converter.DeptConverter;
 import me.north30.erp.system.dept.converter.DeptConverterImpl;
 import me.north30.erp.system.dept.dto.DeptCreateDTO;
+import me.north30.erp.system.dept.dto.DeptMoveDTO;
 import me.north30.erp.system.dept.dto.DeptUpdateDTO;
 import me.north30.erp.system.dept.entity.SysDept;
 import me.north30.erp.system.dept.mapper.SysDeptMapper;
@@ -454,6 +455,154 @@ class SysDeptApplicationServiceImplTest {
                     ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DEPT_NOT_FOUND.getCode()))
                 .hasMessage("组织 1 不存在");
             verify(sysDeptMapper, never()).deleteById(anyLong());
+        }
+    }
+
+    @Nested
+    @DisplayName("部门状态变更")
+    class ChangeStatusTest {
+
+        @Test
+        @DisplayName("部门状态变更，成功启用，仅更新状态与乐观锁版本")
+        void shouldEnableDept_whenStatusOne() {
+            // Given：组织存在且当前停用
+            SysDept dept = DeptTestFactory.rootDept(1L, "ORG001", "总部", 1, 1);
+            dept.setStatus(0);
+            given(sysDeptService.requireDept(1L)).willReturn(dept);
+            given(sysDeptMapper.updateById(any(SysDept.class))).willReturn(1);
+
+            // When
+            var vo = service.changeStatus(1L, DeptTestFactory.statusDTO(1, 2));
+
+            // Then：patch 实体仅承载 id/status/version
+            assertThat(vo.status()).isEqualTo(1);
+            verify(sysDeptMapper).updateById(deptCaptor.capture());
+            SysDept patch = deptCaptor.getValue();
+            assertThat(patch.getId()).isEqualTo(1L);
+            assertThat(patch.getStatus()).isEqualTo(1);
+            assertThat(patch.getVersion()).isEqualTo(2);
+            assertThat(patch.getDeptCode()).isNull();
+        }
+
+        @Test
+        @DisplayName("部门状态变更，成功停用")
+        void shouldDisableDept_whenStatusZero() {
+            // Given：组织存在且当前启用
+            SysDept dept = DeptTestFactory.rootDept(1L, "ORG001", "总部", 1, 1);
+            given(sysDeptService.requireDept(1L)).willReturn(dept);
+            given(sysDeptMapper.updateById(any(SysDept.class))).willReturn(1);
+
+            // When
+            var vo = service.changeStatus(1L, DeptTestFactory.statusDTO(0, 3));
+
+            // Then
+            assertThat(vo.status()).isZero();
+            verify(sysDeptMapper).updateById(deptCaptor.capture());
+            assertThat(deptCaptor.getValue().getStatus()).isZero();
+            assertThat(deptCaptor.getValue().getVersion()).isEqualTo(3);
+        }
+
+        @Test
+        @DisplayName("部门状态变更，状态值非法，抛出 10001")
+        void shouldThrow10001_whenStatusValueIllegal() {
+            // Given
+            SysDept dept = DeptTestFactory.rootDept(1L, "ORG001", "总部", 1, 1);
+            given(sysDeptService.requireDept(1L)).willReturn(dept);
+
+            // When + Then
+            assertThatThrownBy(() -> service.changeStatus(1L, DeptTestFactory.statusDTO(2, 2)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
+                .hasMessage("状态取值非法，仅支持 0-停用 1-启用");
+            verify(sysDeptMapper, never()).updateById(any(SysDept.class));
+        }
+
+        @Test
+        @DisplayName("部门状态变更，组织不存在，抛出 18024")
+        void shouldThrow18024_whenDeptNotFound() {
+            // Given
+            given(sysDeptService.requireDept(99L))
+                .willThrow(new BusinessException(SystemErrorCode.DEPT_NOT_FOUND, "组织 99 不存在"));
+
+            // When + Then
+            assertThatThrownBy(() -> service.changeStatus(99L, DeptTestFactory.statusDTO(1, 2)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.DEPT_NOT_FOUND.getCode()))
+                .hasMessage("组织 99 不存在");
+            verify(sysDeptMapper, never()).updateById(any(SysDept.class));
+        }
+
+        @Test
+        @DisplayName("部门状态变更，乐观锁冲突（更新 0 行），抛出 10601")
+        void shouldThrow10601_whenOptimisticLockConflict() {
+            // Given
+            SysDept dept = DeptTestFactory.rootDept(1L, "ORG001", "总部", 1, 1);
+            given(sysDeptService.requireDept(1L)).willReturn(dept);
+            given(sysDeptMapper.updateById(any(SysDept.class))).willReturn(0);
+
+            // When + Then
+            assertThatThrownBy(() -> service.changeStatus(1L, DeptTestFactory.statusDTO(1, 9)))
+                .isInstanceOf(OptimisticLockingFailureException.class)
+                .hasMessage("数据已被其他操作修改，请重试");
+        }
+    }
+
+    @Nested
+    @DisplayName("move：组织上移/下移")
+    class MoveTest {
+
+        @Test
+        @DisplayName("上移时与前一节点交换并规范化重排，仅变更行落库")
+        void shouldSwapWithNeighborAndNormalize_whenMoveUp() {
+            // Given：顶级三个组织 sort=10/20/30，目标为第二个
+            SysDept first = DeptTestFactory.rootDept(1L, "D001", "总部", 1, 10);
+            SysDept target = DeptTestFactory.rootDept(2L, "D002", "华东分部", 1, 20);
+            SysDept third = DeptTestFactory.rootDept(3L, "D003", "华南分部", 1, 30);
+            given(sysDeptService.requireDept(2L)).willReturn(target);
+            given(sysDeptService.listSiblings(0L)).willReturn(List.of(first, target, third));
+            given(sysDeptMapper.updateById(any(SysDept.class))).willReturn(1);
+
+            // When
+            service.move(2L, new DeptMoveDTO("up"));
+
+            // Then：交换后 target=10、first=20，third 不变；仅两行落库
+            assertThat(target.getDeptSort()).isEqualTo(10);
+            assertThat(first.getDeptSort()).isEqualTo(20);
+            assertThat(third.getDeptSort()).isEqualTo(30);
+            verify(sysDeptMapper, times(2)).updateById(any(SysDept.class));
+        }
+
+        @Test
+        @DisplayName("已处于同级底部时下移抛 10001")
+        void shouldThrow10001_whenMoveDownAtBottom() {
+            // Given：目标为同级最后一行
+            SysDept first = DeptTestFactory.rootDept(1L, "D001", "总部", 1, 10);
+            SysDept target = DeptTestFactory.rootDept(2L, "D002", "华东分部", 1, 20);
+            given(sysDeptService.requireDept(2L)).willReturn(target);
+            given(sysDeptService.listSiblings(0L)).willReturn(List.of(first, target));
+
+            // When + Then
+            assertThatThrownBy(() -> service.move(2L, new DeptMoveDTO("down")))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
+                .hasMessage("已处于同级底部，无法下移");
+            verify(sysDeptMapper, never()).updateById(any(SysDept.class));
+        }
+
+        @Test
+        @DisplayName("乐观锁冲突（更新 0 行），抛出 10601")
+        void shouldThrow10601_whenOptimisticLockConflict() {
+            // Given
+            SysDept target = DeptTestFactory.rootDept(1L, "D001", "总部", 1, 10);
+            SysDept second = DeptTestFactory.rootDept(2L, "D002", "华东分部", 1, 20);
+            given(sysDeptService.requireDept(1L)).willReturn(target);
+            given(sysDeptService.listSiblings(0L)).willReturn(List.of(target, second));
+            given(sysDeptMapper.updateById(any(SysDept.class))).willReturn(0);
+
+            // When + Then
+            assertThatThrownBy(() -> service.move(1L, new DeptMoveDTO("down")))
+                .isInstanceOf(OptimisticLockingFailureException.class)
+                .hasMessage("数据已被其他操作修改，请重试");
         }
     }
 }

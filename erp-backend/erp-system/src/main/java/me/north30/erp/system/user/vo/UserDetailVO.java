@@ -19,6 +19,7 @@ import lombok.Builder;
  * @param roleIds 角色 ID 集合
  * @param warehouseIds 仓库 ID 集合
  * @param status 状态
+ * @param version 乐观锁版本号（前端提交编辑/状态切换时回传）
  * @param isAdmin 是否是管理员
  * @param gender 性别
  * @param remark 备注
@@ -42,6 +43,7 @@ public record UserDetailVO(
     List<Long> roleIds,
     List<Long> warehouseIds,
     Integer status,
+    Integer version,
     Integer isAdmin,
     Integer gender,
     String remark,

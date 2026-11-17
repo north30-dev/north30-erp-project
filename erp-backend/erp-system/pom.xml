@@ -41,6 +41,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
+        <!-- Caffeine：Redis 不可用时认证接口 IP 限流的本地降级计数 -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
         <!-- MapStruct 运行时注解（显式声明，模块自洽，版本由父工程管控） -->
         <dependency>
             <groupId>org.mapstruct</groupId>

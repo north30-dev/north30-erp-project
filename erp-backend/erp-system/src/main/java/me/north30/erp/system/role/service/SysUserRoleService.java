@@ -32,6 +32,13 @@ public interface SysUserRoleService {
     List<SysUserRole> listByRoleIds(Collection<Long> roleIds);
 
     /**
+     * 按用户 ID 集合批量查询关联（单次 IN 查询，装配用）。
+     * @param userIds 用户 ID 集合
+     * @return 用户-角色关联列表
+     */
+    List<SysUserRole> listByUserIds(Collection<Long> userIds);
+
+    /**
      * 统计分配到指定角色的用户数。
      * @param roleId 角色 ID
      * @return 用户数

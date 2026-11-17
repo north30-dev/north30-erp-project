@@ -63,6 +63,9 @@ public enum CommonErrorCode implements ErrorCode {
     /** 通用：业务对象附件数量超限（10401-10499 审计与附件段） */
     ATTACHMENT_COUNT_EXCEEDED(10403, "附件数量超出上限"),
 
+    /** 通用：附件业务类型不合法（10401-10499 审计与附件段） */
+    ATTACHMENT_BIZ_TYPE_INVALID(10404, "业务类型不合法"),
+
     /** 通用：导入任务不存在（10501-10599 批量导入与导出段） */
     IMPORT_TASK_NOT_FOUND(10503, "导入任务不存在"),
 

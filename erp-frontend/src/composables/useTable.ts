@@ -33,7 +33,8 @@ export function useTable<Q extends object, T = unknown>(
     try {
       const page = await fetcher({ ...query.value, pageNum: pageNum.value, pageSize: pageSize.value })
       records.value = page.list
-      total.value = page.total
+      // 后端 Long 全局序列化为 string（雪花 ID 精度保护），分页 total 收敛回 number
+      total.value = Number(page.total)
     } finally {
       loading.value = false
     }

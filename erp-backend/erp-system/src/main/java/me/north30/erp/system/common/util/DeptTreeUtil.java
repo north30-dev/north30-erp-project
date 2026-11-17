@@ -68,7 +68,8 @@ public class DeptTreeUtil {
             .map(child -> attachChildren(child, vos, childrenMap))
             .collect(Collectors.toList());
         return new DeptTreeVO(vo.id(), vo.deptCode(), vo.deptName(), vo.parentId(), vo.deptType(),
-            vo.deptLevel(), vo.ancestors(), vo.leader(), vo.phone(), vo.deptSort(), vo.status(), attached);
+            vo.deptLevel(), vo.ancestors(), vo.leader(), vo.phone(), vo.deptSort(), vo.status(),
+            vo.remark(), vo.version(), attached);
     }
 
     /**

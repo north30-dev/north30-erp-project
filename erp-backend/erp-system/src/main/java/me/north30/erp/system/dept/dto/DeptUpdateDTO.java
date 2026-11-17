@@ -13,7 +13,6 @@ import jakarta.validation.constraints.Size;
  * @param leader    负责人
  * @param phone     联系电话
  * @param deptSort  显示顺序
- * @param status    状态 0-停用 1-启用
  * @param remark    备注
  * @param version   乐观锁版本号
  */
@@ -36,8 +35,6 @@ public record DeptUpdateDTO(
     String phone,
 
     Integer deptSort,
-
-    Integer status,
 
     @Size(max = 500, message = "备注长度不能超过 500")
     String remark,

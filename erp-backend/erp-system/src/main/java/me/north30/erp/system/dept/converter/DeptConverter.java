@@ -50,7 +50,6 @@ public interface DeptConverter {
     @Mapping(target = "leader", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "phone", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "deptSort", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    @Mapping(target = "status", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "remark", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     void updateDept(DeptUpdateDTO dto, @MappingTarget SysDept dept);
 

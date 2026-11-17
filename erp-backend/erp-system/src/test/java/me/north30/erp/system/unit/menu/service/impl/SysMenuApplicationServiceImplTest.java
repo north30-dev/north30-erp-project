@@ -10,6 +10,7 @@ import me.north30.erp.system.unit.menu.MenuTestFactory;
 import me.north30.erp.system.menu.converter.MenuConverter;
 import me.north30.erp.system.menu.converter.MenuConverterImpl;
 import me.north30.erp.system.menu.dto.MenuCreateDTO;
+import me.north30.erp.system.menu.dto.MenuMoveDTO;
 import me.north30.erp.system.menu.dto.MenuUpdateDTO;
 import me.north30.erp.system.menu.entity.SysMenu;
 import me.north30.erp.system.menu.mapper.SysMenuMapper;
@@ -41,6 +42,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -205,7 +207,7 @@ class SysMenuApplicationServiceImplTest {
             // Given：父级守卫收敛进 SysMenuDomainService，mock 抛出领域异常
             MenuCreateDTO dto = MenuTestFactory.dirCreateDTO("孤儿目录", 99L, "/orphan", 1);
             willThrow(new BusinessException(SystemErrorCode.MENU_NOT_FOUND, "上级菜单不存在或已删除"))
-                .given(sysMenuDomainService).requireValidParent(null, 99L);
+                .given(sysMenuDomainService).requireValidParent(99L, 1);
 
             // When + Then
             assertThatThrownBy(() -> service.create(dto))
@@ -218,16 +220,32 @@ class SysMenuApplicationServiceImplTest {
         @Test   
         @DisplayName("创建按钮时，抛出异常")
         void shouldThrow_whenParentIsButton() {
-            // Given：按钮下不可再建子节点（最多三级），父级守卫收敛进 SysMenuDomainService
+            // Given：按钮下不可再建子节点，父级守卫收敛进 SysMenuDomainService
             MenuCreateDTO dto = MenuTestFactory.dirCreateDTO("四级节点", 9L, "/too-deep", 1);
             willThrow(new BusinessException(SystemErrorCode.MENU_LEVEL_EXCEEDED))
-                .given(sysMenuDomainService).requireValidParent(null, 9L);
+                .given(sysMenuDomainService).requireValidParent(9L, 1);
 
             // When + Then
             assertThatThrownBy(() -> service.create(dto))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.MENU_LEVEL_EXCEEDED.getCode()))
-                .hasMessage("菜单仅支持三级（目录/菜单/按钮）");
+                .hasMessage("菜单层级超过上限（最多 4 级）");
+            verify(sysMenuMapper, never()).insert(any(SysMenu.class));
+        }
+
+        @Test   
+        @DisplayName("创建子菜单时，深度超限抛出异常")
+        void shouldThrow_whenDepthExceeded() {
+            // Given：深度守卫收敛进 SysMenuDomainService，mock 抛出 18023
+            MenuCreateDTO dto = MenuTestFactory.dirCreateDTO("超限节点", 9L, "/too-deep", 1);
+            willThrow(new BusinessException(SystemErrorCode.MENU_LEVEL_EXCEEDED))
+                .given(sysMenuDomainService).requireDepthWithinLimit(9L, 1);
+
+            // When + Then
+            assertThatThrownBy(() -> service.create(dto))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.MENU_LEVEL_EXCEEDED.getCode()))
+                .hasMessage("菜单层级超过上限（最多 4 级）");
             verify(sysMenuMapper, never()).insert(any(SysMenu.class));
         }
 
@@ -255,7 +273,7 @@ class SysMenuApplicationServiceImplTest {
             assertThatThrownBy(() -> service.create(dto))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
-                .hasMessage("目录必须配置路由地址");
+                .hasMessage("路由地址不能为空");
             verify(sysMenuMapper, never()).insert(any(SysMenu.class));
         }
 
@@ -322,28 +340,28 @@ class SysMenuApplicationServiceImplTest {
         @Test   
         @DisplayName("更新菜单时，抛出异常")
         void shouldThrow_whenParentPointsToSelf() {
-            // Given：自指守卫收敛进 SysMenuDomainService，mock 抛出领域异常
+            // Given：合并后 parentId=1（自身），自指守卫收敛进 SysMenuDomainService，mock 抛出领域异常
             SysMenu menu = MenuTestFactory.dirMenu(1L, "系统管理", 0L, 1);
             given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
-            willThrow(new BusinessException(CommonErrorCode.PARAM_ERROR, "父级菜单不能指向自身"))
-                .given(sysMenuDomainService).requireValidParent(1L, 1L);
+            willThrow(new BusinessException(CommonErrorCode.PARAM_ERROR, "父级菜单不能指向自身或自身下级"))
+                .given(sysMenuDomainService).requireValidParent(1L, 1);
 
             // When + Then
             assertThatThrownBy(() -> service.update(1L, MenuTestFactory.updateDTO(1, null, 1L, null, null, null, null, null)))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
-                .hasMessage("父级菜单不能指向自身");
+                .hasMessage("父级菜单不能指向自身或自身下级");
             verify(sysMenuMapper, never()).updateById(any(SysMenu.class));
         }
 
         @Test   
         @DisplayName("更新菜单时，抛出异常")
         void shouldThrow_whenParentIsOwnDescendant() {
-            // Given：父级沿父链回溯会回到自身（防环），守卫收敛进 SysMenuDomainService
+            // Given：合并后 parentId=2，防环守卫收敛进 SysMenuDomainService
             SysMenu menu = MenuTestFactory.dirMenu(1L, "根目录", 0L, 1);
             given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
             willThrow(new BusinessException(CommonErrorCode.PARAM_ERROR, "父级菜单不能指向自身或自身下级"))
-                .given(sysMenuDomainService).requireValidParent(1L, 2L);
+                .given(sysMenuDomainService).requireValidParent(2L, 1);
 
             // When + Then
             assertThatThrownBy(() -> service.update(1L, MenuTestFactory.updateDTO(1, null, 2L, null, null, null, null, null)))
@@ -360,7 +378,7 @@ class SysMenuApplicationServiceImplTest {
             SysMenu menu = MenuTestFactory.dirMenu(1L, "根目录", 0L, 1);
             given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
             willThrow(new BusinessException(SystemErrorCode.MENU_NOT_FOUND, "上级菜单不存在或已删除"))
-                .given(sysMenuDomainService).requireValidParent(1L, 99L);
+                .given(sysMenuDomainService).requireValidParent(99L, 1);
 
             // When + Then
             assertThatThrownBy(() -> service.update(1L, MenuTestFactory.updateDTO(1, null, 99L, null, null, null, null, null)))
@@ -377,31 +395,85 @@ class SysMenuApplicationServiceImplTest {
             SysMenu menu = MenuTestFactory.dirMenu(1L, "根目录", 0L, 1);
             given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
             willThrow(new BusinessException(SystemErrorCode.MENU_LEVEL_EXCEEDED))
-                .given(sysMenuDomainService).requireValidParent(1L, 9L);
+                .given(sysMenuDomainService).requireValidParent(9L, 1);
 
             // When + Then
             assertThatThrownBy(() -> service.update(1L, MenuTestFactory.updateDTO(1, null, 9L, null, null, null, null, null)))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.MENU_LEVEL_EXCEEDED.getCode()))
-                .hasMessage("菜单仅支持三级（目录/菜单/按钮）");
+                .hasMessage("菜单层级超过上限（最多 4 级）");
             verify(sysMenuMapper, never()).updateById(any(SysMenu.class));
+        }
+
+        @Test   
+        @DisplayName("有子节点的菜单修改类型时抛出异常")
+        void shouldThrow_whenChangeTypeWithChildren() {
+            // Given：菜单(2) 改为目录(1)，且存在子节点
+            SysMenu menu = MenuTestFactory.pageMenu(1L, "用户管理", 1L, "system/user/index", "system:user:list", 1);
+            MenuUpdateDTO dto = MenuTestFactory.updateDTO(1, null, null, 1, null, null, null, null);
+            given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
+            given(sysMenuMapper.selectCount(any())).willReturn(2L);
+
+            // When + Then
+            assertThatThrownBy(() -> service.update(1L, dto))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
+                .hasMessage("菜单存在子节点，不可修改类型，请先处理子节点");
+            verify(sysMenuMapper, never()).updateById(any(SysMenu.class));
+        }
+
+        @Test   
+        @DisplayName("换父级时调用防环与子树深度守卫")
+        void shouldInvokeCycleAndDepthGuards_whenParentChanged() {
+            // Given：菜单从父级 1 换到父级 2，守卫由 domainService mock 放行
+            SysMenu menu = MenuTestFactory.pageMenu(1L, "用户管理", 1L, "system/user/index", "system:user:list", 1);
+            MenuUpdateDTO dto = MenuTestFactory.updateDTO(2, null, 2L, null, null, null, null, null);
+            given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
+            given(sysMenuMapper.selectById(1L)).willReturn(menu);
+            given(sysMenuMapper.updateById(any(SysMenu.class))).willReturn(1);
+
+            // When
+            service.update(1L, dto);
+
+            // Then
+            verify(sysMenuDomainService).requireNotDescendant(1L, 2L);
+            verify(sysMenuDomainService).requireSubtreeDepthWithinLimit(1L, 2L);
+        }
+
+        @Test   
+        @DisplayName("未换父级时不调用防环与子树深度守卫")
+        void shouldSkipDepthGuards_whenParentUnchanged() {
+            // Given：仅改名称，父级不变（dto.parentId 为 null）
+            SysMenu menu = MenuTestFactory.dirMenu(1L, "旧名", 0L, 1);
+            menu.setUpdateTime(LocalDateTime.of(2026, 9, 28, 10, 0, 0));
+            MenuUpdateDTO dto = MenuTestFactory.updateDTO(3, "新名", null, null, "/new", null, null, 2);
+            given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
+            given(sysMenuMapper.selectById(1L)).willReturn(menu);
+            given(sysMenuMapper.updateById(any(SysMenu.class))).willReturn(1);
+
+            // When
+            service.update(1L, dto);
+
+            // Then
+            verify(sysMenuDomainService, never()).requireNotDescendant(anyLong(), anyLong());
+            verify(sysMenuDomainService, never()).requireSubtreeDepthWithinLimit(anyLong(), anyLong());
         }
 
         @Test   
         @DisplayName("更新菜单时，抛出异常")
         void shouldThrow_whenPermsDuplicatedOnUpdate() {
             // Given：修改为已存在的 perms，唯一守卫收敛进 SysMenuDomainService
-            SysMenu menu = MenuTestFactory.buttonMenu(1L, "新增按钮", 0L, "old:perm", 1);
-            MenuUpdateDTO dto = MenuTestFactory.updateDTO(2, null, null, null, null, null, "dup:perm", null);
+            SysMenu menu = MenuTestFactory.buttonMenu(1L, "新增按钮", 0L, "sys:menu:old", 1);
+            MenuUpdateDTO dto = MenuTestFactory.updateDTO(2, null, null, null, null, null, "sys:menu:dup", null);
             given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
-            willThrow(new BusinessException(SystemErrorCode.MENU_PERMS_DUPLICATED, "权限标识 dup:perm 已存在"))
-                .given(sysMenuDomainService).requirePermsAvailable("dup:perm", 1L);
+            willThrow(new BusinessException(SystemErrorCode.MENU_PERMS_DUPLICATED, "权限标识 sys:menu:dup 已存在"))
+                .given(sysMenuDomainService).requirePermsAvailable("sys:menu:dup", 1L);
 
             // When + Then
             assertThatThrownBy(() -> service.update(1L, dto))
                 .isInstanceOfSatisfying(BusinessException.class,
                     ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.MENU_PERMS_DUPLICATED.getCode()))
-                .hasMessage("权限标识 dup:perm 已存在");
+                .hasMessage("权限标识 sys:menu:dup 已存在");
             verify(sysMenuMapper, never()).updateById(any(SysMenu.class));
         }
 
@@ -428,6 +500,7 @@ class SysMenuApplicationServiceImplTest {
             menu.setUpdateTime(LocalDateTime.of(2026, 9, 28, 11, 0, 0));
             MenuUpdateDTO dto = MenuTestFactory.updateDTO(2, null, null, 3, null, null, "system:user:create", null);
             given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
+            given(sysMenuMapper.selectCount(any())).willReturn(0L);
             given(sysMenuMapper.selectById(1L)).willReturn(menu);
             given(sysMenuMapper.updateById(any(SysMenu.class))).willReturn(1);
 
@@ -515,6 +588,100 @@ class SysMenuApplicationServiceImplTest {
                     ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.MENU_NOT_FOUND.getCode()))
                 .hasMessage("菜单不存在");
             verifyNoInteractions(sysRoleMenuService);
+        }
+
+        @Test
+        @DisplayName("删除内置菜单：抛 18039")
+        void shouldThrow18039_whenDeleteSystemMenu() {
+            // Given
+            SysMenu menu = MenuTestFactory.dirMenu(1L, "系统管理", 0L, 1);
+            menu.setIsSystem(1);
+            given(sysMenuDomainService.requireMenu(1L)).willReturn(menu);
+
+            // When + Then
+            assertThatThrownBy(() -> service.delete(1L))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(SystemErrorCode.SYSTEM_MENU_PROTECTED.getCode()))
+                .hasMessage("内置菜单 系统管理 不可删除");
+            verify(sysMenuMapper, never()).deleteById(anyLong());
+            verifyNoInteractions(sysRoleMenuService);
+        }
+    }
+
+    @Nested
+    @DisplayName("move：菜单上移/下移")
+    class MoveTest {
+
+        @Test
+        @DisplayName("上移时与前一节点交换并规范化重排，仅变更行落库")
+        void shouldSwapWithNeighborAndNormalize_whenMoveUp() {
+            // Given：同级三个目录 sort=10/20/30，目标为第二个
+            SysMenu first = MenuTestFactory.dirMenu(1L, "基础数据", 0L, 10);
+            SysMenu target = MenuTestFactory.dirMenu(2L, "系统管理", 0L, 20);
+            SysMenu third = MenuTestFactory.dirMenu(3L, "监控中心", 0L, 30);
+            given(sysMenuDomainService.requireMenu(2L)).willReturn(target);
+            given(sysMenuDomainService.listSiblings(0L)).willReturn(List.of(first, target, third));
+            given(sysMenuMapper.updateById(any(SysMenu.class))).willReturn(1);
+
+            // When
+            service.move(2L, new MenuMoveDTO("up"));
+
+            // Then：交换后 target=10、first=20，third 不变；仅两行落库
+            assertThat(target.getMenuSort()).isEqualTo(10);
+            assertThat(first.getMenuSort()).isEqualTo(20);
+            assertThat(third.getMenuSort()).isEqualTo(30);
+            verify(sysMenuMapper, times(2)).updateById(any(SysMenu.class));
+        }
+
+        @Test
+        @DisplayName("下移时与后一节点交换")
+        void shouldSwapWithNext_whenMoveDown() {
+            // Given：目标为同级第一行
+            SysMenu target = MenuTestFactory.dirMenu(1L, "基础数据", 0L, 10);
+            SysMenu second = MenuTestFactory.dirMenu(2L, "系统管理", 0L, 20);
+            given(sysMenuDomainService.requireMenu(1L)).willReturn(target);
+            given(sysMenuDomainService.listSiblings(0L)).willReturn(List.of(target, second));
+            given(sysMenuMapper.updateById(any(SysMenu.class))).willReturn(1);
+
+            // When
+            service.move(1L, new MenuMoveDTO("down"));
+
+            // Then
+            assertThat(target.getMenuSort()).isEqualTo(20);
+            assertThat(second.getMenuSort()).isEqualTo(10);
+            verify(sysMenuMapper, times(2)).updateById(any(SysMenu.class));
+        }
+
+        @Test
+        @DisplayName("已处于同级顶部时上移抛 10001")
+        void shouldThrow10001_whenMoveUpAtTop() {
+            // Given：目标为同级第一行
+            SysMenu target = MenuTestFactory.dirMenu(1L, "基础数据", 0L, 10);
+            given(sysMenuDomainService.requireMenu(1L)).willReturn(target);
+            given(sysMenuDomainService.listSiblings(0L)).willReturn(List.of(target));
+
+            // When + Then
+            assertThatThrownBy(() -> service.move(1L, new MenuMoveDTO("up")))
+                .isInstanceOfSatisfying(BusinessException.class,
+                    ex -> assertThat(ex.getCode()).isEqualTo(CommonErrorCode.PARAM_ERROR.getCode()))
+                .hasMessage("已处于同级顶部，无法上移");
+            verify(sysMenuMapper, never()).updateById(any(SysMenu.class));
+        }
+
+        @Test
+        @DisplayName("乐观锁冲突（更新 0 行），抛出 10601")
+        void shouldThrow10601_whenOptimisticLockConflict() {
+            // Given
+            SysMenu target = MenuTestFactory.dirMenu(1L, "基础数据", 0L, 10);
+            SysMenu second = MenuTestFactory.dirMenu(2L, "系统管理", 0L, 20);
+            given(sysMenuDomainService.requireMenu(1L)).willReturn(target);
+            given(sysMenuDomainService.listSiblings(0L)).willReturn(List.of(target, second));
+            given(sysMenuMapper.updateById(any(SysMenu.class))).willReturn(0);
+
+            // When + Then
+            assertThatThrownBy(() -> service.move(1L, new MenuMoveDTO("down")))
+                .isInstanceOf(OptimisticLockingFailureException.class)
+                .hasMessage("数据已被其他操作修改，请重试");
         }
     }
 }

@@ -8,8 +8,8 @@ import jakarta.validation.constraints.Size;
  * 
  * @param username 用户名（登录名）
  * @param password 密码（明文）
- * @param captcha 验证码（登录名 + 验证码）
- * @param captchaKey 验证码标识（登录名）
+ * @param captcha 验证码（渐进式：未达失败阈值可不填；前端始终携带）
+ * @param captchaKey 验证码标识（与 captcha 配对；未达失败阈值可不填）
  */
 public record LoginDTO(
 
@@ -21,10 +21,8 @@ public record LoginDTO(
     @Size(max = 64, message = "密码长度不能超过 64")
     String password,
 
-    @NotBlank(message = "验证码不能为空")
     String captcha,
 
-    @NotBlank(message = "验证码标识不能为空")
     String captchaKey
 ) {
 }

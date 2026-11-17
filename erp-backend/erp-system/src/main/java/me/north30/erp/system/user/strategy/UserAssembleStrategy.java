@@ -1,15 +1,12 @@
 package me.north30.erp.system.user.strategy;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import me.north30.erp.common.util.DateTimeFormatUtil;
 import me.north30.erp.common.util.DesensitizeUtil;
-import me.north30.erp.system.dept.entity.SysDept;
-import me.north30.erp.system.dept.mapper.SysDeptMapper;
-import me.north30.erp.system.role.entity.SysRole;
+import me.north30.erp.system.dept.service.SysDeptDomainService;
 import me.north30.erp.system.role.entity.SysUserRole;
-import me.north30.erp.system.role.mapper.SysRoleMapper;
-import me.north30.erp.system.role.mapper.SysUserRoleMapper;
+import me.north30.erp.system.role.service.SysRoleDomainService;
+import me.north30.erp.system.role.service.SysUserRoleService;
 import me.north30.erp.system.user.converter.UserConverter;
 import me.north30.erp.system.user.entity.SysUser;
 import me.north30.erp.system.user.vo.UserVO;
@@ -26,7 +23,8 @@ import java.util.stream.Collectors;
 
 /**
  * 用户装配策略：VO 批量装配与 CSV 导出。
- * <p>IO 类策略（@Component），组织名/角色编码取数依赖 sys_dept/sys_user_role/sys_role；
+ * <p>IO 类策略（@Component），组织名/角色编码取数跨域走 dept/role 域 Service
+ * （SysDeptDomainService/SysUserRoleService/SysRoleDomainService）；
  * 全程一次 IN 查询后内存关联，避免循环查库（N+1）。</p>
  */
 @Component
@@ -36,9 +34,9 @@ public class UserAssembleStrategy {
     /** CSV 导出 UTF-8 BOM（Excel 兼容） */
     private static final String CSV_BOM = "\uFEFF";
 
-    private final SysDeptMapper sysDeptMapper;
-    private final SysUserRoleMapper sysUserRoleMapper;
-    private final SysRoleMapper sysRoleMapper;
+    private final SysDeptDomainService sysDeptDomainService;
+    private final SysUserRoleService sysUserRoleService;
+    private final SysRoleDomainService sysRoleDomainService;
     private final UserConverter userConverter;
 
     /**
@@ -52,27 +50,26 @@ public class UserAssembleStrategy {
             return List.of();
         }
         Map<Long, String> deptNames = loadDeptNames(users);
-        Map<Long, List<String>> roleCodes = loadRoleCodesByUserIds(
+        Map<Long, List<String>> roleNames = loadRoleNamesByUserIds(
             users.stream().map(SysUser::getId).toList());
         return users.stream()
             .map(user -> userConverter.toUserVO(user,
                 deptNames.get(user.getDeptId()),
-                roleCodes.getOrDefault(user.getId(), List.of())))
+                roleNames.getOrDefault(user.getId(), List.of())))
             .toList();
     }
 
     /**
-     * 按角色 ID 集合批量加载角色编码映射（getDetail 详情装配用）。
+     * 按角色 ID 集合批量加载角色名称映射（getDetail 详情装配用）。
      *
      * @param roleIds 角色 ID 集合
-     * @return 角色 ID 映射角色编码的映射
+     * @return 角色 ID 映射角色名称的映射
      */
-    public Map<Long, String> loadRoleCodeMap(Collection<Long> roleIds) {
+    public Map<Long, String> loadRoleNameMap(Collection<Long> roleIds) {
         if (roleIds == null || roleIds.isEmpty()) {
             return Map.of();
         }
-        return sysRoleMapper.selectByIds(roleIds).stream()
-            .collect(Collectors.toMap(SysRole::getId, SysRole::getRoleCode));
+        return sysRoleDomainService.getRoleNameMap(roleIds);
     }
 
     /**
@@ -83,7 +80,7 @@ public class UserAssembleStrategy {
      */
     public byte[] toCsvBytes(List<SysUser> users) {
         Map<Long, String> deptNames = loadDeptNames(users);
-        Map<Long, List<String>> roleCodes = loadRoleCodesByUserIds(
+        Map<Long, List<String>> roleNames = loadRoleNamesByUserIds(
             users.stream().map(SysUser::getId).toList());
         StringBuilder csv = new StringBuilder();
         csv.append(CSV_BOM);
@@ -96,7 +93,7 @@ public class UserAssembleStrategy {
                 .append(escape(DesensitizeUtil.maskPhone(user.getPhone()))).append(',')
                 .append(escape(user.getEmail())).append(',')
                 .append(escape(deptNames.get(user.getDeptId()))).append(',')
-                .append(escape(String.join(";", roleCodes.getOrDefault(user.getId(), List.of())))).append(',')
+                .append(escape(String.join(";", roleNames.getOrDefault(user.getId(), List.of())))).append(',')
                 .append(escape(user.getStatus() != null && user.getStatus() == 1 ? "启用" : "停用")).append(',')
                 .append(escape(user.isAdmin() ? "是" : "否")).append(',')
                 .append(escape(DateTimeFormatUtil.format(user.getLastLoginTime()))).append(',')
@@ -121,22 +118,20 @@ public class UserAssembleStrategy {
             // 用 HashMap 而非 Map.of()：用户 dept_id 可为 null，不可变 Map.get(null) 会抛 NPE
             return new HashMap<>();
         }
-        return sysDeptMapper.selectByIds(deptIds).stream()
-            .collect(Collectors.toMap(SysDept::getId, SysDept::getDeptName));
+        return sysDeptDomainService.getDeptNameMap(deptIds);
     }
 
     /**
-     * 批量加载用户角色编码映射（user_role + role 各一次 IN 查询，避免循环查库）。
+     * 批量加载用户角色名称映射（user_role + role 各一次 IN 查询，避免循环查库）。
      *
      * @param userIds 用户 ID 集合
-     * @return 用户 ID 映射角色编码列表的映射
+     * @return 用户 ID 映射角色名称列表的映射
      */
-    private Map<Long, List<String>> loadRoleCodesByUserIds(List<Long> userIds) {
+    private Map<Long, List<String>> loadRoleNamesByUserIds(List<Long> userIds) {
         if (userIds.isEmpty()) {
             return Map.of();
         }
-        List<SysUserRole> userRoles = sysUserRoleMapper.selectList(
-            new LambdaQueryWrapper<SysUserRole>().in(SysUserRole::getUserId, userIds));
+        List<SysUserRole> userRoles = sysUserRoleService.listByUserIds(userIds);
         if (userRoles.isEmpty()) {
             return Map.of();
         }
@@ -144,10 +139,10 @@ public class UserAssembleStrategy {
             .map(SysUserRole::getRoleId)
             .filter(Objects::nonNull)
             .collect(Collectors.toSet());
-        Map<Long, String> roleCodeMap = loadRoleCodeMap(roleIds);
+        Map<Long, String> roleNameMap = loadRoleNameMap(roleIds);
         return userRoles.stream()
             .collect(Collectors.groupingBy(SysUserRole::getUserId,
-                Collectors.mapping(ur -> roleCodeMap.get(ur.getRoleId()),
+                Collectors.mapping(ur -> roleNameMap.get(ur.getRoleId()),
                     Collectors.filtering(Objects::nonNull, Collectors.toList()))));
     }
 

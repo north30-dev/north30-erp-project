@@ -50,7 +50,6 @@ public interface DictConverter {
     @Mapping(target = "cssClass")
     @Mapping(target = "isDefault")
     @Mapping(target = "extJson")
-    @Mapping(target = "status")
     @Mapping(target = "remark")
     void updateSysDictItem(DictItemUpdateDTO dto, @MappingTarget SysDictItem item);
 
@@ -77,7 +76,6 @@ public interface DictConverter {
      */
     @BeanMapping(ignoreByDefault = true, nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "dictName")
-    @Mapping(target = "status")
     @Mapping(target = "remark")
     void updateSysDictType(DictTypeUpdateDTO dto, @MappingTarget SysDictType type);
 

@@ -36,27 +36,32 @@ class DeptIntegrationTest extends ApiIntegrationTest {
             .when().get(BASE_PATH + "/tree")
             .then().statusCode(200)
             .extract().response();
-        List<java.util.Map<String, Object>> flat = flatten(response.jsonPath().getList("data"));
+        List<Map<String, Object>> flat = flatten(response.jsonPath().getList("data"));
         return flat.stream()
             .filter(item -> deptCode.equals(item.get("deptCode")))
-            .findFirst().map(item -> ((Number) item.get("id")).longValue()).orElse(-1L);
+            .findFirst().map(item -> asLong(item.get("id"))).orElse(-1L);
     }
 
     /** 树形结构拍平（递归 children） */
-    private java.util.List<java.util.Map<String, Object>> flatten(java.util.List<java.util.Map<String, Object>> nodes) {
-        java.util.List<java.util.Map<String, Object>> result = new java.util.ArrayList<>();
+    private List<Map<String, Object>> flatten(List<Map<String, Object>> nodes) {
+        List<Map<String, Object>> result = new ArrayList<>();
         if (nodes == null) {
             return result;
         }
-        for (java.util.Map<String, Object> node : nodes) {
+        for (Map<String, Object> node : nodes) {
             result.add(node);
-            result.addAll(flatten((java.util.List<java.util.Map<String, Object>>) node.get("children")));
+            result.addAll(flatten((List<Map<String, Object>>) node.get("children")));
         }
         return result;
     }
 
+    /** ID 取 Long（雪花 ID 经 Jackson 序列化为字符串，兼容数字/字符串两种形态） */
+    private long asLong(Object value) {
+        return Long.parseLong(String.valueOf(value));
+    }
+
     /** 记录创建部门时的编码（供清理与查找） */
-    private String createAndReturnCode(long parentId, java.util.List<String> codeStore) {
+    private String createAndReturnCode(long parentId, List<String> codeStore) {
         String code = "IT-D-" + suffix();
         Map<String, Object> body = new HashMap<>();
         body.put("deptCode", code);
@@ -80,18 +85,18 @@ class DeptIntegrationTest extends ApiIntegrationTest {
             Response response = given().port(port).header("Authorization", "Bearer " + adminToken())
                 .when().get(BASE_PATH + "/tree")
                 .then().extract().response();
-            java.util.List<java.util.Map<String, Object>> flat = flatten(response.jsonPath().getList("data"));
-            java.util.List<java.util.Map<String, Object>> itNodes = flat.stream()
+            List<Map<String, Object>> flat = flatten(response.jsonPath().getList("data"));
+            List<Map<String, Object>> itNodes = flat.stream()
                 .filter(n -> String.valueOf(n.get("deptCode")).startsWith("IT-"))
                 .toList();
             if (itNodes.isEmpty()) {
                 return;
             }
             boolean deletedAny = false;
-            for (java.util.Map<String, Object> node : itNodes) {
-                long id = ((Number) node.get("id")).longValue();
+            for (Map<String, Object> node : itNodes) {
+                long id = asLong(node.get("id"));
                 boolean hasItChild = itNodes.stream()
-                    .anyMatch(n -> n.get("parentId") != null && ((Number) n.get("parentId")).longValue() == id);
+                    .anyMatch(n -> n.get("parentId") != null && asLong(n.get("parentId")) == id);
                 if (!hasItChild) {
                     given().port(port).header("Authorization", "Bearer " + adminToken())
                         .when().delete(BASE_PATH + "/" + id);
@@ -128,7 +133,7 @@ class DeptIntegrationTest extends ApiIntegrationTest {
         @DisplayName("父部门存在，创建子部门成功")
         void shouldCreateChildDept_whenParentExists() {
             // Given：顶级部门
-            java.util.List<String> codes = new java.util.ArrayList<>();
+            List<String> codes = new ArrayList<>();
             createAndReturnCode(0L, codes);
 
             // When / Then：其下创建子部门，树上两个节点均可见
@@ -194,7 +199,7 @@ class DeptIntegrationTest extends ApiIntegrationTest {
             // 说明：树 VO 不含 version，正向修改以 version=999 断言 10601 乐观锁冲突口径覆盖；
             // 正向改名场景由 dept 域单测覆盖（此处不重复）。
             // Given
-            java.util.List<String> codes = new java.util.ArrayList<>();
+            List<String> codes = new ArrayList<>();
             createAndReturnCode(0L, codes);
             long id = findIdByCode(codes.get(0));
             Map<String, Object> body = Map.of("deptName", "乐观锁冲突", "parentId", 0L, "deptType", 4, "version", 999);
@@ -232,7 +237,7 @@ class DeptIntegrationTest extends ApiIntegrationTest {
         @DisplayName("删除无子部门无用户的叶子部门，删除成功")
         void shouldDeleteLeafDept_whenNoChildrenAndNoUsers() {
             // Given
-            java.util.List<String> codes = new java.util.ArrayList<>();
+            List<String> codes = new ArrayList<>();
             createAndReturnCode(0L, codes);
             long id = findIdByCode(codes.get(0));
 
@@ -249,7 +254,7 @@ class DeptIntegrationTest extends ApiIntegrationTest {
         @DisplayName("删除有子部门的部门，返回422存在子部门")
         void shouldReturn422HasChildren_whenDeleteDeptWithChild() {
             // Given：父 + 子两级
-            java.util.List<String> codes = new java.util.ArrayList<>();
+            List<String> codes = new ArrayList<>();
             createAndReturnCode(0L, codes);
             long parentId = findIdByCode(codes.get(0));
             createAndReturnCode(parentId, codes);
@@ -274,6 +279,131 @@ class DeptIntegrationTest extends ApiIntegrationTest {
             // When / Then
             given().port(port).header("Authorization", "Bearer " + adminToken())
                 .when().delete(BASE_PATH + "/999999999")
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.DEPT_NOT_FOUND.getCode()));
+        }
+    }
+
+    @Nested
+    @DisplayName("变更部门状态")
+    class ChangeStatusTest {
+
+        @Test
+        @DisplayName("停用后重新启用自建部门，返回变更后状态")
+        void shouldToggleStatus_whenDeptCreated() {
+            // Given（新建行乐观锁版本为 0）
+            List<String> codes = new ArrayList<>();
+            createAndReturnCode(0L, codes);
+            long id = findIdByCode(codes.get(0));
+
+            // When / Then：停用
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 0, "version", 0))
+                .when().post(BASE_PATH + "/" + id + "/status")
+                .then().statusCode(200).body("code", equalTo(200))
+                .body("data.status", equalTo(0));
+
+            // When / Then：启用
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 1, "version", 1))
+                .when().post(BASE_PATH + "/" + id + "/status")
+                .then().statusCode(200).body("code", equalTo(200))
+                .body("data.status", equalTo(1));
+        }
+
+        @Test
+        @DisplayName("版本号过期，返回409乐观锁冲突")
+        void shouldReturn409Conflict_whenVersionStale() {
+            // Given
+            List<String> codes = new ArrayList<>();
+            createAndReturnCode(0L, codes);
+            long id = findIdByCode(codes.get(0));
+
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 0, "version", 999))
+                .when().post(BASE_PATH + "/" + id + "/status")
+                .then().statusCode(409)
+                .body("code", equalTo(CommonErrorCode.OPTIMISTIC_LOCK_CONFLICT.getCode()));
+        }
+
+        @Test
+        @DisplayName("停用不存在的部门id，返回422部门不存在")
+        void shouldReturn422DeptNotFound_whenIdNotExist() {
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("status", 0, "version", 1))
+                .when().post(BASE_PATH + "/999999999/status")
+                .then().statusCode(422)
+                .body("code", equalTo(SystemErrorCode.DEPT_NOT_FOUND.getCode()));
+        }
+    }
+
+    @Nested
+    @DisplayName("组织上移/下移")
+    class MoveTest {
+
+        /** 读取根级部门编码顺序 */
+        private List<String> rootDeptCodes() {
+            Response response = given().port(port).header("Authorization", "Bearer " + adminToken())
+                .when().get(BASE_PATH + "/tree")
+                .then().statusCode(200)
+                .extract().response();
+            List<Map<String, Object>> roots = response.jsonPath().getList("data");
+            return roots.stream().map(n -> String.valueOf(n.get("deptCode"))).toList();
+        }
+
+        @Test
+        @DisplayName("下移成功，树中同级顺序交换")
+        void shouldMoveDownAndSwapOrder_whenMoveDown() {
+            // Given：两个顶级部门，创建顺序 A→B（A sort=10 在前）
+            List<String> codes = new ArrayList<>();
+            createAndReturnCode(0L, codes);
+            createAndReturnCode(0L, codes);
+            long idA = findIdByCode(codes.get(0));
+
+            // When：A 下移
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("direction", "down"))
+                .when().post(BASE_PATH + "/" + idA + "/move")
+                .then().statusCode(200).body("code", equalTo(200));
+
+            // Then：树中 B 排在 A 之前
+            List<String> order = rootDeptCodes();
+            org.assertj.core.api.Assertions.assertThat(order.indexOf(codes.get(1)))
+                .isLessThan(order.indexOf(codes.get(0)));
+        }
+
+        @Test
+        @DisplayName("已处于同级底部时下移，返回422参数错误")
+        void shouldReturn422ParamError_whenMoveDownAtBottom() {
+            // Given：新建顶级部门 sort 为同级 max+10，必处于底部（含种子部门干扰也不受影响）
+            List<String> codes = new ArrayList<>();
+            createAndReturnCode(0L, codes);
+            long idA = findIdByCode(codes.get(0));
+
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("direction", "down"))
+                .when().post(BASE_PATH + "/" + idA + "/move")
+                .then().statusCode(422)
+                .body("code", equalTo(CommonErrorCode.PARAM_ERROR.getCode()));
+        }
+
+        @Test
+        @DisplayName("移动不存在的部门id，返回422部门不存在")
+        void shouldReturn422DeptNotFound_whenIdNotExist() {
+            // When / Then
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .contentType(ContentType.JSON)
+                .body(Map.of("direction", "up"))
+                .when().post(BASE_PATH + "/999999999/move")
                 .then().statusCode(422)
                 .body("code", equalTo(SystemErrorCode.DEPT_NOT_FOUND.getCode()));
         }

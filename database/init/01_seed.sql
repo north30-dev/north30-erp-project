@@ -22,14 +22,17 @@ INSERT INTO sys_dept (id, dept_code, dept_name, parent_id, dept_type, dept_level
 SELECT setval('sys_dept_id_seq', (SELECT MAX(id) FROM sys_dept));
 
 -- 4.2 角色（SYS-03/SYS-04；数据范围 1-全部 3-本组织 4-本部门及下级 6-仅本人）
-INSERT INTO sys_role (id, role_code, role_name, role_sort, data_scope, is_builtin, status, create_by, update_by) VALUES
-(1, 'ADMIN', '超级管理员', 1, 1, 1, 1, 'admin', 'admin'),
-(2, 'SALES_DIRECTOR', '销售总监', 2, 1, 1, 1, 'admin', 'admin'),
-(3, 'SALES_USER', '销售业务员', 3, 6, 1, 1, 'admin', 'admin'),
-(4, 'BUYER', '采购员', 4, 6, 1, 1, 'admin', 'admin'),
-(5, 'WAREHOUSE_KEEPER', '仓管员', 5, 3, 1, 1, 'admin', 'admin'),
-(6, 'PRODUCTION_PLANNER', '生产计划员', 6, 4, 1, 1, 'admin', 'admin'),
-(7, 'FINANCE_MANAGER', '财务经理', 7, 1, 1, 1, 'admin', 'admin');
+--   ADMIN/SYSTEM_ADMIN 为管理内置角色；SYSTEM_ADMIN 预勾选全部 /system 菜单
+--   （角色-菜单授权由应用 AdminInitializer 启动时幂等完成）。
+INSERT INTO sys_role (id, role_code, role_name, data_scope, is_builtin, status, create_by, update_by) VALUES
+(1, 'ADMIN', '超级管理员', 1, 1, 1, 'admin', 'admin'),
+(2, 'SYSTEM_ADMIN', '系统管理员', 1, 1, 1, 'admin', 'admin'),
+(3, 'SALES_DIRECTOR', '销售总监', 1, 1, 1, 'admin', 'admin'),
+(4, 'SALES_USER', '销售业务员', 6, 1, 1, 'admin', 'admin'),
+(5, 'BUYER', '采购员', 6, 1, 1, 'admin', 'admin'),
+(6, 'WAREHOUSE_KEEPER', '仓管员', 3, 1, 1, 'admin', 'admin'),
+(7, 'PRODUCTION_PLANNER', '生产计划员', 4, 1, 1, 'admin', 'admin'),
+(8, 'FINANCE_MANAGER', '财务经理', 1, 1, 1, 'admin', 'admin');
 SELECT setval('sys_role_id_seq', (SELECT MAX(id) FROM sys_role));
 
 -- 4.3 4 个中心仓库（INV-01 裁定：原材料仓、半成品仓、苏州成品仓、东莞成品仓）
@@ -126,7 +129,8 @@ INSERT INTO sys_dict_type (id, dict_type, dict_name, status, create_by, update_b
 (23, 'alert_type', '库存预警类型', 1, 'admin', 'admin'),
 (24, 'price_policy_type', '销售价格策略类型', 1, 'admin', 'admin'),
 (25, 'mrp_suggest_type', 'MRP 建议类型', 1, 'admin', 'admin'),
-(26, 'mfg_issue_status', '生产领料单状态', 1, 'admin', 'admin');
+(26, 'mfg_issue_status', '生产领料单状态', 1, 'admin', 'admin'),
+(27, 'attachment_biz_type', '附件业务类型', 1, 'admin', 'admin');
 SELECT setval('sys_dict_type_id_seq', (SELECT MAX(id) FROM sys_dict_type));
 
 -- 4.7 数据字典项（SYS-06；item_value 为编码值，不随语言变化）
@@ -242,7 +246,18 @@ INSERT INTO sys_dict_item (dict_type, item_label, item_value, item_sort, create_
 ('mfg_issue_status', '已审核', '2', 3, 'admin', 'admin'),
 ('mfg_issue_status', '已出库', '3', 4, 'admin', 'admin'),
 ('mfg_issue_status', '已驳回', '4', 5, 'admin', 'admin'),
-('mfg_issue_status', '已关闭', '5', 6, 'admin', 'admin');
+('mfg_issue_status', '已关闭', '5', 6, 'admin', 'admin'),
+-- 附件业务类型词表（SYS-10 附件上传 bizType 受控取值，接口文档 5.9.1；lang/status 走列默认 zh-CN/1）
+('attachment_biz_type', '采购收货单', 'PURCHASE_RECEIPT', 1, 'admin', 'admin'),
+('attachment_biz_type', '销售退货单', 'SALES_RETURN', 2, 'admin', 'admin'),
+('attachment_biz_type', 'BOM 清单', 'BOM', 3, 'admin', 'admin'),
+('attachment_biz_type', '采购订单', 'PURCHASE_ORDER', 4, 'admin', 'admin'),
+('attachment_biz_type', '销售订单', 'SALES_ORDER', 5, 'admin', 'admin'),
+('attachment_biz_type', '生产工单', 'WORK_ORDER', 6, 'admin', 'admin'),
+('attachment_biz_type', '物料', 'MATERIAL', 7, 'admin', 'admin'),
+('attachment_biz_type', '客户', 'CUSTOMER', 8, 'admin', 'admin'),
+('attachment_biz_type', '供应商', 'SUPPLIER', 9, 'admin', 'admin')
+ON CONFLICT (dict_type, item_value, lang) WHERE is_deleted = 0 DO NOTHING;
 
 -- 4.8 系统参数（SYS-06，修改后 ≤1 分钟生效，无需重启）
 INSERT INTO sys_config (id, config_key, config_name, config_value, value_type, config_group, is_system, status, create_by, update_by) VALUES
@@ -303,10 +318,11 @@ INSERT INTO fin_period (period, period_year, period_month, start_date, end_date,
  date_trunc('month', NOW())::DATE, (date_trunc('month', NOW()) + INTERVAL '1 month' - INTERVAL '1 day')::DATE,
  1, 1, 'admin', 'admin');
 
--- 4.11 admin 账号与 admin-角色绑定（由应用 AdminInitializer 幂等创建，脚本不写入明文口令）
---   创建规则：username='admin'，password=BCrypt(强度 10, 明文遵循 SYS-09 口令策略)，
---   is_admin=1、status=1、首次登录强制修改口令；随后写入 sys_user_role 绑定 ADMIN 角色。
---   本脚本不提供该 INSERT，以避免在脚本中固化口令与口令哈希（安全要求 S-04/S-06）。
+-- 4.11 管理员账号与角色绑定（由应用 AdminInitializer 幂等创建，脚本不写入明文口令）
+--   创建规则：超级管理员 username='admin'、userCode='ADMIN'、is_admin=1，绑定 ADMIN 角色；
+--             系统管理员 username='sysadmin'、userCode='SYSADMIN'、is_admin=0，绑定 SYSTEM_ADMIN 角色。
+--   password=BCrypt(强度 10, 明文由 application.yml 的 erp.admin 配置/环境变量注入，
+--   默认 Admin@123456 首次登录强制修改)；本脚本不提供 INSERT（安全要求 S-04/S-06）。
 
 COMMIT;
 

@@ -17,6 +17,7 @@ import static org.hamcrest.Matchers.equalTo;
 /**
  * 附件域集成测试（/api/system/attachments，接口文档 5.9）。
  * <p>上传/列表/下载/删除闭环；文件类型白名单负向（10401）；bizType+bizId 必填校验；
+ * bizType 词表校验负向（10404，须在字典 attachment_biz_type 启用词表内）；
  * 大小/数量上限走 sys_config 现值，不做真实改配置的危险操作。
  * 临时附件上传后立即删除（自建自清）。</p>
  */
@@ -38,11 +39,11 @@ class AttachmentIntegrationTest extends ApiIntegrationTest {
     /** 本 JVM 内上传成功的附件 id（供 @AfterEach 兜底删除，自建自清） */
     private static final List<Long> UPLOADED_IDS = new CopyOnWriteArrayList<>();
 
-    /** 上传附件并返回 id */
+    /** 上传附件并返回 id（bizType 用种子词表启用值 MATERIAL，it_biz 已不在 attachment_biz_type 词表内） */
     private long uploadPng(long bizId) {
         long id = given().port(port).header("Authorization", "Bearer " + adminToken())
             .multiPart("file", "it_test.png", PNG_BYTES, "image/png")
-            .queryParam("bizType", "it_biz").queryParam("bizId", bizId)
+            .queryParam("bizType", "MATERIAL").queryParam("bizId", bizId)
             .when().post(BASE_PATH)
             .then().statusCode(200).body("code", equalTo(200))
             .extract().jsonPath().getLong("data.id");
@@ -89,10 +90,33 @@ class AttachmentIntegrationTest extends ApiIntegrationTest {
             // When / Then
             given().port(port).header("Authorization", "Bearer " + adminToken())
                 .multiPart("file", "it_test.txt", "hello".getBytes(), "text/plain")
-                .queryParam("bizType", "it_biz").queryParam("bizId", bizId)
+                .queryParam("bizType", "MATERIAL").queryParam("bizId", bizId)
                 .when().post(BASE_PATH)
                 .then().statusCode(422)
                 .body("code", equalTo(CommonErrorCode.ATTACHMENT_TYPE_NOT_SUPPORTED.getCode()));
+        }
+
+        @Test
+        @DisplayName("bizType不在字典启用词表内，返回422业务类型不合法")
+        void shouldReturn422BizTypeInvalid_whenBizTypeNotInDict() {
+            // Given：随机非法业务类型（不在 attachment_biz_type 启用词表内）
+            String invalidBizType = "it_biz_" + suffix();
+            long bizId = System.currentTimeMillis();
+
+            // When / Then：词表校验先于写盘（10404）
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .multiPart("file", "it_test.png", PNG_BYTES, "image/png")
+                .queryParam("bizType", invalidBizType).queryParam("bizId", bizId)
+                .when().post(BASE_PATH)
+                .then().statusCode(422)
+                .body("code", equalTo(CommonErrorCode.ATTACHMENT_BIZ_TYPE_INVALID.getCode()));
+
+            // Then：未落库（无孤儿附件记录，随证 writeFile 未执行）
+            given().port(port).header("Authorization", "Bearer " + adminToken())
+                .queryParam("bizType", invalidBizType).queryParam("bizId", bizId)
+                .when().get(BASE_PATH)
+                .then().statusCode(200)
+                .body("data", empty());
         }
 
         @Test
@@ -121,7 +145,7 @@ class AttachmentIntegrationTest extends ApiIntegrationTest {
             try {
                 // When / Then
                 given().port(port).header("Authorization", "Bearer " + adminToken())
-                    .queryParam("bizType", "it_biz").queryParam("bizId", bizId)
+                    .queryParam("bizType", "MATERIAL").queryParam("bizId", bizId)
                     .when().get(BASE_PATH)
                     .then().statusCode(200)
                     .body("code", equalTo(200))
@@ -136,7 +160,7 @@ class AttachmentIntegrationTest extends ApiIntegrationTest {
         void shouldReturn400ParamError_whenBizIdMissing() {
             // When / Then
             given().port(port).header("Authorization", "Bearer " + adminToken())
-                .queryParam("bizType", "it_biz")
+                .queryParam("bizType", "MATERIAL")
                 .when().get(BASE_PATH)
                 .then().statusCode(400)
                 .body("code", equalTo(CommonErrorCode.PARAM_ERROR.getCode()));
@@ -193,7 +217,7 @@ class AttachmentIntegrationTest extends ApiIntegrationTest {
 
             // Then：确认查不到
             given().port(port).header("Authorization", "Bearer " + adminToken())
-                .queryParam("bizType", "it_biz").queryParam("bizId", bizId)
+                .queryParam("bizType", "MATERIAL").queryParam("bizId", bizId)
                 .when().get(BASE_PATH)
                 .then().statusCode(200)
                 .body("data", empty());
@@ -220,7 +244,7 @@ class AttachmentIntegrationTest extends ApiIntegrationTest {
             // When / Then（带合法查询参数越过 @Valid 校验，只验证鉴权 403；缺参会先 400）
             given().port(port)
                 .header("Authorization", "Bearer " + limitedToken())
-                .queryParam("bizType", "it_biz").queryParam("bizId", "1")
+                .queryParam("bizType", "MATERIAL").queryParam("bizId", "1")
                 .when().get(BASE_PATH)
                 .then().statusCode(403)
                 .body("code", equalTo(CommonErrorCode.FORBIDDEN.getCode()));

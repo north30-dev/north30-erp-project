@@ -54,14 +54,15 @@ public interface UserConverter {
     @Mapping(target = "phone")
     @Mapping(target = "email")
     @Mapping(target = "gender")
-    @Mapping(target = "status")
     @Mapping(target = "remark")
     @Mapping(target = "version")
     SysUser updateUser(UserUpdateDTO dto);
 
     /**
      * 实体 → 详情 VO（多源参数：用户实体 + 所属部门 + 角色派生集合）。
-     * <p>手机号脱敏（maskPhone）与时间字符串化（formatTime）由本类 @Named 方法委托公共 Util；
+     * <p>手机号返回明文（编辑表单回填需真实值，避免保存时用脱敏串覆盖库内数据），
+     * 该接口由 {@code system:user:detail} 权限保护；列表 {@link #toUserVO} 仍走 maskPhone 脱敏。
+     * 时间字符串化（formatTime）由本类 @Named 方法委托公共 Util；
      * dept 可为 null（用户未挂部门），MapStruct 对 null 源参数输出 null 目标字段。</p>
      */
     @BeanMapping(ignoreByDefault = true)
@@ -69,7 +70,7 @@ public interface UserConverter {
     @Mapping(target = "userCode", source = "user.userCode")
     @Mapping(target = "username", source = "user.username")
     @Mapping(target = "realName", source = "user.realName")
-    @Mapping(target = "phone", source = "user.phone", qualifiedByName = "maskPhone")
+    @Mapping(target = "phone", source = "user.phone")
     @Mapping(target = "email", source = "user.email")
     @Mapping(target = "deptId", source = "user.deptId")
     @Mapping(target = "deptName", source = "dept.deptName")
@@ -77,6 +78,7 @@ public interface UserConverter {
     @Mapping(target = "roleIds", source = "roleIds")
     @Mapping(target = "warehouseIds", source = "warehouseIds")
     @Mapping(target = "status", source = "user.status")
+    @Mapping(target = "version", source = "user.version")
     @Mapping(target = "isAdmin", source = "user.isAdmin")
     @Mapping(target = "gender", source = "user.gender")
     @Mapping(target = "remark", source = "user.remark")
@@ -104,6 +106,7 @@ public interface UserConverter {
     @Mapping(target = "deptName", source = "deptName")
     @Mapping(target = "roles", source = "roles")
     @Mapping(target = "status", source = "user.status")
+    @Mapping(target = "version", source = "user.version")
     @Mapping(target = "isAdmin", source = "user.isAdmin")
     @Mapping(target = "lastLoginTime", source = "user.lastLoginTime", qualifiedByName = "formatTime")
     @Mapping(target = "createTime", source = "user.createTime", qualifiedByName = "formatTime")

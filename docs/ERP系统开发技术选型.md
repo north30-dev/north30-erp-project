@@ -19,6 +19,7 @@
 | **API文档**     | springdoc-openapi          | 3.x（Knife4j 4.x 不兼容 Boot 4）           |
 | **容器化**       | Docker + Kubernetes        | K8s 1.28+                             |
 | **构建工具**      | Maven                      | 3.9+                                  |
+| **前端包管理**    | pnpm                       | 12.15.0（packageManager 字段锁定，禁止 npm/yarn 混用） |
 | **版本控制**      | Git                        | -                                     |
 
 ## 二、各层级选型详解

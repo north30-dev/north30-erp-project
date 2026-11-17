@@ -18,7 +18,6 @@ import java.util.List;
  * @param phone        联系电话（≤30 字符）
  * @param email        邮箱（≤100 字符）
  * @param gender       性别（0-未知 1-男 2-女）
- * @param status       状态（0-停用 1-启用）
  * @param remark       备注（≤500 字符）
  * @param version      乐观锁版本号
  */
@@ -41,10 +40,6 @@ public record UserUpdateDTO(
     @Min(value = 0, message = "性别取值仅支持 0-未知 1-男 2-女")
     @Max(value = 2, message = "性别取值仅支持 0-未知 1-男 2-女")
     Integer gender,
-
-    @Min(value = 0, message = "状态取值仅支持 0-停用 1-启用")
-    @Max(value = 1, message = "状态取值仅支持 0-停用 1-启用")
-    Integer status,
 
     @Size(max = 500, message = "备注长度不能超过 500")
     String remark,

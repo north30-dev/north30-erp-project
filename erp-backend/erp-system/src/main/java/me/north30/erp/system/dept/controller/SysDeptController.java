@@ -7,12 +7,18 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import me.north30.erp.common.audit.AuditLog;
+import me.north30.erp.common.audit.AuditModuleEnum;
+import me.north30.erp.common.audit.OperateTypeEnum;
 import me.north30.erp.common.result.Result;
 import me.north30.erp.system.dept.dto.DeptCreateDTO;
+import me.north30.erp.system.dept.dto.DeptMoveDTO;
+import me.north30.erp.system.dept.dto.DeptStatusDTO;
 import me.north30.erp.system.dept.dto.DeptTreeQueryDTO;
 import me.north30.erp.system.dept.dto.DeptUpdateDTO;
 import me.north30.erp.system.dept.service.SysDeptApplicationService;
 import me.north30.erp.system.dept.vo.DeptMutationVO;
+import me.north30.erp.system.dept.vo.DeptStatusVO;
 import me.north30.erp.system.dept.vo.DeptTreeVO;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -58,6 +64,7 @@ public class SysDeptController {
      */
     @PostMapping
     @PreAuthorize("hasAuthority('system:dept:create')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.CREATE)
     @Operation(summary = "新增组织部门", description = "权限点 system:dept:create；层级上限 5 级，自动计算祖级路径与层级")
     @ApiResponse(responseCode = "422", description = "业务校验失败（18026 组织编码已存在/18024 上级组织不存在/18027 组织层级超过上限）",
         content = @Content(mediaType = "application/json",
@@ -71,6 +78,7 @@ public class SysDeptController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('system:dept:update')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     @Operation(summary = "修改组织部门", description = "权限点 system:dept:update；父级变更时环检测并级联重算下级祖级路径与层级，乐观锁按 version 校验")
     @ApiResponse(responseCode = "422", description = "业务校验失败（18024 组织不存在/10001 上级不可选自身或自身下级/18027 组织层级超过上限/10601 乐观锁冲突）",
         content = @Content(mediaType = "application/json",
@@ -84,11 +92,41 @@ public class SysDeptController {
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('system:dept:delete')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.DELETE)
     @Operation(summary = "删除组织部门", description = "权限点 system:dept:delete；逻辑删除，删除前校验下级组织与挂靠用户")
     @ApiResponse(responseCode = "422", description = "业务校验失败（18024 组织不存在/18025 存在下级组织或已绑定用户不可删除）",
         content = @Content(mediaType = "application/json",
             examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
     public Result<DeptMutationVO> delete(@PathVariable Long id) {
         return Result.success(sysDeptApplicationService.delete(id));
+    }
+
+    /**
+     * 变更组织部门状态（启用/停用，08 文档阶段四状态开关统一）。
+     */
+    @PostMapping("/{id}/status")
+    @PreAuthorize("hasAuthority('system:dept:update')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
+    @Operation(summary = "变更组织部门状态", description = "权限点 system:dept:update；乐观锁冲突返回 409/10601")
+    @ApiResponse(responseCode = "422", description = "业务校验失败（18024 组织不存在）",
+        content = @Content(mediaType = "application/json",
+            examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
+    public Result<DeptStatusVO> changeStatus(@PathVariable Long id, @Valid @RequestBody DeptStatusDTO dto) {
+        return Result.success(sysDeptApplicationService.changeStatus(id, dto));
+    }
+
+    /**
+     * 组织上移/下移（08 文档阶段四排序统一）。
+     */
+    @PostMapping("/{id}/move")
+    @PreAuthorize("hasAuthority('system:dept:update')")
+    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
+    @Operation(summary = "组织上移/下移", description = "权限点 system:dept:update；同级规范化重排（10,20,30…）后相邻交换，乐观锁冲突返回 409/10601，已处于顶部/底部返回 422/10001")
+    @ApiResponse(responseCode = "422", description = "业务校验失败（18024 组织不存在/10001 无法移动）",
+        content = @Content(mediaType = "application/json",
+            examples = @ExampleObject(value = BIZ_ERROR_EXAMPLE)))
+    public Result<Void> move(@PathVariable Long id, @Valid @RequestBody DeptMoveDTO dto) {
+        sysDeptApplicationService.move(id, dto);
+        return Result.success();
     }
 }

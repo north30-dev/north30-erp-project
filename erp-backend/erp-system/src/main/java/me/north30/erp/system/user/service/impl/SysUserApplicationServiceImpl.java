@@ -4,9 +4,6 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import me.north30.erp.common.audit.AuditLog;
-import me.north30.erp.common.audit.AuditModuleEnum;
-import me.north30.erp.common.audit.OperateTypeEnum;
 import me.north30.erp.common.util.UpdateGuardUtil;
 import me.north30.erp.common.exception.BusinessException;
 import me.north30.erp.common.result.PageResult;
@@ -30,6 +27,7 @@ import me.north30.erp.system.user.service.SysUserApplicationService;
 import me.north30.erp.system.user.strategy.PasswordStrategy;
 import me.north30.erp.system.user.strategy.UserAssembleStrategy;
 import me.north30.erp.system.user.strategy.UserQueryStrategy;
+import me.north30.erp.system.user.strategy.UserRoleGrantStrategy;
 import me.north30.erp.system.user.strategy.UserRoleStrategy;
 import me.north30.erp.system.user.strategy.UserSessionRevokeStrategy;
 import me.north30.erp.system.user.vo.UserAssignRolesVO;
@@ -53,7 +51,7 @@ import java.util.Objects;
  * 进 user.strategy 包各策略类，本类只负责"查库 → 调实体/策略 → 持久化 → 组装响应"的流程编排。
  * 聚合 sys_user/sys_user_role/sys_role/sys_dept 四表操作均在 erp-system 模块内，
  * 策略类直接复用同模块 Mapper 以免为既有 Service 接口扩权（跨模块仍禁止直接调用 Mapper）。</p>
- * <p>写操作统一显式事务 + @AuditLog 审计；密码 BCrypt 加密且不回显、不入审计 JSON（S-06）。</p>
+ * <p>写操作统一显式事务；审计日志由 Controller 层 @AuditLog 记录（见编码规范）；密码 BCrypt 加密且不回显、不入审计 JSON（S-06）。</p>
  */
 @Slf4j
 @Service
@@ -71,6 +69,7 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
     private final UserQueryStrategy userQueryStrategy;
     private final UserAssembleStrategy userAssembleStrategy;
     private final UserRoleStrategy userRoleStrategy;
+    private final UserRoleGrantStrategy userRoleGrantStrategy;
     private final UserSessionRevokeStrategy userSessionRevokeStrategy;
 
     /**
@@ -100,8 +99,8 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
     public UserDetailVO getDetail(Long id) {
         SysUser user = sysUserDomainService.requireUser(id);
         List<Long> roleIds = userRoleStrategy.listRoleIdsByUserId(id);
-        Map<Long, String> roleCodeMap = userAssembleStrategy.loadRoleCodeMap(roleIds);
-        List<String> roles = roleIds.stream().map(roleCodeMap::get).filter(Objects::nonNull).toList();
+        Map<Long, String> roleNameMap = userAssembleStrategy.loadRoleNameMap(roleIds);
+        List<String> roles = roleIds.stream().map(roleNameMap::get).filter(Objects::nonNull).toList();
         SysDept dept = user.getDeptId() != null ? sysDeptDomainService.getById(user.getDeptId()) : null;
         return userConverter.toUserDetailVO(user, dept, roles, roleIds,
             WarehouseIdCodecUtil.parse(user.getWarehouseIds()));
@@ -115,7 +114,6 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.CREATE)
     public Long create(UserCreateDTO dto) {
         // 1. username/user_code 全局唯一校验（接口文档 5.1.3：18006/18007）
         sysUserDomainService.requireUsernameAvailable(dto.username());
@@ -127,6 +125,7 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
         List<Long> roleIds = dto.roleIds() == null ? List.of()
             : dto.roleIds().stream().filter(Objects::nonNull).distinct().toList();
         userRoleStrategy.requireAllExist(roleIds);
+        userRoleGrantStrategy.requireAssignAdminAllowed(roleIds);
         // 3. 落库：口令复杂度校验（18009）+ BCrypt 加密 + 初始口令修改时间置为当前（90 天有效期基准）
         SysUser user = userConverter.createUser(dto);
         user.initPassword(dto.password(), passwordEncoder, LocalDateTime.now());
@@ -147,13 +146,11 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     public String update(Long id, UserUpdateDTO dto) {
         SysUser user = sysUserDomainService.requireUser(id);
-        // 停用内置管理员视为受保护操作（18012）；update 语义是资料更新，不走 changeStatus 实体方法
-        if (dto.status() != null && dto.status() == 0) {
-            user.requireNotAdmin();
-        }
+        // 内置管理员资料不可修改（18012），与 changeStatus/delete 保护口径一致
+        user.requireNotAdmin();
+        // update 语义是资料更新，状态变更统一走 changeStatus 专用接口（内置管理员保护在 changeStatus 中校验）
         if (dto.deptId() != null) {
             sysDeptDomainService.requireDept(dto.deptId());
         }
@@ -174,9 +171,10 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.DELETE)
     public DeleteResultVO delete(Long id) {
         SysUser user = sysUserDomainService.requireUser(id);
+        // 禁止删除自己（18041）
+        sysUserDomainService.requireNotSelf(id);
         // 内置管理员不可删除（18012）
         user.requireNotAdmin();
         // 存在角色分配即视为被引用，拒绝删除（18013）
@@ -198,9 +196,12 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     public UserStatusVO changeStatus(Long id, UserStatusDTO dto) {
         SysUser user = sysUserDomainService.requireUser(id);
+        // 禁止停用自己（18041），避免会话失效后无法再登录
+        if (dto.status() == 0) {
+            sysUserDomainService.requireNotSelf(id);
+        }
         // 状态值域守卫（10001）与内置管理员不可停用（18012）收敛于实体 changeStatus
         user.changeStatus(dto.status());
         SysUser patch = new SysUser();
@@ -227,9 +228,10 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     public UserResetPasswordVO resetPassword(Long id, UserResetPasswordDTO dto) {
-        sysUserDomainService.requireUser(id);
+        SysUser user = sysUserDomainService.requireUser(id);
+        // 内置管理员密码不可重置（18012），防止普通管理员重置超管密码后接管账号
+        user.requireNotAdmin();
         // 缺省时服务端生成随机口令；指定口令则校验复杂度（18009）
         String initialPassword = StringUtils.hasText(dto.newPassword()) ? dto.newPassword() : PasswordStrategy.generate();
         PasswordStrategy.checkOrThrow(initialPassword);
@@ -252,11 +254,14 @@ public class SysUserApplicationServiceImpl implements SysUserApplicationService 
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @AuditLog(module = AuditModuleEnum.SYSTEM, operateType = OperateTypeEnum.UPDATE)
     public UserAssignRolesVO assignRoles(Long id, UserAssignRolesDTO dto) {
         sysUserDomainService.requireUser(id);
         List<Long> roleIds = dto.roleIds() == null ? List.of()
             : dto.roleIds().stream().filter(Objects::nonNull).distinct().toList();
+        // 提权守卫（18040）先行：非超管分配 ADMIN 的越权与目标用户无关，属更根本的违规，优先报出
+        userRoleGrantStrategy.requireAssignAdminAllowed(roleIds);
+        // 禁止修改自己的角色（18041）：任何自我变更均可组合出自我提权/无法自愈的降权，一律由其他管理员操作
+        userRoleGrantStrategy.requireNotSelfOperation(id);
         userRoleStrategy.requireAllExist(roleIds);
         userRoleStrategy.replaceAllForUser(id, roleIds);
         return new UserAssignRolesVO(roleIds, PERMISSION_REFRESH_TIP);
